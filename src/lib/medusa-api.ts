@@ -1,0 +1,324 @@
+import {
+  MedusaCart,
+  MedusaProduct,
+  MedusaProductCategory,
+  MedusaRegion,
+  MedusaShippingOption,
+  MedusaCustomer,
+} from "@/types/medusa";
+import {
+  medusaRequest,
+  getStoredCartId,
+  setStoredCartId,
+  getAuthToken,
+} from "@/lib/http";
+
+// ── Products ────────────────────────────────────────────────────────
+
+export async function getProducts(
+  params: Record<string, string | number | boolean | string[] | undefined> = {},
+) {
+  return medusaRequest<{
+    products: MedusaProduct[];
+    count: number;
+    offset: number;
+    limit: number;
+  }>("store/products", {
+    searchParams: {
+      limit: 20,
+      offset: 0,
+      ...params,
+    },
+  });
+}
+
+export async function getProductByHandle(handle: string) {
+  const res = await medusaRequest<{ products: MedusaProduct[] }>(
+    "store/products",
+    { searchParams: { handle, limit: 1 } },
+  );
+  return res.products[0] ?? null;
+}
+
+export async function getProductById(id: string) {
+  return medusaRequest<{ product: MedusaProduct }>(`store/products/${id}`);
+}
+
+// ── Categories ──────────────────────────────────────────────────────
+
+export async function getCategories(
+  params: Record<string, string | number | boolean | undefined> = {},
+) {
+  return medusaRequest<{
+    product_categories: MedusaProductCategory[];
+    count: number;
+    offset: number;
+    limit: number;
+  }>("store/product-categories", {
+    searchParams: {
+      limit: 100,
+      include_descendants_tree: true,
+      ...params,
+    },
+  });
+}
+
+export async function getCategoryByHandle(handle: string) {
+  const res = await medusaRequest<{
+    product_categories: MedusaProductCategory[];
+  }>("store/product-categories", {
+    searchParams: { handle, limit: 1, include_descendants_tree: true },
+  });
+  return res.product_categories[0] ?? null;
+}
+
+// ── Cart ────────────────────────────────────────────────────────────
+
+export async function getOrCreateCart(): Promise<MedusaCart> {
+  const cartId = getStoredCartId();
+
+  if (cartId) {
+    try {
+      const res = await medusaRequest<{ cart: MedusaCart }>(
+        `store/carts/${cartId}`,
+      );
+      return res.cart;
+    } catch {
+      // Cart not found or expired, create new one
+    }
+  }
+
+  // Get Ethiopia region for cart (fallback to first available)
+  const regionsRes = await medusaRequest<{ regions: MedusaRegion[] }>(
+    "store/regions",
+    { searchParams: { limit: 50 } },
+  );
+  const region =
+    regionsRes.regions.find((r) =>
+      r.countries.some((c) => c.iso_2 === "et"),
+    ) ?? regionsRes.regions[0];
+
+  const res = await medusaRequest<{ cart: MedusaCart }>("store/carts", {
+    method: "POST",
+    body: region ? { region_id: region.id } : {},
+  });
+
+  setStoredCartId(res.cart.id);
+  return res.cart;
+}
+
+export async function getCart(): Promise<MedusaCart | null> {
+  const cartId = getStoredCartId();
+  if (!cartId) return null;
+
+  try {
+    const res = await medusaRequest<{ cart: MedusaCart }>(
+      `store/carts/${cartId}`,
+    );
+    return res.cart;
+  } catch {
+    return null;
+  }
+}
+
+export async function addToCart(variantId: string, quantity = 1) {
+  const cart = await getOrCreateCart();
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cart.id}/line-items`,
+    {
+      method: "POST",
+      body: { variant_id: variantId, quantity },
+    },
+  );
+}
+
+export async function updateLineItem(lineItemId: string, quantity: number) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cartId}/line-items/${lineItemId}`,
+    {
+      method: "POST",
+      body: { quantity },
+    },
+  );
+}
+
+export async function removeLineItem(lineItemId: string) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cartId}/line-items/${lineItemId}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function updateCart(data: Record<string, unknown>) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function addPromoCode(code: string) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cartId}/promotions`,
+    {
+      method: "POST",
+      body: { promo_codes: [code] },
+    },
+  );
+}
+
+export async function removePromoCode(code: string) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cartId}/promotions`,
+    {
+      method: "DELETE",
+      body: { promo_codes: [code] },
+    },
+  );
+}
+
+// ── Shipping ────────────────────────────────────────────────────────
+
+export async function getShippingOptions() {
+  const cartId = getStoredCartId();
+  if (!cartId) return { shipping_options: [] };
+
+  return medusaRequest<{ shipping_options: MedusaShippingOption[] }>(
+    "store/shipping-options",
+    { searchParams: { cart_id: cartId } },
+  );
+}
+
+export async function addShippingMethod(optionId: string) {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${cartId}/shipping-methods`,
+    {
+      method: "POST",
+      body: { option_id: optionId },
+    },
+  );
+}
+
+// ── Payment ─────────────────────────────────────────────────────────
+
+export async function initializePaymentSession() {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  // Create payment collection for the cart
+  const pcRes = await medusaRequest<{
+    payment_collection: { id: string; payment_sessions?: { id: string; provider_id: string; status: string }[] };
+  }>("store/payment-collections", {
+    method: "POST",
+    body: { cart_id: cartId },
+  });
+
+  const pcId = pcRes.payment_collection.id;
+
+  // Create a payment session with the system default provider
+  return medusaRequest<{
+    payment_collection: { id: string; payment_sessions: { id: string; provider_id: string; status: string }[] };
+  }>(`store/payment-collections/${pcId}/payment-sessions`, {
+    method: "POST",
+    body: { provider_id: "pp_system_default" },
+  });
+}
+
+// ── Checkout ────────────────────────────────────────────────────────
+
+export async function completeCart() {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error("No cart found");
+
+  return medusaRequest<{ type: string; cart?: MedusaCart; order?: unknown }>(
+    `store/carts/${cartId}/complete`,
+    { method: "POST" },
+  );
+}
+
+// ── Auth ────────────────────────────────────────────────────────────
+
+export async function loginCustomer(email: string, password: string) {
+  const res = await medusaRequest<{ token: string }>(
+    "auth/customer/emailpass",
+    {
+      method: "POST",
+      body: { email, password },
+    },
+  );
+  return res;
+}
+
+export async function registerCustomer(data: {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+}) {
+  // First create auth identity
+  const authRes = await medusaRequest<{ token: string }>(
+    "auth/customer/emailpass/register",
+    {
+      method: "POST",
+      body: { email: data.email, password: data.password },
+    },
+  );
+
+  // Then create the customer
+  const customerRes = await medusaRequest<{ customer: MedusaCustomer }>(
+    "store/customers",
+    {
+      method: "POST",
+      body: {
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+      },
+      headers: {
+        Authorization: `Bearer ${authRes.token}`,
+      },
+    },
+  );
+
+  return { token: authRes.token, customer: customerRes.customer };
+}
+
+export async function getCustomer() {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const res = await medusaRequest<{ customer: MedusaCustomer }>(
+      "store/customers/me",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return res.customer;
+  } catch {
+    return null;
+  }
+}
+
+// ── Regions ─────────────────────────────────────────────────────────
+
+export async function getRegions() {
+  return medusaRequest<{ regions: MedusaRegion[]; count: number }>(
+    "store/regions",
+  );
+}

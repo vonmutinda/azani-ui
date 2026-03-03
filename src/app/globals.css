@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  /* Kokob Baby Shop — warm, soft palette */
+  --background: #faf8f6;
+  --foreground: #2d2a26;
+  --primary: #e8836b;
+  --primary-hover: #d6715a;
+  --primary-light: #fdf0ed;
+  --secondary: #7eb8c9;
+  --secondary-light: #edf6f9;
+  --accent-yellow: #f5c963;
+  --accent-yellow-light: #fef9ec;
+  --accent-green: #7bc4a0;
+  --accent-green-light: #edf8f2;
+  --muted: #8a8580;
+  --muted-light: #c5c0ba;
+  --border: #ece8e4;
+  --border-hover: #d9d4ce;
+  --card: #ffffff;
+  --card-raised: #ffffff;
+  --danger: #d94f4f;
+  --success: #4caf7c;
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --shadow-sm: 0 1px 2px rgba(45,42,38,0.04);
+  --shadow: 0 2px 8px rgba(45,42,38,0.06);
+  --shadow-md: 0 4px 16px rgba(45,42,38,0.08);
+  --shadow-lg: 0 8px 32px rgba(45,42,38,0.10);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-secondary-light: var(--secondary-light);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-light: var(--accent-yellow-light);
+  --color-accent-green: var(--accent-green);
+  --color-accent-green-light: var(--accent-green-light);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-card: var(--card);
+  --color-card-raised: var(--card-raised);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Star rating */
+.star-filled { color: #f5c963; }
+.star-empty { color: #e0dbd5; }
+
+/* Custom scrollbar for filter panels */
+.filter-scroll::-webkit-scrollbar { width: 4px; }
+.filter-scroll::-webkit-scrollbar-track { background: transparent; }
+.filter-scroll::-webkit-scrollbar-thumb { background: var(--muted-light); border-radius: 4px; }
