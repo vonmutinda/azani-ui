@@ -33,10 +33,10 @@ vi.mock("@/lib/medusa-api", () => ({
   getCategories: vi.fn().mockResolvedValue({
     product_categories: [
       {
-        id: "pcat_baby_care",
-        name: "Baby Care",
-        handle: "baby-care",
-        description: "Everything your little one needs",
+        id: "pcat_feeding",
+        name: "Feeding",
+        handle: "feeding",
+        description: "Everything for feeding your little one",
         rank: 0,
         parent_category_id: null,
         created_at: "",
@@ -91,7 +91,7 @@ describe("Home Page", () => {
   it("loads and renders categories", async () => {
     renderWithProviders(<Home />);
     await waitFor(() => {
-      expect(screen.getByText("Baby Care")).toBeInTheDocument();
+      expect(screen.getByText("Feeding")).toBeInTheDocument();
     });
   });
 

@@ -5,6 +5,8 @@ import {
   MedusaRegion,
   MedusaShippingOption,
   MedusaCustomer,
+  MedusaAddress,
+  MedusaOrder,
 } from "@/types/medusa";
 import {
   medusaRequest,
@@ -313,6 +315,107 @@ export async function getCustomer() {
   } catch {
     return null;
   }
+}
+
+// ── Customer Profile ────────────────────────────────────────────────
+
+export async function updateCustomer(data: {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ customer: MedusaCustomer }>(
+    "store/customers/me",
+    {
+      method: "POST",
+      body: data,
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  return res.customer;
+}
+
+// ── Customer Addresses ─────────────────────────────────────────────
+
+export async function getCustomerAddresses() {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ addresses: MedusaAddress[] }>(
+    "store/customers/me/addresses",
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return res.addresses;
+}
+
+export async function addCustomerAddress(data: Omit<MedusaAddress, "id">) {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ address: MedusaAddress }>(
+    "store/customers/me/addresses",
+    {
+      method: "POST",
+      body: data,
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  return res.address;
+}
+
+export async function updateCustomerAddress(id: string, data: Omit<MedusaAddress, "id">) {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ address: MedusaAddress }>(
+    `store/customers/me/addresses/${id}`,
+    {
+      method: "POST",
+      body: data,
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  return res.address;
+}
+
+export async function deleteCustomerAddress(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  await medusaRequest<void>(
+    `store/customers/me/addresses/${id}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+}
+
+// ── Orders ─────────────────────────────────────────────────────────
+
+export async function getOrders() {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ orders: MedusaOrder[] }>(
+    "store/orders",
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return res.orders;
+}
+
+export async function getOrderById(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await medusaRequest<{ order: MedusaOrder }>(
+    `store/orders/${id}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return res.order;
 }
 
 // ── Regions ─────────────────────────────────────────────────────────

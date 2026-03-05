@@ -6,6 +6,20 @@ import { loginCustomer, registerCustomer } from "@/lib/medusa-api";
 import { setAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 6;
+
+function normalizeError(error: Error): string {
+  const msg = error.message;
+  if (/identity.*already exists/i.test(msg)) {
+    return "An account with this email already exists.";
+  }
+  if (/unauthorized|invalid.*credentials/i.test(msg)) {
+    return "Invalid email or password.";
+  }
+  return msg;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [isRegister, setIsRegister] = useState(false);
@@ -15,6 +29,7 @@ export default function LoginPage() {
     first_name: "",
     last_name: "",
   });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const loginMutation = useMutation({
     mutationFn: () => loginCustomer(form.email, form.password),
@@ -38,8 +53,27 @@ export default function LoginPage() {
     },
   });
 
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!EMAIL_RE.test(form.email)) {
+      errors.email = "Please enter a valid email address.";
+    }
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (isRegister) {
+      if (!form.first_name.trim()) errors.first_name = "First name is required.";
+      if (!form.last_name.trim()) errors.last_name = "Last name is required.";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     if (isRegister) {
       registerMutation.mutate();
     } else {
@@ -47,8 +81,15 @@ export default function LoginPage() {
     }
   };
 
+  const handleToggleMode = () => {
+    setIsRegister(!isRegister);
+    setValidationErrors({});
+    loginMutation.reset();
+    registerMutation.reset();
+  };
+
   const isPending = loginMutation.isPending || registerMutation.isPending;
-  const error = loginMutation.error || registerMutation.error;
+  const apiError = loginMutation.error || registerMutation.error;
 
   const inputClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
@@ -61,41 +102,57 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-6">
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <input
-              placeholder="First name"
-              required
-              value={form.first_name}
-              onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-              className={inputClass}
-            />
-            <input
-              placeholder="Last name"
-              required
-              value={form.last_name}
-              onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-              className={inputClass}
-            />
+            <div>
+              <input
+                placeholder="First name"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                className={inputClass}
+              />
+              {validationErrors.first_name && (
+                <p className="mt-1 text-sm text-danger">{validationErrors.first_name}</p>
+              )}
+            </div>
+            <div>
+              <input
+                placeholder="Last name"
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                className={inputClass}
+              />
+              {validationErrors.last_name && (
+                <p className="mt-1 text-sm text-danger">{validationErrors.last_name}</p>
+              )}
+            </div>
           </div>
         )}
-        <input
-          type="email"
-          placeholder="Email"
-          required
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className={inputClass}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className={inputClass}
-        />
+        <div>
+          <input
+            type="text"
+            placeholder="Email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className={inputClass}
+          />
+          {validationErrors.email && (
+            <p className="mt-1 text-sm text-danger">{validationErrors.email}</p>
+          )}
+        </div>
+        <div>
+          <input
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className={inputClass}
+          />
+          {validationErrors.password && (
+            <p className="mt-1 text-sm text-danger">{validationErrors.password}</p>
+          )}
+        </div>
 
-        {error && (
-          <p className="text-sm text-danger">{(error as Error).message}</p>
+        {apiError && (
+          <p className="text-sm text-danger">{normalizeError(apiError as Error)}</p>
         )}
 
         <button
@@ -110,7 +167,7 @@ export default function LoginPage() {
           {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
             type="button"
-            onClick={() => setIsRegister(!isRegister)}
+            onClick={handleToggleMode}
             className="font-medium text-primary hover:underline"
           >
             {isRegister ? "Sign in" : "Create one"}

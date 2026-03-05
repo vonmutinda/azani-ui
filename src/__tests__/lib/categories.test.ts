@@ -11,11 +11,13 @@ import { mockCategory, mockCategories } from "../fixtures";
 
 describe("getCategoryIcon", () => {
   it("returns correct icon for known handles", () => {
-    expect(getCategoryIcon("baby-care")).toBe("baby");
     expect(getCategoryIcon("feeding")).toBe("utensils");
+    expect(getCategoryIcon("bath-diapering")).toBe("bath");
+    expect(getCategoryIcon("nursery")).toBe("moon");
+    expect(getCategoryIcon("baby-gear")).toBe("car");
     expect(getCategoryIcon("clothing")).toBe("shirt");
-    expect(getCategoryIcon("toys-games")).toBe("gamepad");
-    expect(getCategoryIcon("mom")).toBe("heart-handshake");
+    expect(getCategoryIcon("toys-books")).toBe("gamepad");
+    expect(getCategoryIcon("mom-maternity")).toBe("heart-handshake");
   });
 
   it("returns 'baby' as fallback for unknown handles", () => {
@@ -23,33 +25,41 @@ describe("getCategoryIcon", () => {
   });
 
   it("returns correct icons for subcategories", () => {
-    expect(getCategoryIcon("diapers")).toBe("baby");
-    expect(getCategoryIcon("bath-tubs")).toBe("bath");
-    expect(getCategoryIcon("breast-pumps")).toBe("heart");
-    expect(getCategoryIcon("bikes")).toBe("bike");
+    expect(getCategoryIcon("diapers-pull-ups")).toBe("baby");
+    expect(getCategoryIcon("bath-tubs-seats")).toBe("bath");
+    expect(getCategoryIcon("breast-pumps-milk-storage")).toBe("heart");
+    expect(getCategoryIcon("ride-ons-bikes-cars")).toBe("bike");
   });
 });
 
 describe("TOP_LEVEL_HANDLES", () => {
-  it("contains the 5 main categories", () => {
-    expect(TOP_LEVEL_HANDLES).toEqual(["baby-care", "mom", "feeding", "toys-games", "clothing"]);
-    expect(TOP_LEVEL_HANDLES).toHaveLength(5);
+  it("contains the 7 main categories", () => {
+    expect(TOP_LEVEL_HANDLES).toEqual([
+      "feeding",
+      "bath-diapering",
+      "nursery",
+      "baby-gear",
+      "clothing",
+      "toys-books",
+      "mom-maternity",
+    ]);
+    expect(TOP_LEVEL_HANDLES).toHaveLength(7);
   });
 });
 
 describe("toKokobCategory", () => {
   it("converts a Medusa category to KokobCategory shape", () => {
     const result = toKokobCategory(mockCategory);
-    expect(result.slug).toBe("baby-care");
-    expect(result.name).toBe("Baby Care");
-    expect(result.icon).toBe("baby");
-    expect(result.description).toBe("Everything your little one needs");
+    expect(result.slug).toBe("bath-diapering");
+    expect(result.name).toBe("Bath & Diapering");
+    expect(result.icon).toBe("bath");
+    expect(result.description).toBe("Everything for bath time and diaper changes");
   });
 
   it("converts children recursively", () => {
     const result = toKokobCategory(mockCategory);
     expect(result.children).toHaveLength(2);
-    expect(result.children![0].slug).toBe("diapers");
+    expect(result.children![0].slug).toBe("diapers-pull-ups");
     expect(result.children![1].slug).toBe("wipes");
   });
 });
@@ -59,8 +69,8 @@ describe("flattenCategories", () => {
     const kokob = mockCategories.map(toKokobCategory);
     const flat = flattenCategories(kokob);
 
-    expect(flat.some((c) => c.slug === "baby-care")).toBe(true);
-    expect(flat.some((c) => c.slug === "diapers")).toBe(true);
+    expect(flat.some((c) => c.slug === "bath-diapering")).toBe(true);
+    expect(flat.some((c) => c.slug === "diapers-pull-ups")).toBe(true);
     expect(flat.some((c) => c.slug === "wipes")).toBe(true);
     expect(flat.some((c) => c.slug === "feeding")).toBe(true);
   });
@@ -69,27 +79,27 @@ describe("flattenCategories", () => {
     const kokob = mockCategories.map(toKokobCategory);
     const flat = flattenCategories(kokob);
 
-    const diapers = flat.find((c) => c.slug === "diapers");
-    expect(diapers?.parent).toBe("baby-care");
+    const diapers = flat.find((c) => c.slug === "diapers-pull-ups");
+    expect(diapers?.parent).toBe("bath-diapering");
 
-    const babyCare = flat.find((c) => c.slug === "baby-care");
-    expect(babyCare?.parent).toBeUndefined();
+    const bathDiapering = flat.find((c) => c.slug === "bath-diapering");
+    expect(bathDiapering?.parent).toBeUndefined();
   });
 });
 
 describe("findCategory", () => {
   it("finds a top-level category", () => {
     const kokob = mockCategories.map(toKokobCategory);
-    const found = findCategory("baby-care", kokob);
+    const found = findCategory("bath-diapering", kokob);
     expect(found).toBeDefined();
-    expect(found!.name).toBe("Baby Care");
+    expect(found!.name).toBe("Bath & Diapering");
   });
 
   it("finds a nested category", () => {
     const kokob = mockCategories.map(toKokobCategory);
-    const found = findCategory("diapers", kokob);
+    const found = findCategory("diapers-pull-ups", kokob);
     expect(found).toBeDefined();
-    expect(found!.name).toBe("Diapers");
+    expect(found!.name).toBe("Diapers & Pull-Ups");
   });
 
   it("returns undefined for non-existent slug", () => {
@@ -106,13 +116,13 @@ describe("resolveToMainAndSub", () => {
   ];
 
   it("resolves a top-level slug", () => {
-    const result = resolveToMainAndSub("baby-care", kokob);
-    expect(result).toEqual({ main: "baby-care", sub: undefined });
+    const result = resolveToMainAndSub("bath-diapering", kokob);
+    expect(result).toEqual({ main: "bath-diapering", sub: undefined });
   });
 
   it("resolves a child slug to its parent", () => {
-    const result = resolveToMainAndSub("diapers", kokob);
-    expect(result).toEqual({ main: "baby-care", sub: "diapers" });
+    const result = resolveToMainAndSub("diapers-pull-ups", kokob);
+    expect(result).toEqual({ main: "bath-diapering", sub: "diapers-pull-ups" });
   });
 
   it("returns undefined for unknown slug", () => {

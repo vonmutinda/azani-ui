@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "@/app/account/login/page";
@@ -15,6 +15,10 @@ vi.mock("@/lib/medusa-api", () => ({
 vi.mock("@/lib/http", () => ({
   setAuthToken: vi.fn(),
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("LoginPage", () => {
   it("renders sign in form by default", () => {
@@ -99,7 +103,7 @@ describe("LoginPage", () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "pw");
+    await user.type(screen.getByPlaceholderText("Password"), "password123");
     await user.click(screen.getByRole("button", { name: "Sign In" }));
 
     await waitFor(() => {
@@ -114,11 +118,80 @@ describe("LoginPage", () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "wrong");
+    await user.type(screen.getByPlaceholderText("Password"), "password123");
     await user.click(screen.getByRole("button", { name: "Sign In" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+      expect(screen.getByText("Invalid email or password.")).toBeInTheDocument();
     });
+  });
+
+  it("shows error message on registration failure", async () => {
+    mockRegisterCustomer.mockRejectedValueOnce(
+      new Error("Identity with email already exists"),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.click(screen.getByText("Create one"));
+    await user.type(screen.getByPlaceholderText("First name"), "John");
+    await user.type(screen.getByPlaceholderText("Last name"), "Doe");
+    await user.type(screen.getByPlaceholderText("Email"), "john@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("An account with this email already exists."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows validation error for short password", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "short");
+    await user.click(screen.getByRole("button", { name: "Sign In" }));
+
+    expect(
+      screen.getByText("Password must be at least 6 characters."),
+    ).toBeInTheDocument();
+    expect(mockLoginCustomer).not.toHaveBeenCalled();
+  });
+
+  it("shows validation error for invalid email format", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText("Email"), "not-an-email");
+    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    await user.click(screen.getByRole("button", { name: "Sign In" }));
+
+    expect(
+      screen.getByText("Please enter a valid email address."),
+    ).toBeInTheDocument();
+    expect(mockLoginCustomer).not.toHaveBeenCalled();
+  });
+
+  it("clears errors when switching between login and register modes", async () => {
+    mockLoginCustomer.mockRejectedValueOnce(new Error("Invalid credentials"));
+
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
+    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    await user.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Invalid email or password.")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Create one"));
+
+    expect(screen.queryByText("Invalid email or password.")).not.toBeInTheDocument();
   });
 });

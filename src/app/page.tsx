@@ -21,12 +21,12 @@ export default function Home() {
 
   const categoriesQuery = useQuery({
     queryKey: ["categories-home"],
-    queryFn: () => getCategories({ parent_category_id: "null" }),
+    queryFn: () => getCategories(),
     staleTime: 5 * 60 * 1000,
   });
 
   const topCategories = (categoriesQuery.data?.product_categories ?? [])
-    .filter((c) => TOP_LEVEL_HANDLES.includes(c.handle))
+    .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toKokobCategory);
 
   return (
@@ -85,7 +85,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
           {topCategories.map((cat) => (
             <Link
               key={cat.slug}
@@ -125,8 +125,9 @@ export default function Home() {
             ))}
           </div>
         ) : featuredQuery.isError ? (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-danger">
-            Unable to load products. Make sure the Medusa backend is running.
+          <div className="rounded-2xl border border-border bg-card p-8 text-center">
+            <p className="text-sm font-medium text-foreground">Something went wrong</p>
+            <p className="mt-1 text-xs text-muted">We couldn&apos;t load products right now. Please try again later.</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

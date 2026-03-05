@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories } from "@/lib/medusa-api";
+import { getAuthToken } from "@/lib/http";
 import { KokobCategory, toKokobCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
@@ -51,6 +52,7 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pathname = usePathname();
@@ -60,12 +62,12 @@ export function SiteHeader() {
 
   const categoriesQuery = useQuery({
     queryKey: ["categories-nav"],
-    queryFn: () => getCategories({ parent_category_id: "null" }),
+    queryFn: () => getCategories(),
     staleTime: 5 * 60 * 1000,
   });
 
   const topCategories: KokobCategory[] = (categoriesQuery.data?.product_categories ?? [])
-    .filter((c) => TOP_LEVEL_HANDLES.includes(c.handle))
+    .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toKokobCategory);
 
   const activeMainSlug: string | undefined = (() => {
@@ -95,6 +97,10 @@ export function SiteHeader() {
   const closeMega = () => {
     megaTimeout.current = setTimeout(() => setActiveMega(null), 200);
   };
+
+  useEffect(() => {
+    setIsLoggedIn(!!getAuthToken());
+  }, []);
 
   useEffect(() => {
     return () => { if (megaTimeout.current) clearTimeout(megaTimeout.current); };
@@ -139,7 +145,7 @@ export function SiteHeader() {
             >
               <Search className="h-5 w-5" />
             </button>
-            <Link href="/account/login" className="hidden rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary sm:inline-flex">
+            <Link href={isLoggedIn ? "/account" : "/account/login"} className="hidden rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary sm:inline-flex">
               <User className="h-5 w-5" />
             </Link>
             <Link href="/account/wishlist" className="hidden rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary sm:inline-flex">
@@ -267,7 +273,7 @@ export function SiteHeader() {
               <Link href="/account/wishlist" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-primary-light hover:text-primary">
                 Wishlist
               </Link>
-              <Link href="/account/login" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-primary-light hover:text-primary">
+              <Link href={isLoggedIn ? "/account" : "/account/login"} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-primary-light hover:text-primary">
                 Account
               </Link>
             </div>

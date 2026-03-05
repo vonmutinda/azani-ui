@@ -103,6 +103,7 @@ export type MedusaLineItem = {
 };
 
 export type MedusaAddress = {
+  id?: string;
   first_name?: string;
   last_name?: string;
   company?: string;
@@ -195,6 +196,7 @@ export type MedusaOrder = {
   email: string;
   currency_code: string;
   items: MedusaLineItem[];
+  shipping_address?: MedusaAddress;
   total: number;
   subtotal: number;
   shipping_total: number;

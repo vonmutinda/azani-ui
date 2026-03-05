@@ -60,10 +60,10 @@ export const mockProductMinimal: MedusaProduct = {
 };
 
 export const mockCategory: MedusaProductCategory = {
-  id: "pcat_baby_care",
-  name: "Baby Care",
-  handle: "baby-care",
-  description: "Everything your little one needs",
+  id: "pcat_bath_diapering",
+  name: "Bath & Diapering",
+  handle: "bath-diapering",
+  description: "Everything for bath time and diaper changes",
   rank: 0,
   parent_category_id: null,
   created_at: new Date().toISOString(),
@@ -71,10 +71,10 @@ export const mockCategory: MedusaProductCategory = {
   category_children: [
     {
       id: "pcat_diapers",
-      name: "Diapers",
-      handle: "diapers",
+      name: "Diapers & Pull-Ups",
+      handle: "diapers-pull-ups",
       rank: 0,
-      parent_category_id: "pcat_baby_care",
+      parent_category_id: "pcat_bath_diapering",
       created_at: "",
       updated_at: "",
       category_children: [],
@@ -84,7 +84,7 @@ export const mockCategory: MedusaProductCategory = {
       name: "Wipes",
       handle: "wipes",
       rank: 1,
-      parent_category_id: "pcat_baby_care",
+      parent_category_id: "pcat_bath_diapering",
       created_at: "",
       updated_at: "",
       category_children: [],

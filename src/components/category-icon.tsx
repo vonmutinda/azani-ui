@@ -1,6 +1,7 @@
 import {
   Baby,
   Bath,
+  Bed,
   Bike,
   BookOpen,
   Briefcase,
@@ -9,7 +10,6 @@ import {
   Cloud,
   Crown,
   Droplets,
-  Fish,
   Footprints,
   Gamepad2,
   Gift,
@@ -21,26 +21,25 @@ import {
   Package,
   Shield,
   Shirt,
+  Sofa,
   Sparkles,
   Star,
   Thermometer,
   UtensilsCrossed,
-  Wheat,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ElementType> = {
   baby: Baby,
   bath: Bath,
+  bed: Bed,
   bike: Bike,
   book: BookOpen,
   briefcase: Briefcase,
-  backpack: Briefcase,
   car: Car,
   circle: CircleDot,
   cloud: Cloud,
   crown: Crown,
   droplets: Droplets,
-  fish: Fish,
   footprints: Footprints,
   gamepad: Gamepad2,
   gift: Gift,
@@ -56,9 +55,8 @@ const iconMap: Record<string, React.ElementType> = {
   star: Star,
   thermometer: Thermometer,
   utensils: UtensilsCrossed,
-  armchair: LayoutGrid,
+  armchair: Sofa,
   apple: Sparkles,
-  wheat: Wheat,
 };
 
 type Props = {

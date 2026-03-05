@@ -24,7 +24,7 @@ describe("FilterSidebar", () => {
 
   it("renders top-level categories that match TOP_LEVEL_HANDLES", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} />);
-    expect(screen.getByText("Baby Care")).toBeInTheDocument();
+    expect(screen.getByText("Bath & Diapering")).toBeInTheDocument();
     expect(screen.getByText("Feeding")).toBeInTheDocument();
     expect(screen.getByText("Clothing")).toBeInTheDocument();
   });
@@ -37,8 +37,8 @@ describe("FilterSidebar", () => {
       <FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />,
     );
 
-    await user.click(screen.getByText("Baby Care"));
-    expect(onFilterChange).toHaveBeenCalledWith({ category: "baby-care" });
+    await user.click(screen.getByText("Bath & Diapering"));
+    expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering" });
   });
 
   it("calls onFilterChange with undefined when active category is deselected", async () => {
@@ -47,20 +47,20 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "baby-care" }}
+        filters={{ category: "bath-diapering" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
     );
 
-    await user.click(screen.getByText("Baby Care"));
+    await user.click(screen.getByText("Bath & Diapering"));
     expect(onFilterChange).toHaveBeenCalledWith({ category: undefined });
   });
 
   it("shows filter count badge when filters active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "baby-care" }}
+        filters={{ category: "bath-diapering" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -72,7 +72,7 @@ describe("FilterSidebar", () => {
   it("shows 'Clear all' button when filters are active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "baby-care" }}
+        filters={{ category: "bath-diapering" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -87,7 +87,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "baby-care" }}
+        filters={{ category: "bath-diapering" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,

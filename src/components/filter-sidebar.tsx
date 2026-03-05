@@ -95,7 +95,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const topCategories = categories
-    .filter((c) => TOP_LEVEL_HANDLES.includes(c.handle))
+    .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toKokobCategory);
 
   const activeFilterCount = Object.values(filters).filter((v) => v !== undefined && v !== "").length;

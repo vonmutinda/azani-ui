@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Baby, Heart, Mail, MapPin, Phone } from "lucide-react";
 
 const TOP_CATEGORIES = [
-  { name: "Baby Care", slug: "baby-care" },
-  { name: "Mom", slug: "mom" },
   { name: "Feeding", slug: "feeding" },
-  { name: "Toys & Games", slug: "toys-games" },
+  { name: "Bath & Diapering", slug: "bath-diapering" },
+  { name: "Nursery", slug: "nursery" },
+  { name: "Baby Gear", slug: "baby-gear" },
   { name: "Clothing", slug: "clothing" },
+  { name: "Toys & Books", slug: "toys-books" },
+  { name: "Mom & Maternity", slug: "mom-maternity" },
 ];
 
 export function SiteFooter() {

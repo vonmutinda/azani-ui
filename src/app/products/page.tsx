@@ -62,7 +62,7 @@ function ProductsContent() {
 
   const categoriesQuery = useQuery({
     queryKey: ["categories-sidebar"],
-    queryFn: () => getCategories({ parent_category_id: "null" }),
+    queryFn: () => getCategories(),
     staleTime: 5 * 60 * 1000,
   });
 
