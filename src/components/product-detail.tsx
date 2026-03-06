@@ -3,8 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useState } from "react";
-import Link from "next/link";
-import { getProductById, addToCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import {
+  getProductById,
+  addToCart,
+  getWishlistProductIds,
+  toggleWishlistProduct,
+} from "@/lib/medusa-api";
 import { getVariantPrice, stripHtml } from "@/lib/formatters";
 import { MedusaProductVariant } from "@/types/medusa";
 
@@ -52,16 +56,16 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div>
         <button
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-primary"
+          className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
         >
           <ArrowLeft className="h-4 w-4" /> Back to products
         </button>
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="aspect-square animate-pulse rounded-2xl bg-border/40" />
+          <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
           <div className="space-y-4">
-            <div className="h-8 w-3/4 animate-pulse rounded bg-border/40" />
-            <div className="h-6 w-1/3 animate-pulse rounded bg-border/40" />
-            <div className="h-32 animate-pulse rounded bg-border/40" />
+            <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
+            <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
+            <div className="bg-border/40 h-32 animate-pulse rounded" />
           </div>
         </div>
       </div>
@@ -70,10 +74,10 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (!product) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <button
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-primary"
+          className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
         >
           <ArrowLeft className="h-4 w-4" /> Back to products
         </button>
@@ -90,14 +94,15 @@ export function ProductDetail({ productId, onBack }: Props) {
   const options = product.options ?? [];
   const variants = product.variants ?? [];
 
-  const selectedVariant: MedusaProductVariant | undefined = variants.find((v) => {
-    if (!v.options) return false;
-    return options.every((opt) => {
-      const selected = selectedOptions[opt.id];
-      if (!selected) return false;
-      return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
-    });
-  }) ?? variants[0];
+  const selectedVariant: MedusaProductVariant | undefined =
+    variants.find((v) => {
+      if (!v.options) return false;
+      return options.every((opt) => {
+        const selected = selectedOptions[opt.id];
+        if (!selected) return false;
+        return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
+      });
+    }) ?? variants[0];
 
   const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
 
@@ -114,7 +119,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     <div>
       <button
         onClick={onBack}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-primary"
+        className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
       >
         <ArrowLeft className="h-4 w-4" /> Back to products
       </button>
@@ -122,7 +127,7 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-background">
+          <div className="border-border bg-background aspect-square overflow-hidden rounded-2xl border">
             {allImages[activeImageIndex] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -131,7 +136,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-muted">
+              <div className="text-muted flex h-full items-center justify-center">
                 <ShoppingBag className="h-16 w-16" />
               </div>
             )}
@@ -143,7 +148,9 @@ export function ProductDetail({ productId, onBack }: Props) {
                   key={i}
                   onClick={() => setActiveImageIndex(i)}
                   className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                    i === activeImageIndex ? "border-primary" : "border-border hover:border-primary/40"
+                    i === activeImageIndex
+                      ? "border-primary"
+                      : "border-border hover:border-primary/40"
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -158,9 +165,9 @@ export function ProductDetail({ productId, onBack }: Props) {
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-foreground sm:text-2xl">{product.title}</h2>
+              <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
               {product.categories?.[0] && (
-                <span className="mt-1 inline-block text-sm text-muted">
+                <span className="text-muted mt-1 inline-block text-sm">
                   {product.categories[0].name}
                 </span>
               )}
@@ -181,21 +188,23 @@ export function ProductDetail({ productId, onBack }: Props) {
             </button>
           </div>
 
-          <p className="text-2xl font-bold text-primary">{price}</p>
+          <p className="text-primary text-2xl font-bold">{price}</p>
 
           {product.description && (
-            <p className="text-sm leading-relaxed text-muted">{stripHtml(product.description)}</p>
+            <p className="text-muted text-sm leading-relaxed">{stripHtml(product.description)}</p>
           )}
 
           {/* Options */}
           {options.map((option) => (
             <div key={option.id} className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">{option.title}</label>
+              <label className="text-foreground text-sm font-semibold">{option.title}</label>
               <div className="flex flex-wrap gap-2">
                 {option.values.map((val) => (
                   <button
                     key={val.id}
-                    onClick={() => setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))}
+                    onClick={() =>
+                      setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
+                    }
                     className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                       selectedOptions[option.id] === val.value
                         ? "border-primary bg-primary-light text-primary"
@@ -211,10 +220,10 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-full border border-border">
+            <div className="border-border flex items-center rounded-full border">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-l-full text-muted transition hover:text-foreground"
+                className="text-muted hover:text-foreground flex h-9 w-9 items-center justify-center rounded-l-full transition"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -223,7 +232,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="flex h-9 w-9 items-center justify-center rounded-r-full text-muted transition hover:text-foreground"
+                className="text-muted hover:text-foreground flex h-9 w-9 items-center justify-center rounded-r-full transition"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -232,7 +241,7 @@ export function ProductDetail({ productId, onBack }: Props) {
             <button
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !selectedVariant}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+              className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               <ShoppingBag className="h-4 w-4" />
               {cartMutation.isPending ? "Adding..." : "Add to Cart"}
@@ -240,10 +249,10 @@ export function ProductDetail({ productId, onBack }: Props) {
           </div>
 
           {cartMutation.isSuccess && (
-            <p className="text-sm font-medium text-success">Added to cart!</p>
+            <p className="text-success text-sm font-medium">Added to cart!</p>
           )}
           {wishlistMutation.isSuccess && (
-            <p className="text-sm font-medium text-primary">
+            <p className="text-primary text-sm font-medium">
               {isWishlisted ? "Saved to wishlist." : "Removed from wishlist."}
             </p>
           )}

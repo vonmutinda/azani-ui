@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "minio-production-8a8b.up.railway.app",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9002",
+      },
     ],
   },
 };

@@ -15,6 +15,7 @@ import {
 import { clearAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/formatters";
 import { MedusaAddress } from "@/types/medusa";
@@ -108,18 +109,18 @@ export default function AccountPage() {
         <span className="sr-only">Loading...</span>
         {/* Welcome header skeleton */}
         <div className="mb-8 flex items-center gap-4">
-          <div className="h-14 w-14 animate-pulse rounded-full bg-border/40" />
+          <div className="bg-border/40 h-14 w-14 animate-pulse rounded-full" />
           <div className="space-y-2">
-            <div className="h-5 w-40 animate-pulse rounded-lg bg-border/40" />
-            <div className="h-4 w-28 animate-pulse rounded-lg bg-border/40" />
+            <div className="bg-border/40 h-5 w-40 animate-pulse rounded-lg" />
+            <div className="bg-border/40 h-4 w-28 animate-pulse rounded-lg" />
           </div>
         </div>
         {/* Grid skeleton */}
         <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-          <div className="h-64 animate-pulse rounded-2xl bg-border/40" />
+          <div className="bg-border/40 h-64 animate-pulse rounded-2xl" />
           <div className="space-y-6">
-            <div className="h-48 animate-pulse rounded-2xl bg-border/40" />
-            <div className="h-48 animate-pulse rounded-2xl bg-border/40" />
+            <div className="bg-border/40 h-48 animate-pulse rounded-2xl" />
+            <div className="bg-border/40 h-48 animate-pulse rounded-2xl" />
           </div>
         </div>
       </div>
@@ -132,8 +133,8 @@ export default function AccountPage() {
     ((customer.first_name?.[0] ?? "") + (customer.last_name?.[0] ?? "")).toUpperCase() || "?";
   const latestOrder = orders?.length
     ? [...orders].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0]
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )[0]
     : null;
 
   const navItems: { key: Section; label: string; icon: React.ReactNode }[] = [
@@ -143,36 +144,37 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      <div className="mb-8 overflow-hidden rounded-[28px] border border-border bg-gradient-to-br from-primary-light via-card to-secondary-light p-6 shadow-sm sm:p-8">
+      <div className="border-border from-primary-light via-card to-secondary-light mb-8 overflow-hidden rounded-[28px] border bg-gradient-to-br p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-xl font-bold text-primary shadow-sm">
+            <div className="text-primary flex h-16 w-16 items-center justify-center rounded-full bg-white text-xl font-bold shadow-sm">
               {initials}
             </div>
             <div>
-              <p className="mb-1 inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+              <p className="text-primary mb-1 inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase">
                 My Account
               </p>
-              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+              <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
                 Welcome back, {customer.first_name || "there"}!
               </h1>
-              <p className="mt-1 text-sm text-muted">{customer.email}</p>
+              <p className="text-muted mt-1 text-sm">{customer.email}</p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
                 Saved Addresses
               </p>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {addresses?.length ?? 0} {addresses?.length === 1 ? "address" : "addresses"} ready for checkout
+              <p className="text-foreground mt-1 text-sm font-medium">
+                {addresses?.length ?? 0} {addresses?.length === 1 ? "address" : "addresses"} ready
+                for checkout
               </p>
             </div>
             <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
                 Latest Order
               </p>
-              <p className="mt-1 text-sm font-medium text-foreground">
+              <p className="text-foreground mt-1 text-sm font-medium">
                 {latestOrder
                   ? `Order #${latestOrder.display_id} on ${new Date(latestOrder.created_at).toLocaleDateString()}`
                   : "No orders yet"}
@@ -186,7 +188,7 @@ export default function AccountPage() {
         {/* Sidebar Navigation */}
         <nav>
           {/* Desktop sidebar */}
-          <div className="hidden lg:block rounded-3xl border border-border bg-card p-3 shadow-sm">
+          <div className="border-border bg-card hidden rounded-3xl border p-3 shadow-sm lg:block">
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -196,21 +198,19 @@ export default function AccountPage() {
                 }}
                 className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium transition ${
                   activeSection === item.key
-                    ? "border-l-[3px] border-primary bg-primary-light text-primary"
-                    : "border-l-[3px] border-transparent text-muted hover:bg-background"
+                    ? "border-primary bg-primary-light text-primary border-l-[3px]"
+                    : "text-muted hover:bg-background border-l-[3px] border-transparent"
                 }`}
               >
                 {item.icon}
                 {item.label}
-                {activeSection === item.key && (
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                )}
+                {activeSection === item.key && <ChevronRight className="ml-auto h-4 w-4" />}
               </button>
             ))}
-            <div className="my-2 border-t border-border" />
+            <div className="border-border my-2 border-t" />
             <button
               onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium text-muted transition hover:bg-danger/5 hover:text-danger border-l-[3px] border-transparent"
+              className="text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center gap-3 rounded-lg border-l-[3px] border-transparent px-4 py-2.5 text-left text-sm font-medium transition"
             >
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -218,7 +218,7 @@ export default function AccountPage() {
           </div>
 
           {/* Mobile horizontal pills */}
-          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2 lg:hidden">
+          <div className="border-border bg-card flex gap-2 overflow-x-auto rounded-2xl border p-2 lg:hidden">
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -229,7 +229,7 @@ export default function AccountPage() {
                 className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
                   activeSection === item.key
                     ? "bg-primary text-white"
-                    : "border border-border bg-card text-muted"
+                    : "border-border bg-card text-muted border"
                 }`}
               >
                 {item.icon}
@@ -238,7 +238,7 @@ export default function AccountPage() {
             ))}
             <button
               onClick={handleSignOut}
-              className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted transition hover:bg-danger/5 hover:text-danger"
+              className="border-border bg-card text-muted hover:bg-danger/5 hover:text-danger flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
             >
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -253,10 +253,7 @@ export default function AccountPage() {
             <OrdersSection onSelectOrder={setSelectedOrderId} />
           )}
           {activeSection === "orders" && selectedOrderId && (
-            <OrderDetailSection
-              orderId={selectedOrderId}
-              onBack={() => setSelectedOrderId(null)}
-            />
+            <OrderDetailSection orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />
           )}
         </div>
       </div>
@@ -281,77 +278,91 @@ function ProfileSection({
   });
   const latestOrder = orders?.length
     ? [...orders].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0]
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )[0]
     : null;
 
   return (
     <div className="space-y-8">
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-light text-primary">
+            <div className="bg-primary-light text-primary flex h-11 w-11 items-center justify-center rounded-2xl">
               <User className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Account Overview</h2>
-              <p className="text-sm text-muted">Everything important about your account at a glance.</p>
+              <h2 className="text-foreground text-lg font-semibold">Account Overview</h2>
+              <p className="text-muted text-sm">
+                Everything important about your account at a glance.
+              </p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-background px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Orders</p>
-              <p className="mt-2 text-2xl font-bold text-foreground">{orders?.length ?? 0}</p>
-              <p className="mt-1 text-sm text-muted">Placed through your account</p>
+            <div className="bg-background rounded-2xl px-4 py-4">
+              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
+                Orders
+              </p>
+              <p className="text-foreground mt-2 text-2xl font-bold">{orders?.length ?? 0}</p>
+              <p className="text-muted mt-1 text-sm">Placed through your account</p>
             </div>
-            <div className="rounded-2xl bg-background px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Addresses</p>
-              <p className="mt-2 text-2xl font-bold text-foreground">{addresses?.length ?? 0}</p>
-              <p className="mt-1 text-sm text-muted">Saved for faster checkout</p>
+            <div className="bg-background rounded-2xl px-4 py-4">
+              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
+                Addresses
+              </p>
+              <p className="text-foreground mt-2 text-2xl font-bold">{addresses?.length ?? 0}</p>
+              <p className="text-muted mt-1 text-sm">Saved for faster checkout</p>
             </div>
-            <div className="rounded-2xl bg-background px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Latest Order</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">
+            <div className="bg-background rounded-2xl px-4 py-4">
+              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
+                Latest Order
+              </p>
+              <p className="text-foreground mt-2 text-sm font-semibold">
                 {latestOrder ? `#${latestOrder.display_id}` : "No orders"}
               </p>
-              <p className="mt-1 text-sm text-muted">
-                {latestOrder ? new Date(latestOrder.created_at).toLocaleDateString() : "Start shopping to see orders here"}
+              <p className="text-muted mt-1 text-sm">
+                {latestOrder
+                  ? new Date(latestOrder.created_at).toLocaleDateString()
+                  : "Start shopping to see orders here"}
               </p>
             </div>
           </div>
         </div>
-        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary-light text-secondary">
+            <div className="bg-secondary-light text-secondary flex h-11 w-11 items-center justify-center rounded-2xl">
               <Heart className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
-              <p className="text-sm text-muted">Jump back into the parts of the shop you use most.</p>
+              <h2 className="text-foreground text-lg font-semibold">Quick Actions</h2>
+              <p className="text-muted text-sm">
+                Jump back into the parts of the shop you use most.
+              </p>
             </div>
           </div>
           <div className="space-y-3">
             <Link
               href="/products"
-              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
             >
               Continue Shopping
-              <ChevronRight className="h-4 w-4 text-muted" />
+              <ChevronRight className="text-muted h-4 w-4" />
             </Link>
             <Link
               href="/account/wishlist"
-              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
             >
               Open Wishlist
-              <ChevronRight className="h-4 w-4 text-muted" />
+              <ChevronRight className="text-muted h-4 w-4" />
             </Link>
             <button
               type="button"
-              onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
-              className="flex w-full items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+              onClick={() =>
+                window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
+              }
+              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
             >
               Manage Addresses
-              <ChevronRight className="h-4 w-4 text-muted" />
+              <ChevronRight className="text-muted h-4 w-4" />
             </button>
           </div>
         </div>
@@ -374,8 +385,7 @@ function ProfileDetails({
   const [phone, setPhone] = useState(customer.phone ?? "");
 
   const mutation = useMutation({
-    mutationFn: () =>
-      updateCustomer({ first_name: firstName, last_name: lastName, phone }),
+    mutationFn: () => updateCustomer({ first_name: firstName, last_name: lastName, phone }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer"] });
       setEditing(false);
@@ -390,21 +400,21 @@ function ProfileDetails({
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <User className="h-5 w-5 text-primary" />
+          <User className="text-primary h-5 w-5" />
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Personal Information
-            </h2>
-            <p className="text-sm text-muted">Keep your contact information current for smoother checkout.</p>
+            <h2 className="text-foreground text-lg font-semibold">Personal Information</h2>
+            <p className="text-muted text-sm">
+              Keep your contact information current for smoother checkout.
+            </p>
           </div>
         </div>
         {!editing && (
           <button
             onClick={() => setEditing(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:border-primary hover:text-primary"
+            className="border-border text-muted hover:border-primary hover:text-primary flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -416,9 +426,7 @@ function ProfileDetails({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">
-                First Name
-              </label>
+              <label className="text-muted mb-1.5 block text-xs font-medium">First Name</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -426,9 +434,7 @@ function ProfileDetails({
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted">
-                Last Name
-              </label>
+              <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -437,17 +443,13 @@ function ProfileDetails({
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">
-              Email
-            </label>
-            <div className="flex h-10 items-center rounded-lg bg-background/50 px-3 text-sm text-muted">
+            <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
+            <div className="bg-background/50 text-muted flex h-10 items-center rounded-lg px-3 text-sm">
               {customer.email}
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">
-              Phone
-            </label>
+            <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -455,21 +457,19 @@ function ProfileDetails({
             />
           </div>
           {mutation.isError && (
-            <p className="text-sm text-red-500">
-              Failed to update profile. Please try again.
-            </p>
+            <p className="text-sm text-red-500">Failed to update profile. Please try again.</p>
           )}
           <div className="flex gap-3">
             <button
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+              className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               {mutation.isPending ? "Saving..." : "Save"}
             </button>
             <button
               onClick={handleCancel}
-              className="rounded-full border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/10"
+              className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
             >
               Cancel
             </button>
@@ -477,29 +477,19 @@ function ProfileDetails({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="rounded-2xl bg-background px-4 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Name
-            </p>
-            <p className="text-sm font-medium text-foreground">
+          <div className="bg-background rounded-2xl px-4 py-4">
+            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Name</p>
+            <p className="text-foreground text-sm font-medium">
               {customer.first_name} {customer.last_name}
             </p>
           </div>
-          <div className="rounded-2xl bg-background px-4 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Email
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {customer.email}
-            </p>
+          <div className="bg-background rounded-2xl px-4 py-4">
+            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Email</p>
+            <p className="text-foreground text-sm font-medium">{customer.email}</p>
           </div>
-          <div className="rounded-2xl bg-background px-4 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Phone
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {customer.phone || "Not set"}
-            </p>
+          <div className="bg-background rounded-2xl px-4 py-4">
+            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Phone</p>
+            <p className="text-foreground text-sm font-medium">{customer.phone || "Not set"}</p>
           </div>
         </div>
       )}
@@ -568,21 +558,21 @@ function AddressesSection() {
   };
 
   if (isLoading) {
-    return <div className="h-32 animate-pulse rounded-2xl bg-border/40" />;
+    return <div className="bg-border/40 h-32 animate-pulse rounded-2xl" />;
   }
 
   const isFormVisible = showForm || editingId !== null;
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-secondary" />
+          <MapPin className="text-secondary h-5 w-5" />
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Delivery Addresses
-            </h2>
-            <p className="text-sm text-muted">Save multiple addresses so checkout takes only a few taps.</p>
+            <h2 className="text-foreground text-lg font-semibold">Delivery Addresses</h2>
+            <p className="text-muted text-sm">
+              Save multiple addresses so checkout takes only a few taps.
+            </p>
           </div>
         </div>
         {!isFormVisible && (
@@ -591,7 +581,7 @@ function AddressesSection() {
               setShowForm(true);
               setForm(EMPTY_ADDRESS);
             }}
-            className="flex items-center gap-1.5 rounded-full bg-primary-light px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/15"
+            className="bg-primary-light text-primary hover:bg-primary/15 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
           >
             <Plus className="h-3.5 w-3.5" />
             Add New
@@ -614,29 +604,25 @@ function AddressesSection() {
                   />
                 </div>
               ) : (
-                <div
-                  key={addr.id}
-                  className="rounded-2xl border border-border bg-card p-5"
-                >
+                <div key={addr.id} className="border-border bg-card rounded-2xl border p-5">
                   <div className="flex gap-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary-light">
-                      <MapPin className="h-5 w-5 text-secondary" />
+                    <div className="bg-secondary-light flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                      <MapPin className="text-secondary h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground">
+                      <p className="text-foreground font-medium">
                         {addr.first_name} {addr.last_name}
                       </p>
-                      <p className="text-sm text-muted">
+                      <p className="text-muted text-sm">
                         {addr.address_1}
                         {addr.address_2 ? `, ${addr.address_2}` : ""}
                       </p>
-                      <p className="text-sm text-muted">
+                      <p className="text-muted text-sm">
                         {addr.city}
-                        {addr.province ? `, ${addr.province}` : ""}{" "}
-                        {addr.postal_code}
+                        {addr.province ? `, ${addr.province}` : ""} {addr.postal_code}
                       </p>
                       {addr.phone && (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-muted">
+                        <p className="text-muted mt-1 flex items-center gap-1 text-sm">
                           <Phone className="h-3.5 w-3.5" />
                           {addr.phone}
                         </p>
@@ -645,7 +631,7 @@ function AddressesSection() {
                     <div className="flex shrink-0 gap-1">
                       <button
                         onClick={() => startEdit(addr)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-background hover:text-primary"
+                        className="text-muted hover:bg-background hover:text-primary flex h-8 w-8 items-center justify-center rounded-lg transition"
                         aria-label="Edit address"
                       >
                         <Pencil className="h-4 w-4" />
@@ -653,7 +639,7 @@ function AddressesSection() {
                       <button
                         onClick={() => deleteMutation.mutate(addr.id!)}
                         disabled={deleteMutation.isPending}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-danger/5 hover:text-danger"
+                        className="text-muted hover:bg-danger/5 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg transition"
                         aria-label="Delete address"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -666,20 +652,18 @@ function AddressesSection() {
           </div>
         ) : (
           !isFormVisible && (
-            <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-border py-10">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-light">
-                <MapPin className="h-6 w-6 text-secondary" />
+            <div className="border-border flex flex-col items-center rounded-2xl border-2 border-dashed py-10">
+              <div className="bg-secondary-light mb-3 flex h-12 w-12 items-center justify-center rounded-full">
+                <MapPin className="text-secondary h-6 w-6" />
               </div>
-              <p className="font-medium text-foreground">No saved addresses</p>
-              <p className="mt-1 text-sm text-muted">
-                Add a delivery address for faster checkout
-              </p>
+              <p className="text-foreground font-medium">No saved addresses</p>
+              <p className="text-muted mt-1 text-sm">Add a delivery address for faster checkout</p>
               <button
                 onClick={() => {
                   setShowForm(true);
                   setForm(EMPTY_ADDRESS);
                 }}
-                className="mt-4 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover"
+                className="bg-primary hover:bg-primary-hover mt-4 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
               >
                 Add Address
               </button>
@@ -714,16 +698,13 @@ function AddressForm({
   onCancel: () => void;
   saving: boolean;
 }) {
-  const update = (field: string, value: string) =>
-    setForm({ ...form, [field]: value });
+  const update = (field: string, value: string) => setForm({ ...form, [field]: value });
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="border-border bg-card rounded-2xl border p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            First Name
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">First Name</label>
           <input
             value={form.first_name ?? ""}
             onChange={(e) => update("first_name", e.target.value)}
@@ -731,9 +712,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Last Name
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
           <input
             value={form.last_name ?? ""}
             onChange={(e) => update("last_name", e.target.value)}
@@ -741,9 +720,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Address Line 1
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Address Line 1</label>
           <input
             value={form.address_1 ?? ""}
             onChange={(e) => update("address_1", e.target.value)}
@@ -751,9 +728,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Address Line 2
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Address Line 2</label>
           <input
             value={form.address_2 ?? ""}
             onChange={(e) => update("address_2", e.target.value)}
@@ -761,9 +736,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            City
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
           <input
             value={form.city ?? ""}
             onChange={(e) => update("city", e.target.value)}
@@ -771,9 +744,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Province
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Province</label>
           <input
             value={form.province ?? ""}
             onChange={(e) => update("province", e.target.value)}
@@ -781,9 +752,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Postal Code
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Postal Code</label>
           <input
             value={form.postal_code ?? ""}
             onChange={(e) => update("postal_code", e.target.value)}
@@ -791,9 +760,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">
-            Phone
-          </label>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
           <input
             value={form.phone ?? ""}
             onChange={(e) => update("phone", e.target.value)}
@@ -805,13 +772,13 @@ function AddressForm({
         <button
           onClick={onSave}
           disabled={saving}
-          className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+          className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
         <button
           onClick={onCancel}
-          className="rounded-full border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/10"
+          className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
         >
           Cancel
         </button>
@@ -822,11 +789,7 @@ function AddressForm({
 
 // ── Orders Section ─────────────────────────────────────────────────
 
-function OrdersSection({
-  onSelectOrder,
-}: {
-  onSelectOrder: (id: string) => void;
-}) {
+function OrdersSection({ onSelectOrder }: { onSelectOrder: (id: string) => void }) {
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders"],
     queryFn: getOrders,
@@ -836,7 +799,7 @@ function OrdersSection({
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-2xl bg-border/40" />
+          <div key={i} className="bg-border/40 h-16 animate-pulse rounded-2xl" />
         ))}
       </div>
     );
@@ -844,20 +807,16 @@ function OrdersSection({
 
   if (!orders || orders.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="border-border bg-card rounded-2xl border p-6">
         <div className="flex flex-col items-center py-8">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
-            <ShoppingBag className="h-8 w-8 text-primary" />
+          <div className="bg-primary-light mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            <ShoppingBag className="text-primary h-8 w-8" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">
-            No orders yet
-          </h3>
-          <p className="mt-1 text-sm text-muted">
-            When you place an order, it will appear here
-          </p>
+          <h3 className="text-foreground text-lg font-semibold">No orders yet</h3>
+          <p className="text-muted mt-1 text-sm">When you place an order, it will appear here</p>
           <Link
             href="/products"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover"
+            className="bg-primary hover:bg-primary-hover mt-6 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             <Baby className="h-4 w-4" />
             Start Shopping
@@ -872,46 +831,42 @@ function OrdersSection({
   );
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border bg-background/70 px-6 py-4">
+    <div className="border-border bg-card overflow-hidden rounded-3xl border shadow-sm">
+      <div className="border-border bg-background/70 flex items-center justify-between border-b px-6 py-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Order History</h2>
-          <p className="text-sm text-muted">Newest orders appear first.</p>
+          <h2 className="text-foreground text-lg font-semibold">Order History</h2>
+          <p className="text-muted text-sm">Newest orders appear first.</p>
         </div>
-        <span className="rounded-full bg-primary-light px-3 py-1 text-xs font-semibold text-primary">
+        <span className="bg-primary-light text-primary rounded-full px-3 py-1 text-xs font-semibold">
           {sortedOrders.length} {sortedOrders.length === 1 ? "order" : "orders"}
         </span>
       </div>
       {/* Desktop header */}
-      <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_1fr_1fr_40px] gap-4 bg-background px-6 py-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+      <div className="bg-background hidden gap-4 px-6 py-3 sm:grid sm:grid-cols-[1fr_1fr_1fr_1fr_40px]">
+        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">
           Order #
         </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-          Date
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">Date</span>
+        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">
           Status
         </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted text-right">
+        <span className="text-muted text-right text-[11px] font-semibold tracking-wider uppercase">
           Total
         </span>
         <span />
       </div>
 
-      <div className="divide-y divide-border">
+      <div className="divide-border divide-y">
         {sortedOrders.map((order) => (
           <button
             key={order.id}
             onClick={() => onSelectOrder(order.id)}
-            className="block w-full text-left transition hover:bg-background/50"
+            className="hover:bg-background/50 block w-full text-left transition"
           >
             {/* Desktop row */}
-            <div className="hidden sm:grid sm:grid-cols-[1.1fr_1fr_1fr_1fr_40px] gap-4 items-center px-6 py-4">
-              <span className="text-sm font-medium text-foreground">
-                Order #{order.display_id}
-              </span>
-              <span className="text-sm text-muted">
+            <div className="hidden items-center gap-4 px-6 py-4 sm:grid sm:grid-cols-[1.1fr_1fr_1fr_1fr_40px]">
+              <span className="text-foreground text-sm font-medium">Order #{order.display_id}</span>
+              <span className="text-muted text-sm">
                 {new Date(order.created_at).toLocaleDateString()}
               </span>
               <span>
@@ -921,15 +876,15 @@ function OrdersSection({
                   {order.status}
                 </span>
               </span>
-              <span className="text-sm font-medium text-foreground text-right">
+              <span className="text-foreground text-right text-sm font-medium">
                 {formatPrice(order.total)}
               </span>
-              <ChevronRight className="h-4 w-4 text-muted" />
+              <ChevronRight className="text-muted h-4 w-4" />
             </div>
             {/* Mobile row */}
             <div className="flex flex-col gap-2 px-5 py-4 sm:hidden">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-foreground text-sm font-medium">
                   Order #{order.display_id}
                 </span>
                 <span
@@ -939,10 +894,10 @@ function OrdersSection({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted">
+                <span className="text-muted text-xs">
                   {new Date(order.created_at).toLocaleDateString()}
                 </span>
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-foreground text-sm font-medium">
                   {formatPrice(order.total)}
                 </span>
               </div>
@@ -956,13 +911,7 @@ function OrdersSection({
 
 // ── Order Detail Section (inline) ──────────────────────────────────
 
-function OrderDetailSection({
-  orderId,
-  onBack,
-}: {
-  orderId: string;
-  onBack: () => void;
-}) {
+function OrderDetailSection({ orderId, onBack }: { orderId: string; onBack: () => void }) {
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrderById(orderId),
@@ -972,7 +921,7 @@ function OrderDetailSection({
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 animate-pulse rounded-2xl bg-border/40" />
+          <div key={i} className="bg-border/40 h-40 animate-pulse rounded-2xl" />
         ))}
       </div>
     );
@@ -984,30 +933,28 @@ function OrderDetailSection({
     <div className="space-y-6">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-muted transition hover:text-primary"
+        className="text-muted hover:text-primary flex items-center gap-1.5 text-sm transition"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Orders
       </button>
 
       {/* Header card */}
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="border-border bg-card rounded-2xl border p-6">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-light">
-            <Package className="h-6 w-6 text-primary" />
+          <div className="bg-primary-light flex h-12 w-12 items-center justify-center rounded-full">
+            <Package className="text-primary h-6 w-6" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-foreground">
-                Order #{order.display_id}
-              </h2>
+              <h2 className="text-foreground text-xl font-bold">Order #{order.display_id}</h2>
               <span
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(order.status)}`}
               >
                 {order.status}
               </span>
             </div>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+            <p className="text-muted mt-1 flex items-center gap-1.5 text-sm">
               <Clock className="h-3.5 w-3.5" />
               {new Date(order.created_at).toLocaleDateString()}
             </p>
@@ -1016,31 +963,31 @@ function OrderDetailSection({
       </div>
 
       {/* Items */}
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+      <div className="border-border bg-card rounded-2xl border p-6">
+        <h3 className="text-muted mb-4 text-[11px] font-semibold tracking-wider uppercase">
           Items
         </h3>
-        <div className="divide-y divide-border">
+        <div className="divide-border divide-y">
           {order.items.map((item) => (
             <div key={item.id} className="flex gap-4 py-3">
               {item.thumbnail ? (
-                <img
+                <Image
                   src={item.thumbnail}
                   alt={item.title}
-                  className="h-16 w-16 rounded-xl border border-border object-cover"
+                  width={64}
+                  height={64}
+                  className="border-border h-16 w-16 rounded-xl border object-cover"
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-background">
-                  <Package className="h-6 w-6 text-muted" />
+                <div className="border-border bg-background flex h-16 w-16 items-center justify-center rounded-xl border">
+                  <Package className="text-muted h-6 w-6" />
                 </div>
               )}
               <div className="flex-1">
-                <p className="font-medium text-foreground">{item.title}</p>
-                <p className="text-sm text-muted">Qty: {item.quantity}</p>
+                <p className="text-foreground font-medium">{item.title}</p>
+                <p className="text-muted text-sm">Qty: {item.quantity}</p>
               </div>
-              <p className="text-sm font-medium text-foreground">
-                {formatPrice(item.total)}
-              </p>
+              <p className="text-foreground text-sm font-medium">{formatPrice(item.total)}</p>
             </div>
           ))}
         </div>
@@ -1048,29 +995,22 @@ function OrderDetailSection({
 
       {/* Shipping Address */}
       {order.shipping_address && (
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="border-border bg-card rounded-2xl border p-6">
           <div className="mb-4 flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-secondary" />
-            <h3 className="font-semibold text-foreground">Shipping Address</h3>
+            <MapPin className="text-secondary h-5 w-5" />
+            <h3 className="text-foreground font-semibold">Shipping Address</h3>
           </div>
-          <div className="rounded-xl bg-background p-4">
-            <p className="text-sm font-medium text-foreground">
-              {order.shipping_address.first_name}{" "}
-              {order.shipping_address.last_name}
+          <div className="bg-background rounded-xl p-4">
+            <p className="text-foreground text-sm font-medium">
+              {order.shipping_address.first_name} {order.shipping_address.last_name}
             </p>
-            <p className="text-sm text-muted">
-              {order.shipping_address.address_1}
-            </p>
+            <p className="text-muted text-sm">{order.shipping_address.address_1}</p>
             {order.shipping_address.address_2 && (
-              <p className="text-sm text-muted">
-                {order.shipping_address.address_2}
-              </p>
+              <p className="text-muted text-sm">{order.shipping_address.address_2}</p>
             )}
-            <p className="text-sm text-muted">
+            <p className="text-muted text-sm">
               {order.shipping_address.city}
-              {order.shipping_address.province
-                ? `, ${order.shipping_address.province}`
-                : ""}{" "}
+              {order.shipping_address.province ? `, ${order.shipping_address.province}` : ""}{" "}
               {order.shipping_address.postal_code}
             </p>
           </div>
@@ -1078,8 +1018,8 @@ function OrderDetailSection({
       )}
 
       {/* Totals */}
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <h3 className="mb-4 font-semibold text-foreground">Order Summary</h3>
+      <div className="border-border bg-card rounded-2xl border p-6">
+        <h3 className="text-foreground mb-4 font-semibold">Order Summary</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted">Subtotal</span>
@@ -1087,29 +1027,21 @@ function OrderDetailSection({
           </div>
           <div className="flex justify-between">
             <span className="text-muted">Shipping</span>
-            <span className="text-foreground">
-              {formatPrice(order.shipping_total)}
-            </span>
+            <span className="text-foreground">{formatPrice(order.shipping_total)}</span>
           </div>
           {order.discount_total > 0 && (
             <div className="flex justify-between">
               <span className="text-muted">Discount</span>
-              <span className="text-success">
-                -{formatPrice(order.discount_total)}
-              </span>
+              <span className="text-success">-{formatPrice(order.discount_total)}</span>
             </div>
           )}
           <div className="flex justify-between">
             <span className="text-muted">Tax</span>
-            <span className="text-foreground">
-              {formatPrice(order.tax_total)}
-            </span>
+            <span className="text-foreground">{formatPrice(order.tax_total)}</span>
           </div>
-          <div className="flex justify-between border-t border-border pt-2">
-            <span className="font-bold text-foreground">Total</span>
-            <span className="font-bold text-primary">
-              {formatPrice(order.total)}
-            </span>
+          <div className="border-border flex justify-between border-t pt-2">
+            <span className="text-foreground font-bold">Total</span>
+            <span className="text-primary font-bold">{formatPrice(order.total)}</span>
           </div>
         </div>
       </div>

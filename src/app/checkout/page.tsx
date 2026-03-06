@@ -1,10 +1,29 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Baby, Check, CreditCard, MapPin, Package, ShoppingBag, Truck } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  ArrowLeft,
+  Baby,
+  Check,
+  CreditCard,
+  MapPin,
+  Package,
+  ShoppingBag,
+  Truck,
+} from "lucide-react";
 import Link from "next/link";
-import { getCart, updateCart, getShippingOptions, addShippingMethod, initializePaymentSession, completeCart, getRegions, getCustomer, getCustomerAddresses } from "@/lib/medusa-api";
+import {
+  getCart,
+  updateCart,
+  getShippingOptions,
+  addShippingMethod,
+  initializePaymentSession,
+  completeCart,
+  getRegions,
+  getCustomer,
+  getCustomerAddresses,
+} from "@/lib/medusa-api";
 import { formatPrice } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
 import { MedusaAddress } from "@/types/medusa";
@@ -12,14 +31,32 @@ import { MedusaAddress } from "@/types/medusa";
 type Step = "address" | "shipping" | "payment" | "review";
 
 const ETHIOPIAN_CITIES = [
-  "Addis Ababa", "Dire Dawa", "Adama (Nazret)", "Hawassa", "Bahir Dar",
-  "Mekelle", "Gondar", "Jimma", "Dessie", "Harar",
+  "Addis Ababa",
+  "Dire Dawa",
+  "Adama (Nazret)",
+  "Hawassa",
+  "Bahir Dar",
+  "Mekelle",
+  "Gondar",
+  "Jimma",
+  "Dessie",
+  "Harar",
 ];
 
 const ETHIOPIAN_REGIONS = [
-  "Addis Ababa", "Afar", "Amhara", "Benishangul-Gumuz", "Dire Dawa",
-  "Gambella", "Harari", "Oromia", "SNNPR", "Sidama", "Somali",
-  "South West Ethiopia", "Tigray",
+  "Addis Ababa",
+  "Afar",
+  "Amhara",
+  "Benishangul-Gumuz",
+  "Dire Dawa",
+  "Gambella",
+  "Harari",
+  "Oromia",
+  "SNNPR",
+  "Sidama",
+  "Somali",
+  "South West Ethiopia",
+  "Tigray",
 ];
 
 function toCheckoutAddress(address: Partial<MedusaAddress>) {
@@ -72,26 +109,23 @@ export default function CheckoutPage() {
     enabled: !!customerQuery.data,
   });
 
-  const savedAddresses = addressesQuery.data ?? [];
+  const savedAddresses = useMemo(() => addressesQuery.data ?? [], [addressesQuery.data]);
   const selectedSavedAddress =
-    savedAddresses.find((address) => address.id === selectedSavedAddressId) ??
-    savedAddresses[0];
+    savedAddresses.find((address) => address.id === selectedSavedAddressId) ?? savedAddresses[0];
   const isUsingSavedAddress =
     !!customerQuery.data && savedAddresses.length > 0 && !useManualAddress;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- pre-fill form from customer & auto-select saved address */
   useEffect(() => {
     const customer = customerQuery.data;
     if (!customer) return;
-
     setForm((current) => ({
       ...current,
       email: current.email || customer.email,
       first_name: current.first_name || customer.first_name || "",
       last_name: current.last_name || customer.last_name || "",
       phone:
-        current.phone && current.phone !== "+251"
-          ? current.phone
-          : customer.phone || current.phone,
+        current.phone && current.phone !== "+251" ? current.phone : customer.phone || current.phone,
     }));
   }, [customerQuery.data]);
 
@@ -99,6 +133,7 @@ export default function CheckoutPage() {
     if (!savedAddresses.length || selectedSavedAddressId) return;
     setSelectedSavedAddressId(savedAddresses[0].id ?? null);
   }, [savedAddresses, selectedSavedAddressId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const shippingQuery = useQuery({
     queryKey: ["shipping-options"],
@@ -111,17 +146,16 @@ export default function CheckoutPage() {
       setErrorMessage(null);
       if (cart?.region?.currency_code !== "etb") {
         const regionsRes = await getRegions();
-        const ethRegion = regionsRes.regions.find((r) =>
-          r.countries.some((c) => c.iso_2 === "et"),
-        );
+        const ethRegion = regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et"));
         if (ethRegion) {
           await updateCart({ region_id: ethRegion.id });
         }
       }
 
-      const address = isUsingSavedAddress && selectedSavedAddress
-        ? toCheckoutAddress(selectedSavedAddress)
-        : toCheckoutAddress(form);
+      const address =
+        isUsingSavedAddress && selectedSavedAddress
+          ? toCheckoutAddress(selectedSavedAddress)
+          : toCheckoutAddress(form);
 
       return updateCart({
         email: customerQuery.data?.email || form.email,
@@ -190,17 +224,17 @@ export default function CheckoutPage() {
   if (orderPlaced) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-16 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-green-light">
-            <Check className="h-9 w-9 text-success" />
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center">
+          <div className="bg-accent-green-light flex h-20 w-20 items-center justify-center rounded-full">
+            <Check className="text-success h-9 w-9" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Order Placed!</h1>
-          <p className="max-w-md text-sm leading-relaxed text-muted">
+          <h1 className="text-foreground text-2xl font-bold">Order Placed!</h1>
+          <p className="text-muted max-w-md text-sm leading-relaxed">
             Thank you for shopping at Kokob! You&apos;ll receive a confirmation email shortly.
           </p>
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-primary-hover"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -212,10 +246,10 @@ export default function CheckoutPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-16 text-center">
-          <ShoppingBag className="h-16 w-16 text-muted-light" />
-          <h1 className="text-2xl font-bold text-foreground">No items to checkout</h1>
-          <Link href="/products" className="text-sm font-medium text-primary hover:underline">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center">
+          <ShoppingBag className="text-muted-light h-16 w-16" />
+          <h1 className="text-foreground text-2xl font-bold">No items to checkout</h1>
+          <Link href="/products" className="text-primary text-sm font-medium hover:underline">
             Continue Shopping
           </Link>
         </div>
@@ -223,16 +257,21 @@ export default function CheckoutPage() {
     );
   }
 
-  const inputClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
-  const selectClass = "h-10 w-full appearance-none rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  const inputClass =
+    "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  const selectClass =
+    "h-10 w-full appearance-none rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex items-center gap-3">
-        <Link href="/cart" className="rounded-full p-2 text-muted transition hover:bg-primary-light hover:text-primary">
+        <Link
+          href="/cart"
+          className="text-muted hover:bg-primary-light hover:text-primary rounded-full p-2 transition"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-2xl font-bold text-foreground">Checkout</h1>
+        <h1 className="text-foreground text-2xl font-bold">Checkout</h1>
       </div>
 
       {/* Step indicator (bagisto style) */}
@@ -251,12 +290,16 @@ export default function CheckoutPage() {
               >
                 {i < currentIdx ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
               </div>
-              <span className={`text-xs font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}>
+              <span
+                className={`text-xs font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
+              >
                 {s.label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className={`mt-[-1rem] h-0.5 w-full ${i < currentIdx ? "bg-success" : "bg-border"}`} />
+              <div
+                className={`mt-[-1rem] h-0.5 w-full ${i < currentIdx ? "bg-success" : "bg-border"}`}
+              />
             )}
           </div>
         ))}
@@ -264,7 +307,7 @@ export default function CheckoutPage() {
 
       {/* Error banner */}
       {errorMessage && (
-        <div className="mb-6 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+        <div className="border-danger/30 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm">
           {errorMessage}
         </div>
       )}
@@ -273,14 +316,17 @@ export default function CheckoutPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Step: Address */}
           {step === "address" && (
-            <form onSubmit={handleAddressSubmit} className="space-y-5 rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground">Shipping Address</h2>
+            <form
+              onSubmit={handleAddressSubmit}
+              className="border-border bg-card space-y-5 rounded-2xl border p-6"
+            >
+              <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
               {customerQuery.data && (
-                <div className="rounded-2xl border border-primary/15 bg-primary-light/40 p-4">
-                  <p className="text-sm font-medium text-foreground">
+                <div className="border-primary/15 bg-primary-light/40 rounded-2xl border p-4">
+                  <p className="text-foreground text-sm font-medium">
                     Checking out as {customerQuery.data.email}
                   </p>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="text-muted mt-1 text-sm">
                     You can use a saved address or enter a different delivery address.
                   </p>
                 </div>
@@ -289,7 +335,7 @@ export default function CheckoutPage() {
               {isUsingSavedAddress && selectedSavedAddress && (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-foreground">Saved addresses</p>
+                    <p className="text-foreground text-sm font-medium">Saved addresses</p>
                     {savedAddresses.map((address) => {
                       const isSelected = address.id === selectedSavedAddress.id;
                       return (
@@ -305,20 +351,21 @@ export default function CheckoutPage() {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="font-medium text-foreground">
+                              <p className="text-foreground font-medium">
                                 {address.first_name} {address.last_name}
                               </p>
-                              <p className="text-sm text-muted">{address.address_1}</p>
-                              <p className="text-sm text-muted">
+                              <p className="text-muted text-sm">{address.address_1}</p>
+                              <p className="text-muted text-sm">
                                 {address.city}
-                                {address.province ? `, ${address.province}` : ""} {address.postal_code}
+                                {address.province ? `, ${address.province}` : ""}{" "}
+                                {address.postal_code}
                               </p>
                               {address.phone && (
-                                <p className="mt-1 text-sm text-muted">{address.phone}</p>
+                                <p className="text-muted mt-1 text-sm">{address.phone}</p>
                               )}
                             </div>
                             {isSelected && (
-                              <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                              <span className="bg-primary rounded-full px-2.5 py-1 text-xs font-semibold text-white">
                                 Selected
                               </span>
                             )}
@@ -331,14 +378,14 @@ export default function CheckoutPage() {
                     <button
                       type="submit"
                       disabled={addressMutation.isPending}
-                      className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                      className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue with Selected Address"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setUseManualAddress(true)}
-                      className="rounded-full border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/10"
+                      className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
                     >
                       Use Different Address
                     </button>
@@ -349,51 +396,105 @@ export default function CheckoutPage() {
               {(!isUsingSavedAddress || !selectedSavedAddress) && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">First Name</label>
-                    <input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className={inputClass} />
+                    <label className="text-muted mb-1.5 block text-xs font-medium">
+                      First Name
+                    </label>
+                    <input
+                      required
+                      value={form.first_name}
+                      onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                      className={inputClass}
+                    />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Last Name</label>
-                    <input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className={inputClass} />
+                    <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
+                    <input
+                      required
+                      value={form.last_name}
+                      onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                      className={inputClass}
+                    />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
+                    <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
                     {customerQuery.data ? (
-                      <div className="flex h-10 items-center rounded-lg border border-border bg-background px-3 text-sm text-muted">
+                      <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
                         {customerQuery.data.email}
                       </div>
                     ) : (
-                      <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+                      <input
+                        type="email"
+                        required
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        className={inputClass}
+                      />
                     )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Phone</label>
-                    <input type="tel" required placeholder="+251 9XX XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+                    <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+251 9XX XXX XXX"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className={inputClass}
+                    />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">City</label>
-                    <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={selectClass}>
-                      {ETHIOPIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
+                    <select
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      className={selectClass}
+                    >
+                      {ETHIOPIAN_CITIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
                       <option value="">Other</option>
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Region</label>
-                    <select value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} className={selectClass}>
-                      {ETHIOPIAN_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    <label className="text-muted mb-1.5 block text-xs font-medium">Region</label>
+                    <select
+                      value={form.province}
+                      onChange={(e) => setForm({ ...form, province: e.target.value })}
+                      className={selectClass}
+                    >
+                      {ETHIOPIAN_REGIONS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Postal Code</label>
-                    <input value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} className={inputClass} />
+                    <label className="text-muted mb-1.5 block text-xs font-medium">
+                      Postal Code
+                    </label>
+                    <input
+                      value={form.postal_code}
+                      onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+                      className={inputClass}
+                    />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Street Address / Kebele / House No.</label>
-                    <input required value={form.address_1} onChange={(e) => setForm({ ...form, address_1: e.target.value })} className={inputClass} />
+                    <label className="text-muted mb-1.5 block text-xs font-medium">
+                      Street Address / Kebele / House No.
+                    </label>
+                    <input
+                      required
+                      value={form.address_1}
+                      onChange={(e) => setForm({ ...form, address_1: e.target.value })}
+                      className={inputClass}
+                    />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted">Country</label>
-                    <div className="flex h-10 items-center rounded-lg border border-border bg-background px-3 text-sm text-muted">
+                    <label className="text-muted mb-1.5 block text-xs font-medium">Country</label>
+                    <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
                       Ethiopia (ET)
                     </div>
                   </div>
@@ -403,7 +504,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={addressMutation.isPending}
-                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                  className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
                 >
                   {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
                 </button>
@@ -412,7 +513,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setUseManualAddress(false)}
-                  className="ml-4 text-sm font-medium text-muted transition hover:text-primary"
+                  className="text-muted hover:text-primary ml-4 text-sm font-medium transition"
                 >
                   Use a saved address instead
                 </button>
@@ -422,16 +523,18 @@ export default function CheckoutPage() {
 
           {/* Step: Shipping */}
           {step === "shipping" && (
-            <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground">Shipping Method</h2>
+            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
+              <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
               {shippingQuery.isLoading ? (
                 <div className="space-y-2">
-                  <div className="h-16 animate-pulse rounded-xl bg-border/40" />
-                  <div className="h-16 animate-pulse rounded-xl bg-border/40" />
-                  <div className="h-16 animate-pulse rounded-xl bg-border/40" />
+                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
                 </div>
               ) : (shippingQuery.data?.shipping_options ?? []).length === 0 ? (
-                <p className="text-sm text-muted">No shipping methods available. Please go back and verify your address.</p>
+                <p className="text-muted text-sm">
+                  No shipping methods available. Please go back and verify your address.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {(shippingQuery.data?.shipping_options ?? []).map((option) => (
@@ -449,15 +552,13 @@ export default function CheckoutPage() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Truck className="h-5 w-5 text-primary" />
+                        <Truck className="text-primary h-5 w-5" />
                         <div>
-                          <p className="font-medium text-foreground">{option.name}</p>
-                          {option.amount === 0 && (
-                            <p className="text-xs text-muted">Free</p>
-                          )}
+                          <p className="text-foreground font-medium">{option.name}</p>
+                          {option.amount === 0 && <p className="text-muted text-xs">Free</p>}
                         </div>
                       </div>
-                      <span className="font-semibold text-primary">
+                      <span className="text-primary font-semibold">
                         {option.amount === 0 ? "Free" : formatPrice(option.amount, currencyCode)}
                       </span>
                     </button>
@@ -465,8 +566,11 @@ export default function CheckoutPage() {
                 </div>
               )}
               <button
-                onClick={() => { setStep("address"); setErrorMessage(null); }}
-                className="text-sm font-medium text-muted transition hover:text-primary"
+                onClick={() => {
+                  setStep("address");
+                  setErrorMessage(null);
+                }}
+                className="text-muted hover:text-primary text-sm font-medium transition"
               >
                 &larr; Back to Address
               </button>
@@ -475,24 +579,29 @@ export default function CheckoutPage() {
 
           {/* Step: Payment */}
           {step === "payment" && (
-            <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground">Payment Method</h2>
+            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
+              <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
               <button
                 onClick={() => paymentMutation.mutate()}
                 disabled={paymentMutation.isPending}
-                className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3.5 text-left text-sm transition hover:border-primary/40 disabled:opacity-50"
+                className="border-border hover:border-primary/40 flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition disabled:opacity-50"
               >
-                <CreditCard className="h-5 w-5 text-primary" />
+                <CreditCard className="text-primary h-5 w-5" />
                 <div>
-                  <p className="font-medium text-foreground">Cash on Delivery / Manual Payment</p>
-                  <p className="text-xs text-muted">
-                    {paymentMutation.isPending ? "Initializing payment..." : "Pay when you receive your order"}
+                  <p className="text-foreground font-medium">Cash on Delivery / Manual Payment</p>
+                  <p className="text-muted text-xs">
+                    {paymentMutation.isPending
+                      ? "Initializing payment..."
+                      : "Pay when you receive your order"}
                   </p>
                 </div>
               </button>
               <button
-                onClick={() => { setStep("shipping"); setErrorMessage(null); }}
-                className="text-sm font-medium text-muted transition hover:text-primary"
+                onClick={() => {
+                  setStep("shipping");
+                  setErrorMessage(null);
+                }}
+                className="text-muted hover:text-primary text-sm font-medium transition"
               >
                 &larr; Back to Shipping
               </button>
@@ -501,13 +610,15 @@ export default function CheckoutPage() {
 
           {/* Step: Review */}
           {step === "review" && (
-            <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground">Review & Place Order</h2>
+            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
+              <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
 
               {/* Address summary */}
               {cart.shipping_address && (
-                <div className="rounded-xl border border-border bg-background p-4 text-sm">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Shipping to</p>
+                <div className="border-border bg-background rounded-xl border p-4 text-sm">
+                  <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
+                    Shipping to
+                  </p>
                   <p className="text-foreground">
                     {cart.shipping_address.first_name} {cart.shipping_address.last_name}
                   </p>
@@ -525,25 +636,34 @@ export default function CheckoutPage() {
 
               {/* Shipping method summary */}
               {cart.shipping_methods && cart.shipping_methods.length > 0 && (
-                <div className="rounded-xl border border-border bg-background p-4 text-sm">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Shipping method</p>
+                <div className="border-border bg-background rounded-xl border p-4 text-sm">
+                  <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
+                    Shipping method
+                  </p>
                   {cart.shipping_methods.map((m) => (
-                    <p key={m.id} className="text-foreground">{m.name} — {formatPrice(m.amount, currencyCode)}</p>
+                    <p key={m.id} className="text-foreground">
+                      {m.name} — {formatPrice(m.amount, currencyCode)}
+                    </p>
                   ))}
                 </div>
               )}
 
-              <p className="text-sm text-muted">Review your order details and click below to complete your purchase.</p>
+              <p className="text-muted text-sm">
+                Review your order details and click below to complete your purchase.
+              </p>
               <button
                 onClick={() => completeMutation.mutate()}
                 disabled={completeMutation.isPending}
-                className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                className="bg-primary hover:bg-primary-hover rounded-full px-6 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
               >
                 {completeMutation.isPending ? "Placing Order..." : "Place Order"}
               </button>
               <button
-                onClick={() => { setStep("payment"); setErrorMessage(null); }}
-                className="ml-4 text-sm font-medium text-muted transition hover:text-primary"
+                onClick={() => {
+                  setStep("payment");
+                  setErrorMessage(null);
+                }}
+                className="text-muted hover:text-primary ml-4 text-sm font-medium transition"
               >
                 &larr; Back to Payment
               </button>
@@ -552,10 +672,10 @@ export default function CheckoutPage() {
         </div>
 
         {/* Order Summary sidebar (bagisto style) */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-foreground">
+        <div className="border-border bg-card rounded-2xl border p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
+          <h3 className="text-foreground mb-4 text-sm font-bold tracking-wider uppercase">
             Order Summary
-            <span className="ml-1.5 text-xs font-medium text-muted">
+            <span className="text-muted ml-1.5 text-xs font-medium">
               ({cart.items.length} {cart.items.length === 1 ? "item" : "items"})
             </span>
           </h3>
@@ -564,27 +684,31 @@ export default function CheckoutPage() {
           <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
             {cart.items.map((item) => (
               <div key={item.id} className="flex gap-3">
-                <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-background">
+                <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border">
                   {item.thumbnail ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" />
+                    <img
+                      src={item.thumbnail}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted">
+                    <div className="text-muted flex h-full w-full items-center justify-center">
                       <Package className="h-5 w-5" />
                     </div>
                   )}
-                  <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow">
+                  <span className="bg-primary absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow">
                     {item.quantity}
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col justify-center overflow-hidden">
-                  <p className="truncate text-xs font-medium text-foreground">{item.title}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted">
+                  <p className="text-foreground truncate text-xs font-medium">{item.title}</p>
+                  <div className="text-muted flex items-center gap-2 text-xs">
                     <span>{formatPrice(item.unit_price, currencyCode)}</span>
                     {item.quantity > 1 && <span className="text-[10px]">× {item.quantity}</span>}
                   </div>
                 </div>
-                <div className="flex flex-shrink-0 items-center text-xs font-semibold text-foreground">
+                <div className="text-foreground flex flex-shrink-0 items-center text-xs font-semibold">
                   {formatPrice(item.total, currencyCode)}
                 </div>
               </div>
@@ -592,31 +716,35 @@ export default function CheckoutPage() {
           </div>
 
           {/* Totals */}
-          <div className="space-y-2.5 border-t border-border pt-4 text-sm">
-            <div className="flex justify-between text-muted">
+          <div className="border-border space-y-2.5 border-t pt-4 text-sm">
+            <div className="text-muted flex justify-between">
               <span>Subtotal</span>
               <span className="text-foreground">{formatPrice(cart.subtotal, currencyCode)}</span>
             </div>
             {cart.shipping_total > 0 && (
-              <div className="flex justify-between text-muted">
+              <div className="text-muted flex justify-between">
                 <span>Shipping</span>
-                <span className="text-foreground">{formatPrice(cart.shipping_total, currencyCode)}</span>
+                <span className="text-foreground">
+                  {formatPrice(cart.shipping_total, currencyCode)}
+                </span>
               </div>
             )}
             {cart.tax_total > 0 && (
-              <div className="flex justify-between text-muted">
+              <div className="text-muted flex justify-between">
                 <span>Tax</span>
                 <span className="text-foreground">{formatPrice(cart.tax_total, currencyCode)}</span>
               </div>
             )}
             {cart.discount_total > 0 && (
-              <div className="flex justify-between text-success">
+              <div className="text-success flex justify-between">
                 <span>Discount</span>
-                <span className="font-medium">-{formatPrice(cart.discount_total, currencyCode)}</span>
+                <span className="font-medium">
+                  -{formatPrice(cart.discount_total, currencyCode)}
+                </span>
               </div>
             )}
-            <div className="border-t border-border pt-3">
-              <div className="flex justify-between text-base font-bold text-foreground">
+            <div className="border-border border-t pt-3">
+              <div className="text-foreground flex justify-between text-base font-bold">
                 <span>Total</span>
                 <span className="text-primary">{formatPrice(cart.total, currencyCode)}</span>
               </div>

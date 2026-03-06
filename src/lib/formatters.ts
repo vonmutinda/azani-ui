@@ -1,6 +1,6 @@
 import { MedusaProduct, MedusaProductVariant } from "@/types/medusa";
 
-export function formatPrice(amount: number | undefined, _currencyCode = "etb"): string {
+export function formatPrice(amount: number | undefined, _currency?: string): string {
   if (amount === undefined || amount === null) return "--";
 
   return `Br${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -10,7 +10,9 @@ function getVariantMoneyAmount(variant: MedusaProductVariant) {
   return variant.prices?.find((price) => price.currency_code === "etb") ?? variant.prices?.[0];
 }
 
-export function getProductPrice(product: MedusaProduct): { amount: number; currency: string; formatted: string } | null {
+export function getProductPrice(
+  product: MedusaProduct,
+): { amount: number; currency: string; formatted: string } | null {
   const variant = product.variants?.[0];
   if (!variant) return null;
 
@@ -34,7 +36,7 @@ export function getProductPrice(product: MedusaProduct): { amount: number; curre
   return null;
 }
 
-export function getVariantPrice(variant: MedusaProductVariant, _currencyCode = "etb"): string {
+export function getVariantPrice(variant: MedusaProductVariant, _currency?: string): string {
   if (variant.calculated_price) {
     return formatPrice(variant.calculated_price.calculated_amount);
   }
@@ -66,5 +68,8 @@ export function resolveProductImage(product: MedusaProduct): string | undefined 
 
 export function stripHtml(value: string | undefined): string {
   if (!value) return "";
-  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

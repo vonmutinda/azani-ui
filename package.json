@@ -6,10 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,mjs,json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
@@ -31,8 +45,13 @@
     "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
+    "lint-staged": "^16.3.2",
     "msw": "^2.12.10",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"

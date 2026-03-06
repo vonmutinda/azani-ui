@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import Home from "@/app/page";
 import { renderWithProviders } from "../test-utils";
-import { mockProduct, mockCategories } from "../fixtures";
 
 vi.mock("@/lib/medusa-api", () => ({
   getProducts: vi.fn().mockResolvedValue({
