@@ -1,13 +1,25 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductCard } from "@/components/product-card";
 import { renderWithProviders } from "../test-utils";
 import { mockProduct, mockProductMinimal } from "../fixtures";
 
+const mockAddToCart = vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+const mockGetWishlistProductIds = vi.fn().mockResolvedValue([]);
+const mockToggleWishlistProduct = vi.fn();
+
 vi.mock("@/lib/medusa-api", () => ({
-  addToCart: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
+  addToCart: (...args: unknown[]) => mockAddToCart(...args),
+  getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
+  toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetWishlistProductIds.mockResolvedValue([]);
+  mockToggleWishlistProduct.mockResolvedValue(["prod_01"]);
+});
 
 describe("ProductCard", () => {
   it("renders the product title", () => {
@@ -17,7 +29,7 @@ describe("ProductCard", () => {
 
   it("renders formatted price", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
-    expect(screen.getByText("$15.00")).toBeInTheDocument();
+    expect(screen.getByText("Br85,000.00")).toBeInTheDocument();
   });
 
   it("renders product image", () => {
@@ -80,5 +92,15 @@ describe("ProductCard", () => {
   it("shows '--' when product has no price", () => {
     renderWithProviders(<ProductCard product={mockProductMinimal} />);
     expect(screen.getByText("--")).toBeInTheDocument();
+  });
+
+  it("toggles wishlist state from the heart button", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductCard product={mockProduct} />);
+
+    await user.click(screen.getByLabelText("Add to wishlist"));
+
+    expect(mockToggleWishlistProduct).toHaveBeenCalledWith("prod_01");
   });
 });

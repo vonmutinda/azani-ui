@@ -3,8 +3,11 @@ import { MedusaProduct, MedusaProductVariant } from "@/types/medusa";
 export function formatPrice(amount: number | undefined, _currencyCode = "etb"): string {
   if (amount === undefined || amount === null) return "--";
 
-  const value = amount / 100;
-  return `Br${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `Br${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function getVariantMoneyAmount(variant: MedusaProductVariant) {
+  return variant.prices?.find((price) => price.currency_code === "etb") ?? variant.prices?.[0];
 }
 
 export function getProductPrice(product: MedusaProduct): { amount: number; currency: string; formatted: string } | null {
@@ -19,11 +22,11 @@ export function getProductPrice(product: MedusaProduct): { amount: number; curre
     };
   }
 
-  const price = variant.prices?.[0];
+  const price = getVariantMoneyAmount(variant);
   if (price) {
     return {
       amount: price.amount,
-      currency: "etb",
+      currency: price.currency_code,
       formatted: formatPrice(price.amount),
     };
   }
@@ -36,7 +39,7 @@ export function getVariantPrice(variant: MedusaProductVariant, _currencyCode = "
     return formatPrice(variant.calculated_price.calculated_amount);
   }
 
-  const price = variant.prices?.[0];
+  const price = getVariantMoneyAmount(variant);
   if (price) {
     return formatPrice(price.amount);
   }

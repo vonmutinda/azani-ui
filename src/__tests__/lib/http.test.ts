@@ -4,6 +4,9 @@ import {
   getStoredCartId,
   setStoredCartId,
   clearStoredCartId,
+  getStoredWishlistProductIds,
+  setStoredWishlistProductIds,
+  clearStoredWishlistProductIds,
   getAuthToken,
   setAuthToken,
   clearAuthToken,
@@ -45,6 +48,29 @@ describe("auth token helpers", () => {
 
   it("returns null when no token is set", () => {
     expect(getAuthToken()).toBeNull();
+  });
+});
+
+describe("wishlist helpers", () => {
+  it("stores and retrieves wishlist product IDs", () => {
+    setStoredWishlistProductIds(["prod_1", "prod_2"]);
+    expect(getStoredWishlistProductIds()).toEqual(["prod_1", "prod_2"]);
+  });
+
+  it("deduplicates wishlist product IDs", () => {
+    setStoredWishlistProductIds(["prod_1", "prod_1", "prod_2"]);
+    expect(getStoredWishlistProductIds()).toEqual(["prod_1", "prod_2"]);
+  });
+
+  it("clears stored wishlist product IDs", () => {
+    setStoredWishlistProductIds(["prod_1"]);
+    clearStoredWishlistProductIds();
+    expect(getStoredWishlistProductIds()).toEqual([]);
+  });
+
+  it("returns an empty array for invalid stored data", () => {
+    localStorage.setItem("medusa_wishlist_product_ids", "{not-json");
+    expect(getStoredWishlistProductIds()).toEqual([]);
   });
 });
 

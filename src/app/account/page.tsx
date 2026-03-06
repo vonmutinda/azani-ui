@@ -32,6 +32,7 @@ import {
   ShoppingBag,
   Baby,
   Clock,
+  Heart,
 } from "lucide-react";
 
 type Section = "profile" | "orders";
@@ -77,6 +78,18 @@ export default function AccountPage() {
     queryFn: getCustomer,
   });
 
+  const { data: addresses } = useQuery({
+    queryKey: ["addresses"],
+    queryFn: getCustomerAddresses,
+    enabled: !!customer,
+  });
+
+  const { data: orders } = useQuery({
+    queryKey: ["orders"],
+    queryFn: getOrders,
+    enabled: !!customer,
+  });
+
   useEffect(() => {
     if (!isLoading && !customer) {
       router.replace("/account/login");
@@ -117,6 +130,11 @@ export default function AccountPage() {
 
   const initials =
     ((customer.first_name?.[0] ?? "") + (customer.last_name?.[0] ?? "")).toUpperCase() || "?";
+  const latestOrder = orders?.length
+    ? [...orders].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0]
+    : null;
 
   const navItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: "profile", label: "Profile", icon: <User className="h-4 w-4" /> },
@@ -125,16 +143,42 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      {/* Welcome Header */}
-      <div className="mb-8 flex items-center gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-primary text-lg font-bold">
-          {initials}
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Welcome back, {customer.first_name || "there"}!
-          </h1>
-          <p className="text-sm text-muted">{customer.email}</p>
+      <div className="mb-8 overflow-hidden rounded-[28px] border border-border bg-gradient-to-br from-primary-light via-card to-secondary-light p-6 shadow-sm sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-xl font-bold text-primary shadow-sm">
+              {initials}
+            </div>
+            <div>
+              <p className="mb-1 inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                My Account
+              </p>
+              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+                Welcome back, {customer.first_name || "there"}!
+              </h1>
+              <p className="mt-1 text-sm text-muted">{customer.email}</p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Saved Addresses
+              </p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {addresses?.length ?? 0} {addresses?.length === 1 ? "address" : "addresses"} ready for checkout
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Latest Order
+              </p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {latestOrder
+                  ? `Order #${latestOrder.display_id} on ${new Date(latestOrder.created_at).toLocaleDateString()}`
+                  : "No orders yet"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -142,7 +186,7 @@ export default function AccountPage() {
         {/* Sidebar Navigation */}
         <nav>
           {/* Desktop sidebar */}
-          <div className="hidden lg:block rounded-2xl border border-border bg-card p-2">
+          <div className="hidden lg:block rounded-3xl border border-border bg-card p-3 shadow-sm">
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -174,7 +218,7 @@ export default function AccountPage() {
           </div>
 
           {/* Mobile horizontal pills */}
-          <div className="flex gap-2 overflow-x-auto lg:hidden rounded-2xl border border-border bg-card p-2">
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2 lg:hidden">
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -227,8 +271,91 @@ function ProfileSection({
 }: {
   customer: NonNullable<Awaited<ReturnType<typeof getCustomer>>>;
 }) {
+  const { data: addresses } = useQuery({
+    queryKey: ["addresses"],
+    queryFn: getCustomerAddresses,
+  });
+  const { data: orders } = useQuery({
+    queryKey: ["orders"],
+    queryFn: getOrders,
+  });
+  const latestOrder = orders?.length
+    ? [...orders].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0]
+    : null;
+
   return (
     <div className="space-y-8">
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-light text-primary">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Account Overview</h2>
+              <p className="text-sm text-muted">Everything important about your account at a glance.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-background px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Orders</p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{orders?.length ?? 0}</p>
+              <p className="mt-1 text-sm text-muted">Placed through your account</p>
+            </div>
+            <div className="rounded-2xl bg-background px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Addresses</p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{addresses?.length ?? 0}</p>
+              <p className="mt-1 text-sm text-muted">Saved for faster checkout</p>
+            </div>
+            <div className="rounded-2xl bg-background px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Latest Order</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {latestOrder ? `#${latestOrder.display_id}` : "No orders"}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {latestOrder ? new Date(latestOrder.created_at).toLocaleDateString() : "Start shopping to see orders here"}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary-light text-secondary">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
+              <p className="text-sm text-muted">Jump back into the parts of the shop you use most.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <Link
+              href="/products"
+              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+            >
+              Continue Shopping
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </Link>
+            <Link
+              href="/account/wishlist"
+              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+            >
+              Open Wishlist
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+              className="flex w-full items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary hover:bg-primary-light/40"
+            >
+              Manage Addresses
+              <ChevronRight className="h-4 w-4 text-muted" />
+            </button>
+          </div>
+        </div>
+      </div>
       <ProfileDetails customer={customer} />
       <AddressesSection />
     </div>
@@ -263,13 +390,16 @@ function ProfileDetails({
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">
-            Personal Information
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Personal Information
+            </h2>
+            <p className="text-sm text-muted">Keep your contact information current for smoother checkout.</p>
+          </div>
         </div>
         {!editing && (
           <button
@@ -346,8 +476,8 @@ function ProfileDetails({
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl bg-background px-4 py-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-2xl bg-background px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
               Name
             </p>
@@ -355,7 +485,7 @@ function ProfileDetails({
               {customer.first_name} {customer.last_name}
             </p>
           </div>
-          <div className="rounded-xl bg-background px-4 py-3">
+          <div className="rounded-2xl bg-background px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
               Email
             </p>
@@ -363,7 +493,7 @@ function ProfileDetails({
               {customer.email}
             </p>
           </div>
-          <div className="rounded-xl bg-background px-4 py-3">
+          <div className="rounded-2xl bg-background px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
               Phone
             </p>
@@ -444,13 +574,16 @@ function AddressesSection() {
   const isFormVisible = showForm || editingId !== null;
 
   return (
-    <div>
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-secondary" />
-          <h2 className="text-lg font-semibold text-foreground">
-            Delivery Addresses
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Delivery Addresses
+            </h2>
+            <p className="text-sm text-muted">Save multiple addresses so checkout takes only a few taps.</p>
+          </div>
         </div>
         {!isFormVisible && (
           <button
@@ -734,8 +867,21 @@ function OrdersSection({
     );
   }
 
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border bg-background/70 px-6 py-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Order History</h2>
+          <p className="text-sm text-muted">Newest orders appear first.</p>
+        </div>
+        <span className="rounded-full bg-primary-light px-3 py-1 text-xs font-semibold text-primary">
+          {sortedOrders.length} {sortedOrders.length === 1 ? "order" : "orders"}
+        </span>
+      </div>
       {/* Desktop header */}
       <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_1fr_1fr_40px] gap-4 bg-background px-6 py-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -754,14 +900,14 @@ function OrdersSection({
       </div>
 
       <div className="divide-y divide-border">
-        {orders.map((order) => (
+        {sortedOrders.map((order) => (
           <button
             key={order.id}
             onClick={() => onSelectOrder(order.id)}
             className="block w-full text-left transition hover:bg-background/50"
           >
             {/* Desktop row */}
-            <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_1fr_1fr_40px] gap-4 items-center px-6 py-4">
+            <div className="hidden sm:grid sm:grid-cols-[1.1fr_1fr_1fr_1fr_40px] gap-4 items-center px-6 py-4">
               <span className="text-sm font-medium text-foreground">
                 Order #{order.display_id}
               </span>

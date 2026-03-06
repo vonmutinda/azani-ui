@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MedusaProduct } from "@/types/medusa";
 import { getProductPrice, getProductOriginalPrice, resolveProductImage } from "@/lib/formatters";
-import { addToCart } from "@/lib/medusa-api";
+import { addToCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
 
 type Props = {
   product: MedusaProduct;
@@ -18,10 +18,23 @@ export function ProductCard({ product, onSelect }: Props) {
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
   const defaultVariant = product.variants?.[0];
+  const wishlistQuery = useQuery({
+    queryKey: ["wishlist"],
+    queryFn: getWishlistProductIds,
+    staleTime: 30 * 1000,
+  });
+  const isWishlisted = (wishlistQuery.data ?? []).includes(product.id);
 
   const cartMutation = useMutation({
     mutationFn: (variantId: string) => addToCart(variantId, 1),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+  });
+
+  const wishlistMutation = useMutation({
+    mutationFn: () => toggleWishlistProduct(product.id),
+    onSuccess: (wishlistIds) => {
+      queryClient.setQueryData(["wishlist"], wishlistIds);
+    },
   });
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -37,6 +50,12 @@ export function ProductCard({ product, onSelect }: Props) {
       e.preventDefault();
       onSelect(product.id);
     }
+  };
+
+  const handleWishlistToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    wishlistMutation.mutate();
   };
 
   const productHref = `/products/${product.id}`;
@@ -55,10 +74,17 @@ export function ProductCard({ product, onSelect }: Props) {
       <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5 opacity-0 transition-all duration-200 group-hover:opacity-100">
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-card/90 text-muted shadow-sm backdrop-blur transition hover:bg-primary-light hover:text-primary"
-          title="Add to wishlist"
+          onClick={handleWishlistToggle}
+          disabled={wishlistMutation.isPending}
+          className={`flex h-8 w-8 items-center justify-center rounded-full bg-card/90 shadow-sm backdrop-blur transition disabled:opacity-50 ${
+            isWishlisted
+              ? "text-primary"
+              : "text-muted hover:bg-primary-light hover:text-primary"
+          }`}
+          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className="h-3.5 w-3.5" />
+          <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
         </button>
       </div>
 

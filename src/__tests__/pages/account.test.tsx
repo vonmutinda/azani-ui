@@ -171,10 +171,10 @@ describe("AccountPage", () => {
       expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
     });
 
-    await user.click(screen.getAllByText("Orders")[0]);
+    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText("No orders yet")).toBeInTheDocument();
+      expect(screen.getAllByText("No orders yet").length).toBeGreaterThan(0);
     });
   });
 
@@ -206,12 +206,70 @@ describe("AccountPage", () => {
       expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
     });
 
-    await user.click(screen.getAllByText("Orders")[0]);
+    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
 
     await waitFor(() => {
       expect(screen.getAllByText("Order #42").length).toBeGreaterThan(0);
     });
     expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
+  });
+
+  it("shows latest orders first", async () => {
+    mockGetCustomer.mockResolvedValue(customer);
+    mockGetOrders.mockResolvedValue([
+      {
+        id: "order_old",
+        display_id: 41,
+        email: "jane@example.com",
+        currency_code: "etb",
+        items: [],
+        total: 40000,
+        subtotal: 35000,
+        shipping_total: 5000,
+        tax_total: 0,
+        discount_total: 0,
+        status: "completed",
+        fulfillment_status: "fulfilled",
+        payment_status: "captured",
+        created_at: "2025-05-01T00:00:00.000Z",
+      },
+      {
+        id: "order_new",
+        display_id: 42,
+        email: "jane@example.com",
+        currency_code: "etb",
+        items: [],
+        total: 50000,
+        subtotal: 45000,
+        shipping_total: 5000,
+        tax_total: 0,
+        discount_total: 0,
+        status: "completed",
+        fulfillment_status: "fulfilled",
+        payment_status: "captured",
+        created_at: "2025-06-01T00:00:00.000Z",
+      },
+    ]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
+    });
+
+    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Newest orders appear first.")).toBeInTheDocument();
+    });
+
+    const orderButtons = screen.getAllByRole("button").filter((button) =>
+      button.textContent?.includes("Order #"),
+    );
+
+    expect(orderButtons[0]).toHaveTextContent("Order #42");
+    expect(orderButtons[1]).toHaveTextContent("Order #41");
   });
 
   it("clicking an order shows order detail inline", async () => {
@@ -278,7 +336,7 @@ describe("AccountPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
     });
-    await user.click(screen.getAllByText("Orders")[0]);
+    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
 
     await waitFor(() => {
       expect(screen.getAllByText("Order #42").length).toBeGreaterThan(0);

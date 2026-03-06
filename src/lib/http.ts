@@ -92,3 +92,34 @@ export function clearAuthToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_TOKEN_KEY);
 }
+
+// Wishlist storage
+const WISHLIST_PRODUCT_IDS_KEY = "medusa_wishlist_product_ids";
+
+export function getStoredWishlistProductIds(): string[] {
+  if (typeof window === "undefined") return [];
+
+  const raw = localStorage.getItem(WISHLIST_PRODUCT_IDS_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setStoredWishlistProductIds(productIds: string[]): void {
+  if (typeof window === "undefined") return;
+
+  const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
+  localStorage.setItem(WISHLIST_PRODUCT_IDS_KEY, JSON.stringify(uniqueIds));
+}
+
+export function clearStoredWishlistProductIds(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(WISHLIST_PRODUCT_IDS_KEY);
+}

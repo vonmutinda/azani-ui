@@ -4,6 +4,7 @@ import {
   getProducts,
   getProductByHandle,
   getProductById,
+  getProductsByIds,
   getCategories,
   getCategoryByHandle,
   getOrCreateCart,
@@ -20,6 +21,11 @@ import {
   loginCustomer,
   registerCustomer,
   getCustomer,
+  getCustomerWishlistProductIds,
+  getWishlistProductIds,
+  setWishlistProductIds,
+  toggleWishlistProduct,
+  mergeWishlistAfterAuth,
   getRegions,
 } from "@/lib/medusa-api";
 import { mockProduct, mockCategory, mockCart, mockRegion } from "../fixtures";
@@ -29,53 +35,86 @@ vi.mock("@/lib/http", () => ({
   getStoredCartId: vi.fn(),
   setStoredCartId: vi.fn(),
   getAuthToken: vi.fn(),
+  getStoredWishlistProductIds: vi.fn(),
+  setStoredWishlistProductIds: vi.fn(),
+  clearStoredWishlistProductIds: vi.fn(),
 }));
 
 const mockRequest = http.medusaRequest as Mock;
 const mockGetCartId = http.getStoredCartId as Mock;
 const mockSetCartId = http.setStoredCartId as Mock;
 const mockGetAuthToken = http.getAuthToken as Mock;
+const mockGetStoredWishlistIds = http.getStoredWishlistProductIds as Mock;
+const mockSetStoredWishlistIds = http.setStoredWishlistProductIds as Mock;
+const mockClearStoredWishlistIds = http.clearStoredWishlistProductIds as Mock;
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  mockGetAuthToken.mockReturnValue(null);
+  mockGetStoredWishlistIds.mockReturnValue([]);
 });
 
 // ── Products ────────────────────────────────────────────────────────────
 
 describe("getProducts", () => {
   it("calls medusaRequest with default params", async () => {
-    mockRequest.mockResolvedValueOnce({ products: [mockProduct], count: 1, offset: 0, limit: 20 });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
+      .mockResolvedValueOnce({ products: [mockProduct], count: 1, offset: 0, limit: 20 });
 
     const result = await getProducts();
-    expect(mockRequest).toHaveBeenCalledWith("store/products", {
-      searchParams: { limit: 20, offset: 0 },
+    expect(mockRequest).toHaveBeenNthCalledWith(1, "store/regions");
+    expect(mockRequest.mock.calls[1][1]).toEqual({
+      searchParams: {
+        limit: 20,
+        offset: 0,
+        fields: "+variants.calculated_price,+variants.prices",
+        region_id: "reg_01",
+      },
     });
     expect(result.products).toHaveLength(1);
   });
 
   it("merges custom params", async () => {
-    mockRequest.mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 5 });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
+      .mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 5 });
 
     await getProducts({ limit: 5, q: "diapers" });
-    expect(mockRequest).toHaveBeenCalledWith("store/products", {
-      searchParams: { limit: 5, offset: 0, q: "diapers" },
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+      searchParams: {
+        limit: 5,
+        offset: 0,
+        q: "diapers",
+        fields: "+variants.calculated_price,+variants.prices",
+        region_id: "reg_01",
+      },
     });
   });
 });
 
 describe("getProductByHandle", () => {
   it("returns the first product matching the handle", async () => {
-    mockRequest.mockResolvedValueOnce({ products: [mockProduct] });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
+      .mockResolvedValueOnce({ products: [mockProduct] });
 
     const result = await getProductByHandle("pampers-baby-dry");
-    expect(mockRequest).toHaveBeenCalledWith("store/products", {
-      searchParams: { handle: "pampers-baby-dry", limit: 1 },
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+      searchParams: {
+        handle: "pampers-baby-dry",
+        limit: 1,
+        fields: "+variants.calculated_price,+variants.prices",
+        region_id: "reg_01",
+      },
     });
     expect(result).toEqual(mockProduct);
   });
 
   it("returns null when no product found", async () => {
-    mockRequest.mockResolvedValueOnce({ products: [] });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
+      .mockResolvedValueOnce({ products: [] });
     const result = await getProductByHandle("nonexistent");
     expect(result).toBeNull();
   });
@@ -83,11 +122,44 @@ describe("getProductByHandle", () => {
 
 describe("getProductById", () => {
   it("fetches a product by ID", async () => {
-    mockRequest.mockResolvedValueOnce({ product: mockProduct });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
+      .mockResolvedValueOnce({ product: mockProduct });
 
     const result = await getProductById("prod_01");
-    expect(mockRequest).toHaveBeenCalledWith("store/products/prod_01");
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products/prod_01", {
+      searchParams: {
+        fields: "+variants.calculated_price,+variants.prices",
+        region_id: "reg_01",
+      },
+    });
     expect(result.product).toEqual(mockProduct);
+  });
+});
+
+describe("getProductsByIds", () => {
+  it("returns products in requested order", async () => {
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+
+      if (path === "store/products/prod_01") {
+        return Promise.resolve({ product: mockProduct });
+      }
+
+      if (path === "store/products/prod_02") {
+        return Promise.resolve({
+          product: { ...mockProduct, id: "prod_02", title: "Baby Wipes" },
+        });
+      }
+
+      return Promise.resolve({});
+    });
+
+    const result = await getProductsByIds(["prod_01", "prod_02"]);
+
+    expect(result.map((product) => product.id)).toEqual(["prod_01", "prod_02"]);
   });
 });
 
@@ -387,6 +459,93 @@ describe("getCustomer", () => {
   });
 });
 
+describe("wishlist helpers", () => {
+  it("reads wishlist IDs from customer metadata", () => {
+    expect(
+      getCustomerWishlistProductIds({
+        id: "cus_1",
+        email: "test@example.com",
+        has_account: true,
+        metadata: { wishlist_product_ids: ["prod_1", "prod_2", "prod_1"] },
+      }),
+    ).toEqual(["prod_1", "prod_2"]);
+  });
+
+  it("returns guest wishlist IDs when unauthenticated", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+    mockGetStoredWishlistIds.mockReturnValue(["prod_1"]);
+
+    await expect(getWishlistProductIds()).resolves.toEqual(["prod_1"]);
+  });
+
+  it("stores guest wishlist IDs locally when unauthenticated", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+
+    await setWishlistProductIds(["prod_1", "prod_2"]);
+
+    expect(mockSetStoredWishlistIds).toHaveBeenCalledWith(["prod_1", "prod_2"]);
+  });
+
+  it("stores signed-in wishlist IDs in customer metadata", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest
+      .mockResolvedValueOnce({
+        customer: { id: "cus_1", email: "test@example.com", has_account: true, metadata: {} },
+      })
+      .mockResolvedValueOnce({
+        customer: {
+          id: "cus_1",
+          email: "test@example.com",
+          has_account: true,
+          metadata: { wishlist_product_ids: ["prod_1"] },
+        },
+      });
+
+    await setWishlistProductIds(["prod_1"]);
+
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/customers/me", {
+      method: "POST",
+      body: { metadata: { wishlist_product_ids: ["prod_1"] } },
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+  });
+
+  it("toggles a product in the guest wishlist", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+    mockGetStoredWishlistIds.mockReturnValue(["prod_1"]);
+
+    await expect(toggleWishlistProduct("prod_2")).resolves.toEqual(["prod_1", "prod_2"]);
+    expect(mockSetStoredWishlistIds).toHaveBeenCalledWith(["prod_1", "prod_2"]);
+  });
+
+  it("merges guest wishlist into customer metadata after auth", async () => {
+    mockGetStoredWishlistIds.mockReturnValue(["prod_2"]);
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest
+      .mockResolvedValueOnce({
+        customer: {
+          id: "cus_1",
+          email: "test@example.com",
+          has_account: true,
+          metadata: { wishlist_product_ids: ["prod_1"] },
+        },
+      })
+      .mockResolvedValueOnce({
+        customer: {
+          id: "cus_1",
+          email: "test@example.com",
+          has_account: true,
+          metadata: { wishlist_product_ids: ["prod_1", "prod_2"] },
+        },
+      });
+
+    const result = await mergeWishlistAfterAuth();
+
+    expect(result.wishlistIds).toEqual(["prod_1", "prod_2"]);
+    expect(mockClearStoredWishlistIds).toHaveBeenCalled();
+  });
+});
+
 // ── Regions ──────────────────────────────────────────────────────────────
 
 describe("getRegions", () => {
@@ -395,6 +554,6 @@ describe("getRegions", () => {
 
     const result = await getRegions();
     expect(result.regions).toHaveLength(1);
-    expect(result.regions[0].name).toBe("Europe");
+    expect(result.regions[0].name).toBe("Ethiopia");
   });
 });

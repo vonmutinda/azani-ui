@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-import { getProductById, addToCart } from "@/lib/medusa-api";
-import { formatPrice, stripHtml } from "@/lib/formatters";
+import { getProductById, addToCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import { getVariantPrice, stripHtml } from "@/lib/formatters";
 import { MedusaProductVariant } from "@/types/medusa";
 
 type Props = {
@@ -24,14 +24,26 @@ export function ProductDetail({ productId, onBack }: Props) {
     queryFn: () => getProductById(productId),
     enabled: !!productId,
   });
+  const wishlistQuery = useQuery({
+    queryKey: ["wishlist"],
+    queryFn: getWishlistProductIds,
+    staleTime: 30 * 1000,
+  });
 
   const product = productQuery.data?.product;
+  const isWishlisted = product ? (wishlistQuery.data ?? []).includes(product.id) : false;
 
   const cartMutation = useMutation({
     mutationFn: ({ variantId, qty }: { variantId: string; qty: number }) =>
       addToCart(variantId, qty),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+    },
+  });
+  const wishlistMutation = useMutation({
+    mutationFn: () => toggleWishlistProduct(productId),
+    onSuccess: (wishlistIds) => {
+      queryClient.setQueryData(["wishlist"], wishlistIds);
     },
   });
 
@@ -87,16 +99,15 @@ export function ProductDetail({ productId, onBack }: Props) {
     });
   }) ?? variants[0];
 
-  const price = selectedVariant?.calculated_price
-    ? formatPrice(selectedVariant.calculated_price.calculated_amount)
-    : selectedVariant?.prices?.[0]
-      ? formatPrice(selectedVariant.prices[0].amount)
-      : "--";
+  const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
 
   const handleAddToCart = () => {
     if (selectedVariant) {
       cartMutation.mutate({ variantId: selectedVariant.id, qty: quantity });
     }
+  };
+  const handleWishlistToggle = () => {
+    wishlistMutation.mutate();
   };
 
   return (
@@ -145,13 +156,29 @@ export function ProductDetail({ productId, onBack }: Props) {
 
         {/* Details */}
         <div className="space-y-5">
-          <div>
-            <h2 className="text-xl font-bold text-foreground sm:text-2xl">{product.title}</h2>
-            {product.categories?.[0] && (
-              <span className="mt-1 inline-block text-sm text-muted">
-                {product.categories[0].name}
-              </span>
-            )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground sm:text-2xl">{product.title}</h2>
+              {product.categories?.[0] && (
+                <span className="mt-1 inline-block text-sm text-muted">
+                  {product.categories[0].name}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleWishlistToggle}
+              disabled={wishlistMutation.isPending}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+                isWishlisted
+                  ? "border-primary bg-primary-light text-primary"
+                  : "border-border text-muted hover:border-primary hover:text-primary"
+              }`}
+              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <Heart className="h-4.5 w-4.5" fill={isWishlisted ? "currentColor" : "none"} />
+            </button>
           </div>
 
           <p className="text-2xl font-bold text-primary">{price}</p>
@@ -214,6 +241,11 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {cartMutation.isSuccess && (
             <p className="text-sm font-medium text-success">Added to cart!</p>
+          )}
+          {wishlistMutation.isSuccess && (
+            <p className="text-sm font-medium text-primary">
+              {isWishlisted ? "Saved to wishlist." : "Removed from wishlist."}
+            </p>
           )}
         </div>
       </div>

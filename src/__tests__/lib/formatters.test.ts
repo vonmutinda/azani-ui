@@ -10,9 +10,9 @@ import {
 import { mockProduct, mockProductMinimal } from "../fixtures";
 
 describe("formatPrice", () => {
-  it("formats ETB amounts with Br prefix (divides by 100)", () => {
-    expect(formatPrice(1500)).toBe("Br15.00");
-    expect(formatPrice(85000)).toBe("Br850.00");
+  it("formats ETB amounts with Br prefix", () => {
+    expect(formatPrice(1500)).toBe("Br1,500.00");
+    expect(formatPrice(85000)).toBe("Br85,000.00");
   });
 
   it("returns '--' for undefined", () => {
@@ -28,9 +28,9 @@ describe("getProductPrice", () => {
   it("returns the first variant price in ETB", () => {
     const price = getProductPrice(mockProduct);
     expect(price).not.toBeNull();
-    expect(price!.amount).toBe(1500);
+    expect(price!.amount).toBe(85000);
     expect(price!.currency).toBe("etb");
-    expect(price!.formatted).toBe("Br15.00");
+    expect(price!.formatted).toBe("Br85,000.00");
   });
 
   it("returns null for product without variants", () => {
@@ -54,14 +54,14 @@ describe("getProductPrice", () => {
     };
     const price = getProductPrice(product);
     expect(price!.amount).toBe(1200);
-    expect(price!.formatted).toBe("Br12.00");
+    expect(price!.formatted).toBe("Br1,200.00");
   });
 });
 
 describe("getVariantPrice", () => {
   it("returns formatted ETB price for variant", () => {
     const variant = mockProduct.variants![0];
-    expect(getVariantPrice(variant)).toBe("Br15.00");
+    expect(getVariantPrice(variant)).toBe("Br85,000.00");
   });
 
   it("returns '--' for variant with no prices", () => {
@@ -89,7 +89,7 @@ describe("getProductOriginalPrice", () => {
         },
       ],
     };
-    expect(getProductOriginalPrice(product)).toBe("Br15.00");
+    expect(getProductOriginalPrice(product)).toBe("Br1,500.00");
   });
 
   it("returns null when original equals calculated", () => {

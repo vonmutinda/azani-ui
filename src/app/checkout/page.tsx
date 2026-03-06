@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Baby, Check, CreditCard, MapPin, Package, ShoppingBag, Truck } from "lucide-react";
 import Link from "next/link";
-import { getCart, updateCart, getShippingOptions, addShippingMethod, initializePaymentSession, completeCart, getRegions } from "@/lib/medusa-api";
+import { getCart, updateCart, getShippingOptions, addShippingMethod, initializePaymentSession, completeCart, getRegions, getCustomer, getCustomerAddresses } from "@/lib/medusa-api";
 import { formatPrice } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
+import { MedusaAddress } from "@/types/medusa";
 
 type Step = "address" | "shipping" | "payment" | "review";
 
@@ -21,12 +22,27 @@ const ETHIOPIAN_REGIONS = [
   "South West Ethiopia", "Tigray",
 ];
 
+function toCheckoutAddress(address: Partial<MedusaAddress>) {
+  return {
+    first_name: address.first_name ?? "",
+    last_name: address.last_name ?? "",
+    address_1: address.address_1 ?? "",
+    city: address.city ?? "Addis Ababa",
+    province: address.province ?? "Addis Ababa",
+    postal_code: address.postal_code ?? "1000",
+    country_code: address.country_code ?? "et",
+    phone: address.phone ?? "+251",
+  };
+}
+
 export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("address");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [useManualAddress, setUseManualAddress] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
@@ -43,6 +59,45 @@ export default function CheckoutPage() {
   const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart });
   const cart = cartQuery.data;
   const currencyCode = "etb";
+
+  const customerQuery = useQuery({
+    queryKey: ["customer"],
+    queryFn: getCustomer,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const addressesQuery = useQuery({
+    queryKey: ["addresses"],
+    queryFn: getCustomerAddresses,
+    enabled: !!customerQuery.data,
+  });
+
+  const savedAddresses = addressesQuery.data ?? [];
+  const selectedSavedAddress =
+    savedAddresses.find((address) => address.id === selectedSavedAddressId) ??
+    savedAddresses[0];
+  const isUsingSavedAddress =
+    !!customerQuery.data && savedAddresses.length > 0 && !useManualAddress;
+
+  useEffect(() => {
+    if (!customerQuery.data) return;
+
+    setForm((current) => ({
+      ...current,
+      email: current.email || customerQuery.data.email,
+      first_name: current.first_name || customerQuery.data.first_name || "",
+      last_name: current.last_name || customerQuery.data.last_name || "",
+      phone:
+        current.phone && current.phone !== "+251"
+          ? current.phone
+          : customerQuery.data.phone || current.phone,
+    }));
+  }, [customerQuery.data]);
+
+  useEffect(() => {
+    if (!savedAddresses.length || selectedSavedAddressId) return;
+    setSelectedSavedAddressId(savedAddresses[0].id ?? null);
+  }, [savedAddresses, selectedSavedAddressId]);
 
   const shippingQuery = useQuery({
     queryKey: ["shipping-options"],
@@ -62,28 +117,15 @@ export default function CheckoutPage() {
           await updateCart({ region_id: ethRegion.id });
         }
       }
+
+      const address = isUsingSavedAddress && selectedSavedAddress
+        ? toCheckoutAddress(selectedSavedAddress)
+        : toCheckoutAddress(form);
+
       return updateCart({
-        email: form.email,
-        shipping_address: {
-          first_name: form.first_name,
-          last_name: form.last_name,
-          address_1: form.address_1,
-          city: form.city,
-          province: form.province,
-          postal_code: form.postal_code,
-          country_code: form.country_code,
-          phone: form.phone,
-        },
-        billing_address: {
-          first_name: form.first_name,
-          last_name: form.last_name,
-          address_1: form.address_1,
-          city: form.city,
-          province: form.province,
-          postal_code: form.postal_code,
-          country_code: form.country_code,
-          phone: form.phone,
-        },
+        email: customerQuery.data?.email || form.email,
+        shipping_address: address,
+        billing_address: address,
       });
     },
     onSuccess: () => {
@@ -232,58 +274,148 @@ export default function CheckoutPage() {
           {step === "address" && (
             <form onSubmit={handleAddressSubmit} className="space-y-5 rounded-2xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">Shipping Address</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">First Name</label>
-                  <input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className={inputClass} />
+              {customerQuery.data && (
+                <div className="rounded-2xl border border-primary/15 bg-primary-light/40 p-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Checking out as {customerQuery.data.email}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    You can use a saved address or enter a different delivery address.
+                  </p>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Last Name</label>
-                  <input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className={inputClass} />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
-                  <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Phone</label>
-                  <input type="tel" required placeholder="+251 9XX XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">City</label>
-                  <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={selectClass}>
-                    {ETHIOPIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    <option value="">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Region</label>
-                  <select value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} className={selectClass}>
-                    {ETHIOPIAN_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Postal Code</label>
-                  <input value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} className={inputClass} />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Street Address / Kebele / House No.</label>
-                  <input required value={form.address_1} onChange={(e) => setForm({ ...form, address_1: e.target.value })} className={inputClass} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted">Country</label>
-                  <div className="flex h-10 items-center rounded-lg border border-border bg-background px-3 text-sm text-muted">
-                    Ethiopia (ET)
+              )}
+
+              {isUsingSavedAddress && selectedSavedAddress && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-foreground">Saved addresses</p>
+                    {savedAddresses.map((address) => {
+                      const isSelected = address.id === selectedSavedAddress.id;
+                      return (
+                        <button
+                          key={address.id}
+                          type="button"
+                          onClick={() => setSelectedSavedAddressId(address.id ?? null)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            isSelected
+                              ? "border-primary bg-primary-light/40"
+                              : "border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {address.first_name} {address.last_name}
+                              </p>
+                              <p className="text-sm text-muted">{address.address_1}</p>
+                              <p className="text-sm text-muted">
+                                {address.city}
+                                {address.province ? `, ${address.province}` : ""} {address.postal_code}
+                              </p>
+                              {address.phone && (
+                                <p className="mt-1 text-sm text-muted">{address.phone}</p>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="submit"
+                      disabled={addressMutation.isPending}
+                      className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                    >
+                      {addressMutation.isPending ? "Saving..." : "Continue with Selected Address"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseManualAddress(true)}
+                      className="rounded-full border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/10"
+                    >
+                      Use Different Address
+                    </button>
                   </div>
                 </div>
-              </div>
-              <button
-                type="submit"
-                disabled={addressMutation.isPending}
-                className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
-              >
-                {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
-              </button>
+              )}
+
+              {(!isUsingSavedAddress || !selectedSavedAddress) && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">First Name</label>
+                    <input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Last Name</label>
+                    <input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className={inputClass} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
+                    {customerQuery.data ? (
+                      <div className="flex h-10 items-center rounded-lg border border-border bg-background px-3 text-sm text-muted">
+                        {customerQuery.data.email}
+                      </div>
+                    ) : (
+                      <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Phone</label>
+                    <input type="tel" required placeholder="+251 9XX XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">City</label>
+                    <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={selectClass}>
+                      {ETHIOPIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Region</label>
+                    <select value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} className={selectClass}>
+                      {ETHIOPIAN_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Postal Code</label>
+                    <input value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} className={inputClass} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Street Address / Kebele / House No.</label>
+                    <input required value={form.address_1} onChange={(e) => setForm({ ...form, address_1: e.target.value })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted">Country</label>
+                    <div className="flex h-10 items-center rounded-lg border border-border bg-background px-3 text-sm text-muted">
+                      Ethiopia (ET)
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(!isUsingSavedAddress || !selectedSavedAddress) && (
+                <button
+                  type="submit"
+                  disabled={addressMutation.isPending}
+                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                >
+                  {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
+                </button>
+              )}
+              {useManualAddress && savedAddresses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setUseManualAddress(false)}
+                  className="ml-4 text-sm font-medium text-muted transition hover:text-primary"
+                >
+                  Use a saved address instead
+                </button>
+              )}
             </form>
           )}
 

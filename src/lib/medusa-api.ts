@@ -13,13 +13,46 @@ import {
   getStoredCartId,
   setStoredCartId,
   getAuthToken,
+  clearStoredWishlistProductIds,
+  getStoredWishlistProductIds,
+  setStoredWishlistProductIds,
 } from "@/lib/http";
 
 // ── Products ────────────────────────────────────────────────────────
 
+const PRODUCT_PRICE_FIELDS = "+variants.calculated_price,+variants.prices";
+const WISHLIST_METADATA_KEY = "wishlist_product_ids";
+
+async function getProductPricingParams() {
+  const regionsRes = await getRegions();
+  const region =
+    regionsRes.regions.find((r) =>
+      r.countries.some((c) => c.iso_2 === "et"),
+    ) ?? regionsRes.regions[0];
+
+  return {
+    fields: PRODUCT_PRICE_FIELDS,
+    ...(region ? { region_id: region.id } : { country_code: "et" }),
+  };
+}
+
+function normalizeWishlistProductIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0)),
+  );
+}
+
+export function getCustomerWishlistProductIds(customer: MedusaCustomer | null | undefined): string[] {
+  return normalizeWishlistProductIds(customer?.metadata?.[WISHLIST_METADATA_KEY]);
+}
+
 export async function getProducts(
   params: Record<string, string | number | boolean | string[] | undefined> = {},
 ) {
+  const pricingParams = await getProductPricingParams();
+
   return medusaRequest<{
     products: MedusaProduct[];
     count: number;
@@ -30,20 +63,52 @@ export async function getProducts(
       limit: 20,
       offset: 0,
       ...params,
+      ...pricingParams,
     },
   });
 }
 
 export async function getProductByHandle(handle: string) {
+  const pricingParams = await getProductPricingParams();
+
   const res = await medusaRequest<{ products: MedusaProduct[] }>(
     "store/products",
-    { searchParams: { handle, limit: 1 } },
+    { searchParams: { handle, limit: 1, ...pricingParams } },
   );
   return res.products[0] ?? null;
 }
 
 export async function getProductById(id: string) {
-  return medusaRequest<{ product: MedusaProduct }>(`store/products/${id}`);
+  const pricingParams = await getProductPricingParams();
+
+  return medusaRequest<{ product: MedusaProduct }>(`store/products/${id}`, {
+    searchParams: pricingParams,
+  });
+}
+
+export async function getProductsByIds(productIds: string[]) {
+  if (productIds.length === 0) return [];
+
+  const products = await Promise.all(
+    productIds.map(async (productId) => {
+      try {
+        const res = await getProductById(productId);
+        return res.product;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const productMap = new Map(
+    products
+      .filter((product): product is MedusaProduct => product !== null)
+      .map((product) => [product.id, product]),
+  );
+
+  return productIds
+    .map((productId) => productMap.get(productId))
+    .filter((product): product is MedusaProduct => !!product);
 }
 
 // ── Categories ──────────────────────────────────────────────────────
@@ -323,6 +388,7 @@ export async function updateCustomer(data: {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  metadata?: Record<string, unknown>;
 }) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
@@ -336,6 +402,67 @@ export async function updateCustomer(data: {
     },
   );
   return res.customer;
+}
+
+export async function getWishlistProductIds() {
+  const token = getAuthToken();
+  if (!token) return getStoredWishlistProductIds();
+
+  const customer = await getCustomer();
+  return getCustomerWishlistProductIds(customer);
+}
+
+export async function setWishlistProductIds(productIds: string[]) {
+  const normalizedIds = normalizeWishlistProductIds(productIds);
+  const token = getAuthToken();
+
+  if (!token) {
+    setStoredWishlistProductIds(normalizedIds);
+    return normalizedIds;
+  }
+
+  const customer = await getCustomer();
+  const nextMetadata = {
+    ...(customer?.metadata ?? {}),
+    [WISHLIST_METADATA_KEY]: normalizedIds,
+  };
+
+  await updateCustomer({ metadata: nextMetadata });
+  return normalizedIds;
+}
+
+export async function toggleWishlistProduct(productId: string) {
+  const wishlistIds = await getWishlistProductIds();
+  const nextIds = wishlistIds.includes(productId)
+    ? wishlistIds.filter((id) => id !== productId)
+    : [...wishlistIds, productId];
+
+  return setWishlistProductIds(nextIds);
+}
+
+export async function mergeWishlistAfterAuth() {
+  const guestWishlistIds = getStoredWishlistProductIds();
+  const customer = await getCustomer();
+  const customerWishlistIds = getCustomerWishlistProductIds(customer);
+  const mergedIds = Array.from(new Set([...customerWishlistIds, ...guestWishlistIds]));
+
+  if (guestWishlistIds.length === 0) {
+    return { customer, wishlistIds: customerWishlistIds };
+  }
+
+  if (mergedIds.length !== customerWishlistIds.length) {
+    const updatedCustomer = await updateCustomer({
+      metadata: {
+        ...(customer?.metadata ?? {}),
+        [WISHLIST_METADATA_KEY]: mergedIds,
+      },
+    });
+    clearStoredWishlistProductIds();
+    return { customer: updatedCustomer, wishlistIds: mergedIds };
+  }
+
+  clearStoredWishlistProductIds();
+  return { customer, wishlistIds: customerWishlistIds };
 }
 
 // ── Customer Addresses ─────────────────────────────────────────────

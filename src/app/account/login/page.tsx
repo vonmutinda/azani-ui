@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { loginCustomer, registerCustomer } from "@/lib/medusa-api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { loginCustomer, mergeWishlistAfterAuth, registerCustomer } from "@/lib/medusa-api";
 import { setAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,7 @@ function normalizeError(error: Error): string {
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isRegister, setIsRegister] = useState(false);
   const [form, setForm] = useState({
     email: "",
@@ -33,9 +34,12 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: () => loginCustomer(form.email, form.password),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuthToken(data.token);
-      router.push("/");
+      const { customer, wishlistIds } = await mergeWishlistAfterAuth();
+      queryClient.setQueryData(["customer"], customer);
+      queryClient.setQueryData(["wishlist"], wishlistIds);
+      router.push("/account");
     },
   });
 
@@ -47,9 +51,12 @@ export default function LoginPage() {
         first_name: form.first_name,
         last_name: form.last_name,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuthToken(data.token);
-      router.push("/");
+      const { customer, wishlistIds } = await mergeWishlistAfterAuth();
+      queryClient.setQueryData(["customer"], customer ?? data.customer);
+      queryClient.setQueryData(["wishlist"], wishlistIds);
+      router.push("/account");
     },
   });
 

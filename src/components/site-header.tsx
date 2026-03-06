@@ -5,8 +5,7 @@ import { Baby, ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lu
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getCart, getCategories } from "@/lib/medusa-api";
-import { getAuthToken } from "@/lib/http";
+import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
 import { KokobCategory, toKokobCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
@@ -52,7 +51,6 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pathname = usePathname();
@@ -82,6 +80,13 @@ export function SiteHeader() {
   });
   const cartCount = cartQuery.data?.items?.length ?? 0;
 
+  const customerQuery = useQuery({
+    queryKey: ["customer"],
+    queryFn: getCustomer,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isLoggedIn = !!customerQuery.data;
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -97,10 +102,6 @@ export function SiteHeader() {
   const closeMega = () => {
     megaTimeout.current = setTimeout(() => setActiveMega(null), 200);
   };
-
-  useEffect(() => {
-    setIsLoggedIn(!!getAuthToken());
-  }, []);
 
   useEffect(() => {
     return () => { if (megaTimeout.current) clearTimeout(megaTimeout.current); };

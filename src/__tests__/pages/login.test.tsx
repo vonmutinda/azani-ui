@@ -6,10 +6,12 @@ import { renderWithProviders } from "../test-utils";
 
 const mockLoginCustomer = vi.fn();
 const mockRegisterCustomer = vi.fn();
+const mockMergeWishlistAfterAuth = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   loginCustomer: (...args: unknown[]) => mockLoginCustomer(...args),
   registerCustomer: (...args: unknown[]) => mockRegisterCustomer(...args),
+  mergeWishlistAfterAuth: (...args: unknown[]) => mockMergeWishlistAfterAuth(...args),
 }));
 
 vi.mock("@/lib/http", () => ({
@@ -18,6 +20,10 @@ vi.mock("@/lib/http", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMergeWishlistAfterAuth.mockResolvedValue({
+    customer: { id: "cus_1", email: "test@example.com", has_account: true },
+    wishlistIds: [],
+  });
 });
 
 describe("LoginPage", () => {
@@ -68,6 +74,7 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(mockLoginCustomer).toHaveBeenCalledWith("test@example.com", "password123");
     });
+    expect(mockMergeWishlistAfterAuth).toHaveBeenCalled();
   });
 
   it("calls registerCustomer on registration submit", async () => {
@@ -94,6 +101,7 @@ describe("LoginPage", () => {
         last_name: "Doe",
       });
     });
+    expect(mockMergeWishlistAfterAuth).toHaveBeenCalled();
   });
 
   it("shows 'Please wait...' when submitting", async () => {

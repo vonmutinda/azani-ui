@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductDetail } from "@/components/product-detail";
@@ -7,11 +7,21 @@ import { mockProduct } from "../fixtures";
 
 const mockGetProductById = vi.fn();
 const mockAddToCart = vi.fn();
+const mockGetWishlistProductIds = vi.fn();
+const mockToggleWishlistProduct = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getProductById: (...args: unknown[]) => mockGetProductById(...args),
   addToCart: (...args: unknown[]) => mockAddToCart(...args),
+  getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
+  toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetWishlistProductIds.mockResolvedValue([]);
+  mockToggleWishlistProduct.mockResolvedValue(["prod_01"]);
+});
 
 describe("ProductDetail", () => {
   it("shows loading skeleton initially", () => {
@@ -29,7 +39,7 @@ describe("ProductDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
     });
-    expect(screen.getByText("$15.00")).toBeInTheDocument();
+    expect(screen.getByText("Br85,000.00")).toBeInTheDocument();
   });
 
   it("renders product description", async () => {
@@ -98,5 +108,20 @@ describe("ProductDetail", () => {
       const img = screen.getByAltText("Pampers Baby Dry Diapers");
       expect(img).toBeInTheDocument();
     });
+  });
+
+  it("toggles wishlist from the detail page", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("Add to wishlist"));
+
+    expect(mockToggleWishlistProduct).toHaveBeenCalledWith("prod_01");
   });
 });
