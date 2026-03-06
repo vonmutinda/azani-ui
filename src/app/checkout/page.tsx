@@ -80,17 +80,18 @@ export default function CheckoutPage() {
     !!customerQuery.data && savedAddresses.length > 0 && !useManualAddress;
 
   useEffect(() => {
-    if (!customerQuery.data) return;
+    const customer = customerQuery.data;
+    if (!customer) return;
 
     setForm((current) => ({
       ...current,
-      email: current.email || customerQuery.data.email,
-      first_name: current.first_name || customerQuery.data.first_name || "",
-      last_name: current.last_name || customerQuery.data.last_name || "",
+      email: current.email || customer.email,
+      first_name: current.first_name || customer.first_name || "",
+      last_name: current.last_name || customer.last_name || "",
       phone:
         current.phone && current.phone !== "+251"
           ? current.phone
-          : customerQuery.data.phone || current.phone,
+          : customer.phone || current.phone,
     }));
   }, [customerQuery.data]);
 
