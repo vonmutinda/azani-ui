@@ -95,11 +95,11 @@ export default function CartPage() {
         <div className="mb-5 flex items-center gap-3">
           <Link
             href="/products"
-            className="border-border text-muted hover:border-border-hover hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2 shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="border-border text-muted hover:border-border-hover hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2.5 shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
+          <h1 className="text-foreground text-xl font-bold sm:text-2xl">Shopping Cart</h1>
         </div>
         <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
@@ -131,7 +131,7 @@ export default function CartPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
+        <h1 className="text-foreground text-xl font-bold sm:text-2xl">Shopping Cart</h1>
         <span className="bg-foreground/10 text-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">
           {items.length} {items.length === 1 ? "item" : "items"}
         </span>
@@ -142,7 +142,7 @@ export default function CartPage() {
         <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-2xl border shadow-sm lg:col-span-2">
           <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-[11px] font-semibold tracking-widest uppercase sm:flex">
             <span>Product</span>
-            <div className="flex gap-16">
+            <div className="flex gap-8 lg:gap-16">
               <span>Qty</span>
               <span>Subtotal</span>
             </div>
@@ -386,7 +386,7 @@ function CartItem({
                 onUpdate(item.id, next);
               }}
               disabled={isUpdating || item.quantity <= 1}
-              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-2.5 py-1 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
+              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
@@ -413,7 +413,7 @@ function CartItem({
                 onUpdate(item.id, next);
               }}
               disabled={isUpdating || item.quantity >= MAX_QUANTITY}
-              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-2.5 py-1 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
+              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -422,7 +422,7 @@ function CartItem({
           <button
             onClick={() => onRemove(item.id)}
             disabled={isRemoving}
-            className="text-muted hover:bg-danger/10 hover:text-danger focus-visible:ring-danger/20 rounded-full p-1.5 transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted hover:bg-danger/10 hover:text-danger focus-visible:ring-danger/20 rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:outline-none"
           >
             <Trash2 className="h-4 w-4" />
           </button>

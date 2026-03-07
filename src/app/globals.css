@@ -59,7 +59,13 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
@@ -111,32 +117,39 @@ h4 {
 }
 
 /* Hero entrance animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.hero-fade-in {
-  animation: fadeInUp 0.7s ease-out both;
-}
-
+.hero-fade-in,
 .hero-fade-in-delay {
-  animation: fadeInUp 0.7s 0.15s ease-out both;
+  opacity: 1;
 }
 
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+
+  .hero-fade-in {
+    animation: fadeInUp 0.7s ease-out both;
+  }
+
+  .hero-fade-in-delay {
+    animation: fadeInUp 0.7s 0.15s ease-out both;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 }

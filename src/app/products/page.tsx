@@ -159,7 +159,7 @@ function ProductsContent() {
                         params.set("page", String(p));
                         router.push(`/products?${params.toString()}`);
                       }}
-                      className={`focus-visible:ring-primary/30 flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                      className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                         p === page
                           ? "bg-foreground text-white shadow-sm"
                           : "border-border text-muted hover:border-border-hover hover:text-foreground border bg-white"

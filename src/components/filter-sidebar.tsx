@@ -54,16 +54,20 @@ function CategoryItem({
         {hasChildren ? (
           <button
             onClick={() => setOpen(!open)}
-            className="text-muted-light hover:text-muted focus-visible:ring-primary/20 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-light hover:text-muted focus-visible:ring-primary/20 flex shrink-0 items-center justify-center rounded-full p-2 transition focus-visible:ring-2 focus-visible:outline-none"
           >
-            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {open ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
           </button>
         ) : (
           <span className="w-5 shrink-0" />
         )}
         <button
           onClick={() => onSelect(isActive ? undefined : cat.slug)}
-          className={`focus-visible:ring-primary/20 flex flex-1 items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-[13px] transition focus-visible:ring-2 focus-visible:outline-none ${
+          className={`focus-visible:ring-primary/20 flex flex-1 items-center gap-2 rounded-2xl px-2.5 py-2.5 text-left text-[13px] transition focus-visible:ring-2 focus-visible:outline-none ${
             isActive
               ? "bg-secondary-light text-secondary font-semibold"
               : "text-foreground hover:bg-background hover:text-foreground"
@@ -143,7 +147,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         <h4 className="text-foreground mb-1 text-[13px] font-semibold">Categories</h4>
         <button
           onClick={() => setFilter("category", undefined)}
-          className={`focus-visible:ring-primary/20 flex w-full items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-[13px] transition focus-visible:ring-2 focus-visible:outline-none ${
+          className={`focus-visible:ring-primary/20 flex w-full items-center gap-2 rounded-2xl px-2.5 py-2.5 text-left text-[13px] transition focus-visible:ring-2 focus-visible:outline-none ${
             !filters.category
               ? "bg-secondary-light text-secondary font-semibold"
               : "text-foreground hover:bg-background"
@@ -168,7 +172,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="border-border bg-card text-foreground hover:border-border-hover hover:bg-background focus-visible:ring-border flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
+        className="border-border bg-card text-foreground hover:border-border-hover hover:bg-background focus-visible:ring-border flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
       >
         <SlidersHorizontal className="text-foreground h-4 w-4" />
         Filters
@@ -188,7 +192,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
           <div className="border-border bg-card relative ml-auto h-full w-80 max-w-[85vw] overflow-y-auto border-l p-6 shadow-xl">
             <button
               onClick={() => setMobileOpen(false)}
-              className="text-muted hover:text-foreground focus-visible:ring-primary/20 absolute top-4 right-4 rounded-full p-1 transition focus-visible:ring-2 focus-visible:outline-none"
+              className="text-muted hover:text-foreground focus-visible:ring-primary/20 absolute top-4 right-4 rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:outline-none"
             >
               <X className="h-5 w-5" />
             </button>

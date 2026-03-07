@@ -73,7 +73,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center shadow-sm">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm sm:p-16">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-secondary h-8 w-8" />
           </div>

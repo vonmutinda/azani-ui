@@ -72,7 +72,7 @@ function HeroCarousel({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative h-[340px] w-full sm:h-[400px] lg:h-[420px]">
+      <div className="relative h-[260px] w-full sm:h-[340px] lg:h-[420px]">
         {cards.map(({ idx, position }) => {
           const p = products[idx];
           return (
@@ -121,7 +121,7 @@ function HeroCarousel({
           <button
             type="button"
             onClick={() => go(active - 1)}
-            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
+            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
             aria-label="Previous product"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -140,7 +140,7 @@ function HeroCarousel({
           <button
             type="button"
             onClick={() => go(active + 1)}
-            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
+            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
             aria-label="Next product"
           >
             <ChevronRight className="h-4 w-4" />
@@ -235,7 +235,7 @@ export default function Home() {
           {/* Right — product carousel */}
           <div className="hero-fade-in-delay flex flex-1 items-center justify-center">
             {featuredQuery.isLoading ? (
-              <div className="relative h-[340px] w-full max-w-[460px] sm:h-[400px] lg:h-[420px]">
+              <div className="relative h-[260px] w-full max-w-[460px] sm:h-[340px] lg:h-[420px]">
                 <div className="bg-border/40 absolute top-1/2 left-1/2 h-full w-[52%] -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-2xl" />
                 <div className="bg-border/20 absolute top-1/2 left-0 h-[65%] w-[38%] -translate-y-1/2 animate-pulse rounded-2xl" />
                 <div className="bg-border/20 absolute top-1/2 right-0 h-[65%] w-[38%] -translate-y-1/2 animate-pulse rounded-2xl" />
@@ -251,13 +251,10 @@ export default function Home() {
       <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between">
           <div>
-            <h2 className="text-foreground text-2xl font-bold">Shop by Category</h2>
+            <h2 className="text-foreground text-xl font-bold sm:text-2xl">Shop by Category</h2>
             <p className="text-muted mt-1 text-sm">Find exactly what you need</p>
           </div>
-          <Link
-            href="/products"
-            className="text-secondary hidden text-sm font-medium hover:underline sm:inline"
-          >
+          <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
             View all <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
           </Link>
         </div>
@@ -267,7 +264,7 @@ export default function Home() {
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="group border-border bg-card flex min-w-[130px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl border p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md lg:min-w-0"
+              className="group border-border bg-card flex min-w-[110px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl border p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:min-w-[130px] lg:min-w-0"
             >
               <div className="bg-background flex h-16 w-16 items-center justify-center rounded-2xl transition group-hover:scale-110">
                 <CategoryIcon icon={cat.icon} size={28} colored />
@@ -283,7 +280,9 @@ export default function Home() {
         <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-foreground text-2xl font-bold">Explore Our Collection</h2>
+              <h2 className="text-foreground text-xl font-bold sm:text-2xl">
+                Explore Our Collection
+              </h2>
               <div className="mt-3 flex gap-1">
                 {(
                   [
@@ -305,10 +304,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <Link
-              href="/products"
-              className="text-secondary hidden text-sm font-medium hover:underline sm:inline"
-            >
+            <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
               View all <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
             </Link>
           </div>

@@ -112,7 +112,7 @@ function ShippingStep({
   }, [options]);
 
   return (
-    <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+    <div className="border-border bg-card space-y-4 rounded-2xl border p-4 shadow-sm sm:p-6">
       <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
 
       {qualifiesForFree && (
@@ -415,7 +415,7 @@ export default function CheckoutPage() {
       <div className="mb-5 flex items-center gap-3">
         <Link
           href="/cart"
-          className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full p-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -428,7 +428,7 @@ export default function CheckoutPage() {
           <div key={s.id} className="flex flex-1 items-center">
             <div className="flex flex-1 flex-col items-center gap-1">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs transition ${
+                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-xs transition ${
                   i < currentIdx
                     ? "border-success bg-success text-white"
                     : i === currentIdx
@@ -443,7 +443,7 @@ export default function CheckoutPage() {
                 )}
               </div>
               <span
-                className={`text-[10px] font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
+                className={`text-[11px] font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
               >
                 {s.label}
               </span>
@@ -516,7 +516,7 @@ export default function CheckoutPage() {
               {step === "address" && (
                 <form
                   onSubmit={handleAddressSubmit}
-                  className="border-border bg-card space-y-5 rounded-2xl border p-6 shadow-sm"
+                  className="border-border bg-card space-y-5 rounded-2xl border p-4 shadow-sm sm:p-6"
                 >
                   <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
                   {customerQuery.data && (
@@ -748,7 +748,7 @@ export default function CheckoutPage() {
 
               {/* Step: Payment */}
               {step === "payment" && (
-                <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+                <div className="border-border bg-card space-y-4 rounded-2xl border p-4 shadow-sm sm:p-6">
                   <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
                   <button
                     onClick={() => paymentMutation.mutate()}
@@ -781,7 +781,7 @@ export default function CheckoutPage() {
 
               {/* Step: Review */}
               {step === "review" && (
-                <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+                <div className="border-border bg-card space-y-4 rounded-2xl border p-4 shadow-sm sm:p-6">
                   <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
 
                   {/* Address summary */}
@@ -843,7 +843,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Summary sidebar */}
-            <div className="border-border bg-card rounded-2xl border p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
+            <div className="border-border bg-card rounded-2xl border p-4 shadow-sm sm:p-6 lg:sticky lg:top-24 lg:self-start">
               <h3 className="text-foreground mb-4 text-sm font-bold tracking-wider uppercase">
                 Order Summary
                 <span className="text-muted ml-1.5 text-xs font-medium">

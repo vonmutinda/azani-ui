@@ -244,7 +244,7 @@ export function SiteHeader() {
             <button
               onClick={toggleSearch}
               aria-label="Search"
-              className="text-muted hover:text-foreground focus-visible:ring-border relative rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="text-muted hover:text-foreground focus-visible:ring-border relative rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               {searchOpen ? (
                 <X className="h-[18px] w-[18px]" />
@@ -255,7 +255,7 @@ export function SiteHeader() {
             <Link
               href={isLoggedIn ? "/account" : "/account/login"}
               aria-label="Account"
-              className="text-muted hover:text-foreground focus-visible:ring-border relative hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className="text-muted hover:text-foreground focus-visible:ring-border relative hidden rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
             >
               <User className="h-[18px] w-[18px]" />
               {isVerified && (
@@ -265,14 +265,14 @@ export function SiteHeader() {
             <Link
               href="/account/wishlist"
               aria-label="Wishlist"
-              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
             >
               <Heart className="h-[18px] w-[18px]" />
             </Link>
             <Link
               href="/cart"
               aria-label="Cart"
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 relative ml-1 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 relative ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <ShoppingBag className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
@@ -285,7 +285,7 @@ export function SiteHeader() {
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Menu"
-              className="text-muted hover:text-foreground focus-visible:ring-border ml-1 rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
+              className="text-muted hover:text-foreground focus-visible:ring-border ml-1 rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -365,7 +365,7 @@ export function SiteHeader() {
                           key={sub.slug}
                           href={`/products?category=${sub.slug}`}
                           onClick={() => setMobileOpen(false)}
-                          className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-3 py-1.5 text-xs transition"
+                          className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-3 py-2.5 text-xs transition"
                         >
                           {sub.name}
                         </Link>

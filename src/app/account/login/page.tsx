@@ -186,7 +186,7 @@ export default function LoginPage() {
   if (view === "registered") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
           <div className="bg-secondary-light flex h-16 w-16 items-center justify-center rounded-full">
             <Mail className="text-secondary h-7 w-7" />
           </div>
@@ -214,7 +214,7 @@ export default function LoginPage() {
   if (view === "forgot-sent") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -455,7 +455,7 @@ export default function LoginPage() {
         </button>
 
         {isRegister && (
-          <p className="text-muted text-center text-[11px] leading-relaxed">
+          <p className="text-muted text-center text-xs leading-relaxed">
             By creating an account, you agree to our Terms of Service and Privacy Policy.
           </p>
         )}

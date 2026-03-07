@@ -95,7 +95,7 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (!product) {
     return (
-      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center shadow-sm">
+      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm sm:p-16">
         <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
           <ShoppingBag className="text-primary h-8 w-8" />
         </div>
@@ -148,7 +148,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     <div>
       <button
         onClick={onBack}
-        className="text-muted hover:text-foreground focus-visible:ring-border mb-6 inline-flex items-center gap-1.5 rounded-full text-sm transition focus-visible:ring-2 focus-visible:outline-none"
+        className="text-muted hover:text-foreground focus-visible:ring-border mb-6 inline-flex items-center gap-1.5 rounded-full py-2 text-sm transition focus-visible:ring-2 focus-visible:outline-none"
       >
         <ArrowLeft className="h-4 w-4" /> Back to products
       </button>
@@ -191,7 +191,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </div>
 
         {/* Details */}
-        <div className="border-border bg-card space-y-5 rounded-2xl border p-6 shadow-sm">
+        <div className="border-border bg-card space-y-5 rounded-2xl border p-4 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
@@ -234,7 +234,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                     onClick={() =>
                       setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
                     }
-                    className={`focus-visible:ring-primary/20 rounded-full border px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                    className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                       effectiveOptions[option.id] === val.value
                         ? "border-foreground bg-foreground/5 text-foreground"
                         : "border-border text-foreground hover:border-foreground/40"
@@ -252,16 +252,16 @@ export function ProductDetail({ productId, onBack }: Props) {
             <div className="border-border flex items-center rounded-full border bg-white shadow-sm">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-9 w-9 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="flex h-9 w-10 items-center justify-center text-sm font-semibold">
+              <span className="flex h-11 w-10 items-center justify-center text-sm font-semibold">
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-9 w-9 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

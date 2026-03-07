@@ -81,12 +81,12 @@ export function ProductCard({ product, onSelect }: Props) {
         </div>
       )}
 
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-0 transition-all duration-200 group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-100 transition-all duration-200 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`border-border focus-visible:ring-primary/30 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+          className={`border-border focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
             isWishlisted ? "text-primary" : "text-muted hover:bg-background hover:text-foreground"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -136,7 +136,7 @@ export function ProductCard({ product, onSelect }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending}
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
               title="Add to cart"
             >
               <ShoppingBag className="h-3.5 w-3.5" />

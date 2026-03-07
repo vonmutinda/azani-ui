@@ -174,7 +174,7 @@ export default function AccountPage() {
                 </span>
               )}
             </div>
-            <p className="text-muted text-sm">{customer.email}</p>
+            <p className="text-muted truncate text-sm">{customer.email}</p>
           </div>
         </div>
         <button
@@ -455,7 +455,7 @@ function ProfileDetails({
               <Mail className="h-3.5 w-3.5" />
               Email
             </div>
-            <span className="text-foreground text-sm font-medium">{customer.email}</span>
+            <span className="text-foreground truncate text-sm font-medium">{customer.email}</span>
           </div>
           <div className="flex items-center justify-between px-5 py-2.5">
             <div className="text-muted flex items-center gap-2 text-sm">
@@ -603,7 +603,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                     <div className="flex shrink-0 gap-1">
                       <button
                         onClick={() => startEdit(addr)}
-                        className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                        className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Edit address"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -611,7 +611,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                       <button
                         onClick={() => deleteMutation.mutate(addr.id!)}
                         disabled={deleteMutation.isPending}
-                        className="text-muted hover:bg-danger/5 hover:text-danger focus-visible:ring-danger/20 flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                        className="text-muted hover:bg-danger/5 hover:text-danger focus-visible:ring-danger/20 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Delete address"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

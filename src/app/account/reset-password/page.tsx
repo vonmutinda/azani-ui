@@ -95,10 +95,11 @@ export default function ResetPasswordPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm"
+        className="border-border bg-card space-y-4 rounded-2xl border p-4 shadow-sm sm:p-6"
       >
         <p className="text-muted text-sm">
-          Enter a new password for <span className="text-foreground font-medium">{email}</span>.
+          Enter a new password for{" "}
+          <span className="text-foreground truncate font-medium">{email}</span>.
         </p>
 
         <div>
@@ -109,7 +110,6 @@ export default function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
-            autoFocus
           />
         </div>
 

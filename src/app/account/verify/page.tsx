@@ -45,7 +45,7 @@ export default function VerifyEmailPage() {
   if (status === "loading") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
           <Loader2 className="text-secondary h-10 w-10 animate-spin" />
           <h1 className="text-foreground text-xl font-bold">Verifying Your Email...</h1>
           <p className="text-muted text-sm">Please wait while we confirm your email address.</p>
@@ -57,7 +57,7 @@ export default function VerifyEmailPage() {
   if (status === "success" || status === "already") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -82,7 +82,7 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
         <div className="bg-danger/10 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertTriangle className="text-danger h-7 w-7" />
         </div>

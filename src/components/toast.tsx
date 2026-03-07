@@ -59,7 +59,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="pointer-events-none fixed right-4 bottom-4 z-[100] flex flex-col items-end gap-2 sm:right-6 sm:bottom-6">
+      <div
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:items-end"
+        style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
         {toasts.map((toast) => {
           const Icon = ICON_MAP[toast.type];
           const accent = ACCENT_MAP[toast.type];
@@ -80,7 +83,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <p className="text-foreground text-sm font-medium">{toast.message}</p>
               <button
                 onClick={() => dismiss(toast.id)}
-                className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border ml-1 shrink-0 rounded-full p-1 transition focus-visible:ring-2 focus-visible:outline-none"
+                className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border ml-1 shrink-0 rounded-full p-2 transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
