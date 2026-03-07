@@ -26,9 +26,8 @@ const WISHLIST_METADATA_KEY = "wishlist_product_ids";
 async function getProductPricingParams() {
   const regionsRes = await getRegions();
   const region =
-    regionsRes.regions.find((r) =>
-      r.countries.some((c) => c.iso_2 === "et"),
-    ) ?? regionsRes.regions[0];
+    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et")) ??
+    regionsRes.regions[0];
 
   return {
     fields: PRODUCT_PRICE_FIELDS,
@@ -44,7 +43,9 @@ function normalizeWishlistProductIds(value: unknown): string[] {
   );
 }
 
-export function getCustomerWishlistProductIds(customer: MedusaCustomer | null | undefined): string[] {
+export function getCustomerWishlistProductIds(
+  customer: MedusaCustomer | null | undefined,
+): string[] {
   return normalizeWishlistProductIds(customer?.metadata?.[WISHLIST_METADATA_KEY]);
 }
 
@@ -71,10 +72,9 @@ export async function getProducts(
 export async function getProductByHandle(handle: string) {
   const pricingParams = await getProductPricingParams();
 
-  const res = await medusaRequest<{ products: MedusaProduct[] }>(
-    "store/products",
-    { searchParams: { handle, limit: 1, ...pricingParams } },
-  );
+  const res = await medusaRequest<{ products: MedusaProduct[] }>("store/products", {
+    searchParams: { handle, limit: 1, ...pricingParams },
+  });
   return res.products[0] ?? null;
 }
 
@@ -146,9 +146,7 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
 
   if (cartId) {
     try {
-      const res = await medusaRequest<{ cart: MedusaCart }>(
-        `store/carts/${cartId}`,
-      );
+      const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
       return res.cart;
     } catch {
       // Cart not found or expired, create new one
@@ -156,14 +154,12 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
   }
 
   // Get Ethiopia region for cart (fallback to first available)
-  const regionsRes = await medusaRequest<{ regions: MedusaRegion[] }>(
-    "store/regions",
-    { searchParams: { limit: 50 } },
-  );
+  const regionsRes = await medusaRequest<{ regions: MedusaRegion[] }>("store/regions", {
+    searchParams: { limit: 50 },
+  });
   const region =
-    regionsRes.regions.find((r) =>
-      r.countries.some((c) => c.iso_2 === "et"),
-    ) ?? regionsRes.regions[0];
+    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et")) ??
+    regionsRes.regions[0];
 
   const res = await medusaRequest<{ cart: MedusaCart }>("store/carts", {
     method: "POST",
@@ -179,9 +175,7 @@ export async function getCart(): Promise<MedusaCart | null> {
   if (!cartId) return null;
 
   try {
-    const res = await medusaRequest<{ cart: MedusaCart }>(
-      `store/carts/${cartId}`,
-    );
+    const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
     return res.cart;
   } catch {
     return null;
@@ -190,36 +184,29 @@ export async function getCart(): Promise<MedusaCart | null> {
 
 export async function addToCart(variantId: string, quantity = 1) {
   const cart = await getOrCreateCart();
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cart.id}/line-items`,
-    {
-      method: "POST",
-      body: { variant_id: variantId, quantity },
-    },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cart.id}/line-items`, {
+    method: "POST",
+    body: { variant_id: variantId, quantity },
+  });
 }
 
 export async function updateLineItem(lineItemId: string, quantity: number) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cartId}/line-items/${lineItemId}`,
-    {
-      method: "POST",
-      body: { quantity },
-    },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/line-items/${lineItemId}`, {
+    method: "POST",
+    body: { quantity },
+  });
 }
 
 export async function removeLineItem(lineItemId: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cartId}/line-items/${lineItemId}`,
-    { method: "DELETE" },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/line-items/${lineItemId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function updateCart(data: Record<string, unknown>) {
@@ -236,26 +223,20 @@ export async function addPromoCode(code: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cartId}/promotions`,
-    {
-      method: "POST",
-      body: { promo_codes: [code] },
-    },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/promotions`, {
+    method: "POST",
+    body: { promo_codes: [code] },
+  });
 }
 
 export async function removePromoCode(code: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cartId}/promotions`,
-    {
-      method: "DELETE",
-      body: { promo_codes: [code] },
-    },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/promotions`, {
+    method: "DELETE",
+    body: { promo_codes: [code] },
+  });
 }
 
 // ── Shipping ────────────────────────────────────────────────────────
@@ -264,23 +245,19 @@ export async function getShippingOptions() {
   const cartId = getStoredCartId();
   if (!cartId) return { shipping_options: [] };
 
-  return medusaRequest<{ shipping_options: MedusaShippingOption[] }>(
-    "store/shipping-options",
-    { searchParams: { cart_id: cartId } },
-  );
+  return medusaRequest<{ shipping_options: MedusaShippingOption[] }>("store/shipping-options", {
+    searchParams: { cart_id: cartId },
+  });
 }
 
 export async function addShippingMethod(optionId: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(
-    `store/carts/${cartId}/shipping-methods`,
-    {
-      method: "POST",
-      body: { option_id: optionId },
-    },
-  );
+  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/shipping-methods`, {
+    method: "POST",
+    body: { option_id: optionId },
+  });
 }
 
 // ── Payment ─────────────────────────────────────────────────────────
@@ -291,7 +268,10 @@ export async function initializePaymentSession() {
 
   // Create payment collection for the cart
   const pcRes = await medusaRequest<{
-    payment_collection: { id: string; payment_sessions?: { id: string; provider_id: string; status: string }[] };
+    payment_collection: {
+      id: string;
+      payment_sessions?: { id: string; provider_id: string; status: string }[];
+    };
   }>("store/payment-collections", {
     method: "POST",
     body: { cart_id: cartId },
@@ -301,7 +281,10 @@ export async function initializePaymentSession() {
 
   // Create a payment session with the system default provider
   return medusaRequest<{
-    payment_collection: { id: string; payment_sessions: { id: string; provider_id: string; status: string }[] };
+    payment_collection: {
+      id: string;
+      payment_sessions: { id: string; provider_id: string; status: string }[];
+    };
   }>(`store/payment-collections/${pcId}/payment-sessions`, {
     method: "POST",
     body: { provider_id: "pp_system_default" },
@@ -323,13 +306,10 @@ export async function completeCart() {
 // ── Auth ────────────────────────────────────────────────────────────
 
 export async function loginCustomer(email: string, password: string) {
-  const res = await medusaRequest<{ token: string }>(
-    "auth/customer/emailpass",
-    {
-      method: "POST",
-      body: { email, password },
-    },
-  );
+  const res = await medusaRequest<{ token: string }>("auth/customer/emailpass", {
+    method: "POST",
+    body: { email, password },
+  });
   return res;
 }
 
@@ -340,29 +320,23 @@ export async function registerCustomer(data: {
   last_name: string;
 }) {
   // First create auth identity
-  const authRes = await medusaRequest<{ token: string }>(
-    "auth/customer/emailpass/register",
-    {
-      method: "POST",
-      body: { email: data.email, password: data.password },
-    },
-  );
+  const authRes = await medusaRequest<{ token: string }>("auth/customer/emailpass/register", {
+    method: "POST",
+    body: { email: data.email, password: data.password },
+  });
 
   // Then create the customer
-  const customerRes = await medusaRequest<{ customer: MedusaCustomer }>(
-    "store/customers",
-    {
-      method: "POST",
-      body: {
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-      },
-      headers: {
-        Authorization: `Bearer ${authRes.token}`,
-      },
+  const customerRes = await medusaRequest<{ customer: MedusaCustomer }>("store/customers", {
+    method: "POST",
+    body: {
+      email: data.email,
+      first_name: data.first_name,
+      last_name: data.last_name,
     },
-  );
+    headers: {
+      Authorization: `Bearer ${authRes.token}`,
+    },
+  });
 
   return { token: authRes.token, customer: customerRes.customer };
 }
@@ -372,10 +346,9 @@ export async function getCustomer() {
   if (!token) return null;
 
   try {
-    const res = await medusaRequest<{ customer: MedusaCustomer }>(
-      "store/customers/me",
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
+    const res = await medusaRequest<{ customer: MedusaCustomer }>("store/customers/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     return res.customer;
   } catch {
     return null;
@@ -393,14 +366,11 @@ export async function updateCustomer(data: {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ customer: MedusaCustomer }>(
-    "store/customers/me",
-    {
-      method: "POST",
-      body: data,
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
+  const res = await medusaRequest<{ customer: MedusaCustomer }>("store/customers/me", {
+    method: "POST",
+    body: data,
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.customer;
 }
 
@@ -471,10 +441,9 @@ export async function getCustomerAddresses() {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ addresses: MedusaAddress[] }>(
-    "store/customers/me/addresses",
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const res = await medusaRequest<{ addresses: MedusaAddress[] }>("store/customers/me/addresses", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.addresses;
 }
 
@@ -482,14 +451,11 @@ export async function addCustomerAddress(data: Omit<MedusaAddress, "id">) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ address: MedusaAddress }>(
-    "store/customers/me/addresses",
-    {
-      method: "POST",
-      body: data,
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
+  const res = await medusaRequest<{ address: MedusaAddress }>("store/customers/me/addresses", {
+    method: "POST",
+    body: data,
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.address;
 }
 
@@ -512,13 +478,10 @@ export async function deleteCustomerAddress(id: string) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  await medusaRequest<void>(
-    `store/customers/me/addresses/${id}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
+  await medusaRequest<void>(`store/customers/me/addresses/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 // ── Orders ─────────────────────────────────────────────────────────
@@ -527,10 +490,9 @@ export async function getOrders() {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ orders: MedusaOrder[] }>(
-    "store/orders",
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const res = await medusaRequest<{ orders: MedusaOrder[] }>("store/orders?fields=*items", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.orders;
 }
 
@@ -538,17 +500,50 @@ export async function getOrderById(id: string) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ order: MedusaOrder }>(
-    `store/orders/${id}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const res = await medusaRequest<{ order: MedusaOrder }>(`store/orders/${id}?fields=*items`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.order;
+}
+
+// ── Password Reset ──────────────────────────────────────────────────
+
+export async function requestPasswordReset(email: string) {
+  return medusaRequest("auth/customer/emailpass/reset-password", {
+    method: "POST",
+    body: { identifier: email },
+  });
+}
+
+export async function resetPassword(token: string, email: string, password: string) {
+  return medusaRequest("auth/customer/emailpass/update", {
+    method: "POST",
+    body: { email, password },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Email Verification ──────────────────────────────────────────────
+
+export async function verifyEmail(token: string, email: string) {
+  return medusaRequest<{ message: string; verified?: boolean; already_verified?: boolean }>(
+    "store/customers/verify",
+    {
+      method: "POST",
+      body: { token, email },
+    },
+  );
+}
+
+export async function resendVerificationEmail(email: string) {
+  return medusaRequest<{ message: string }>("store/customers/resend-verification", {
+    method: "POST",
+    body: { email },
+  });
 }
 
 // ── Regions ─────────────────────────────────────────────────────────
 
 export async function getRegions() {
-  return medusaRequest<{ regions: MedusaRegion[]; count: number }>(
-    "store/regions",
-  );
+  return medusaRequest<{ regions: MedusaRegion[]; count: number }>("store/regions");
 }

@@ -12,14 +12,15 @@ import {
   getOrders,
   getOrderById,
   getWishlistProductIds,
+  resendVerificationEmail,
 } from "@/lib/medusa-api";
 import { clearAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice } from "@/lib/formatters";
-import { MedusaAddress, MedusaOrder } from "@/types/medusa";
+import { formatPrice, formatOrderRef } from "@/lib/formatters";
+import { MedusaAddress, MedusaLineItem, MedusaOrder } from "@/types/medusa";
 import {
   User,
   MapPin,
@@ -35,6 +36,7 @@ import {
   Baby,
   Heart,
   Mail,
+  BadgeCheck,
 } from "lucide-react";
 
 const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
@@ -150,13 +152,28 @@ export default function AccountPage() {
       {/* Slim welcome header */}
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-foreground flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
-            {initials}
+          <div className="relative">
+            <div className="bg-foreground flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
+              {initials}
+            </div>
+            {customer.metadata?.email_verified === true && (
+              <div className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm">
+                <BadgeCheck className="text-secondary h-4 w-4" />
+              </div>
+            )}
           </div>
           <div>
-            <h1 className="text-foreground text-xl font-bold">
-              {customer.first_name || "Welcome"} {customer.last_name || ""}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-foreground text-xl font-bold">
+                {customer.first_name || "Welcome"} {customer.last_name || ""}
+              </h1>
+              {customer.metadata?.email_verified === true && (
+                <span className="bg-secondary-light text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                  <BadgeCheck className="h-3 w-3" />
+                  Verified
+                </span>
+              )}
+            </div>
             <p className="text-muted text-sm">{customer.email}</p>
           </div>
         </div>
@@ -168,6 +185,8 @@ export default function AccountPage() {
           Sign Out
         </button>
       </div>
+
+      <EmailVerificationBanner customer={customer} />
 
       <div className="grid items-start gap-8 lg:grid-cols-[1fr_300px]">
         {/* Left column -- all content sections */}
@@ -273,6 +292,50 @@ export default function AccountPage() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Email Verification Banner ───────────────────────────────────────
+
+function EmailVerificationBanner({
+  customer,
+}: {
+  customer: { email: string; metadata?: Record<string, unknown> | null };
+}) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const isVerified = customer.metadata?.email_verified === true;
+  if (isVerified) return null;
+
+  const handleResend = async () => {
+    setSending(true);
+    try {
+      await resendVerificationEmail(customer.email);
+      setSent(true);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="border-secondary/20 bg-secondary-light mb-5 flex items-center gap-3 rounded-2xl border px-5 py-3.5">
+      <Mail className="text-secondary h-5 w-5 shrink-0" />
+      <p className="text-foreground flex-1 text-sm">
+        {sent
+          ? "Verification email sent! Check your inbox."
+          : "Please verify your email address. Check your inbox for a verification link."}
+      </p>
+      {!sent && (
+        <button
+          onClick={handleResend}
+          disabled={sending}
+          className="bg-secondary hover:bg-secondary/85 shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50"
+        >
+          {sending ? "Sending..." : "Resend"}
+        </button>
+      )}
     </div>
   );
 }
@@ -701,6 +764,67 @@ function AddressForm({
   );
 }
 
+// ── Order Item Avatar Stack ──────────────────────────────────────────
+
+function OrderItemAvatars({
+  items,
+  size = 32,
+  max = 4,
+}: {
+  items?: MedusaLineItem[];
+  size?: number;
+  max?: number;
+}) {
+  if (!items || items.length === 0) return null;
+
+  const visible = items.slice(0, max);
+  const overflow = items.length - max;
+  const px = `${size}px`;
+
+  return (
+    <div className="flex items-center">
+      {visible.map((item, i) => {
+        const thumb = item.thumbnail || item.product?.thumbnail || item.product?.images?.[0]?.url;
+
+        return (
+          <div
+            key={item.id}
+            className="relative shrink-0 rounded-full border-2 border-white shadow-sm"
+            style={{
+              width: px,
+              height: px,
+              marginLeft: i === 0 ? 0 : -8,
+              zIndex: max - i,
+            }}
+          >
+            {thumb ? (
+              <Image
+                src={thumb}
+                alt={item.title}
+                width={size}
+                height={size}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              <div className="bg-background flex h-full w-full items-center justify-center rounded-full">
+                <Package className="text-muted h-3.5 w-3.5" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {overflow > 0 && (
+        <div
+          className="bg-foreground/10 text-foreground relative flex shrink-0 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold shadow-sm"
+          style={{ width: px, height: px, marginLeft: -8, zIndex: 0 }}
+        >
+          +{overflow}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Orders Section (receipt-style with inline accordion) ────────────
 
 function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading: boolean }) {
@@ -755,7 +879,8 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
 
       {/* Column header (desktop) */}
       <div className="border-border bg-background/60 text-muted hidden items-center border-t px-5 py-2 text-[11px] font-semibold tracking-wider uppercase sm:flex">
-        <span className="flex-1">Order</span>
+        <span className="w-44">Order</span>
+        <span className="flex-1">Items</span>
         <span className="w-24 text-center">Status</span>
         <span className="w-24 text-right">Total</span>
         <span className="w-8" />
@@ -773,11 +898,16 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
               >
                 {/* Desktop row */}
                 <div className="hidden flex-1 items-center sm:flex">
-                  <div className="flex-1">
-                    <span className="text-foreground text-sm font-medium">#{order.display_id}</span>
-                    <span className="text-muted ml-2 text-xs">
+                  <div className="flex w-44 items-baseline gap-2">
+                    <span className="text-foreground text-xs font-semibold whitespace-nowrap">
+                      {formatOrderRef(order.display_id, order.created_at, order.id)}
+                    </span>
+                    <span className="text-muted text-xs">
                       {new Date(order.created_at).toLocaleDateString()}
                     </span>
+                  </div>
+                  <div className="flex flex-1 items-center">
+                    <OrderItemAvatars items={order.items} size={32} max={4} />
                   </div>
                   <div className="w-24 text-center">
                     <span
@@ -791,15 +921,18 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
                   </span>
                 </div>
                 {/* Mobile row */}
-                <div className="flex flex-1 flex-col gap-1 sm:hidden">
+                <div className="flex flex-1 flex-col gap-1.5 sm:hidden">
                   <div className="flex items-center justify-between">
-                    <span className="text-foreground text-sm font-medium">#{order.display_id}</span>
+                    <span className="text-foreground text-xs font-semibold whitespace-nowrap">
+                      {formatOrderRef(order.display_id, order.created_at, order.id)}
+                    </span>
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusColor(order.status)}`}
                     >
                       {order.status}
                     </span>
                   </div>
+                  <OrderItemAvatars items={order.items} size={28} max={5} />
                   <div className="flex items-center justify-between">
                     <span className="text-muted text-xs">
                       {new Date(order.created_at).toLocaleDateString()}
@@ -846,30 +979,34 @@ function OrderDetail({ orderId }: { orderId: string }) {
     <div className="border-border bg-background/40 border-t border-dashed px-5 pt-3 pb-4">
       {/* Items */}
       <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
-        {order.items.map((item) => (
-          <div key={item.id} className="flex gap-3 px-3 py-2.5">
-            {item.thumbnail ? (
-              <Image
-                src={item.thumbnail}
-                alt={item.title}
-                width={48}
-                height={48}
-                className="border-border h-12 w-12 shrink-0 rounded-lg border object-cover"
-              />
-            ) : (
-              <div className="border-border bg-background flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
-                <Package className="text-muted h-5 w-5" />
+        {order.items.map((item) => {
+          const thumb = item.thumbnail || item.product?.thumbnail || item.product?.images?.[0]?.url;
+
+          return (
+            <div key={item.id} className="flex gap-3 px-3 py-2.5">
+              {thumb ? (
+                <Image
+                  src={thumb}
+                  alt={item.title}
+                  width={48}
+                  height={48}
+                  className="border-border h-12 w-12 shrink-0 rounded-lg border object-cover"
+                />
+              ) : (
+                <div className="border-border bg-background flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
+                  <Package className="text-muted h-5 w-5" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
+                <p className="text-muted text-xs">Qty: {item.quantity}</p>
               </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
-              <p className="text-muted text-xs">Qty: {item.quantity}</p>
+              <span className="text-foreground shrink-0 text-sm font-medium">
+                {formatPrice(item.total || item.subtotal || item.unit_price * item.quantity)}
+              </span>
             </div>
-            <span className="text-foreground shrink-0 text-sm font-medium">
-              {formatPrice(item.total || item.subtotal || item.unit_price * item.quantity)}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Shipping address (compact) */}

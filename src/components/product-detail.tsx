@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   getProductById,
   addToCart,
@@ -38,6 +38,19 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   const product = productQuery.data?.product;
   const isWishlisted = product ? (wishlistQuery.data ?? []).includes(product.id) : false;
+
+  const defaultOptions = useMemo(() => {
+    const firstVariant = product?.variants?.[0];
+    if (!firstVariant?.options) return {};
+    const initial: Record<string, string> = {};
+    for (const vo of firstVariant.options) {
+      initial[vo.option_id] = vo.value;
+    }
+    return initial;
+  }, [product]);
+
+  const effectiveOptions =
+    Object.keys(selectedOptions).length > 0 ? selectedOptions : defaultOptions;
 
   const cartMutation = useMutation({
     mutationFn: ({ variantId, qty }: { variantId: string; qty: number }) =>
@@ -114,7 +127,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     variants.find((v) => {
       if (!v.options) return false;
       return options.every((opt) => {
-        const selected = selectedOptions[opt.id];
+        const selected = effectiveOptions[opt.id];
         if (!selected) return false;
         return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
       });
@@ -222,7 +235,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                       setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
                     }
                     className={`focus-visible:ring-primary/20 rounded-full border px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                      selectedOptions[option.id] === val.value
+                      effectiveOptions[option.id] === val.value
                         ? "border-foreground bg-foreground/5 text-foreground"
                         : "border-border text-foreground hover:border-foreground/40"
                     }`}

@@ -66,6 +66,33 @@ export function resolveProductImage(product: MedusaProduct): string | undefined 
   return product.images?.[0]?.url;
 }
 
+/**
+ * Generates a branded order reference from Medusa's numeric display_id.
+ * Format: KKB-YYMM-NNNXX  (e.g. KKB-2603-042A)
+ *   KKB     = Kokob prefix
+ *   YYMM    = 2-digit year + 2-digit month from order creation date
+ *   NNN     = zero-padded display_id (3+ digits)
+ *   XX      = suffix derived from the order id for uniqueness
+ */
+export function formatOrderRef(
+  displayId: number | string,
+  createdAt?: string,
+  orderId?: string,
+): string {
+  const now = createdAt ? new Date(createdAt) : new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const num = String(displayId).padStart(3, "0");
+
+  let suffix = "";
+  if (orderId) {
+    const chars = orderId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    suffix = chars.slice(-2);
+  }
+
+  return `KKB-${yy}${mm}-${num}${suffix}`;
+}
+
 export function stripHtml(value: string | undefined): string {
   if (!value) return "";
   return value

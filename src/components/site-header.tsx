@@ -113,6 +113,7 @@ export function SiteHeader() {
     staleTime: 5 * 60 * 1000,
   });
   const isLoggedIn = !!customerQuery.data;
+  const isVerified = customerQuery.data?.metadata?.email_verified === true;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,9 +255,12 @@ export function SiteHeader() {
             <Link
               href={isLoggedIn ? "/account" : "/account/login"}
               aria-label="Account"
-              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className="text-muted hover:text-foreground focus-visible:ring-border relative hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
             >
               <User className="h-[18px] w-[18px]" />
+              {isVerified && (
+                <span className="bg-secondary absolute right-1.5 bottom-1.5 h-2 w-2 rounded-full ring-2 ring-white" />
+              )}
             </Link>
             <Link
               href="/account/wishlist"
@@ -388,6 +392,11 @@ export function SiteHeader() {
               >
                 <User className="h-4 w-4" />
                 Account
+                {isVerified && (
+                  <span className="bg-secondary-light text-secondary ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    Verified
+                  </span>
+                )}
               </Link>
             </div>
           </div>

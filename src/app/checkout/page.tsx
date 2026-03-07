@@ -26,7 +26,7 @@ import {
   getCustomer,
   getCustomerAddresses,
 } from "@/lib/medusa-api";
-import { formatPrice } from "@/lib/formatters";
+import { formatPrice, formatOrderRef } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
 import { MedusaAddress, MedusaShippingOption } from "@/types/medusa";
 
@@ -189,6 +189,7 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("address");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedOrderRef, setPlacedOrderRef] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
@@ -328,9 +329,15 @@ export default function CheckoutPage() {
 
   const completeMutation = useMutation({
     mutationFn: () => completeCart(),
-    onSuccess: () => {
+    onSuccess: (data) => {
       clearStoredCartId();
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+      const order = data?.order as
+        | { display_id?: number; id?: string; created_at?: string }
+        | undefined;
+      if (order?.display_id) {
+        setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id));
+      }
       setOrderPlaced(true);
     },
     onError: (err: Error) => {
@@ -359,6 +366,9 @@ export default function CheckoutPage() {
             <Check className="text-success h-9 w-9" />
           </div>
           <h1 className="text-foreground text-2xl font-bold">Order Placed!</h1>
+          {placedOrderRef && (
+            <p className="text-foreground text-sm font-medium">Order {placedOrderRef}</p>
+          )}
           <p className="text-muted max-w-md text-sm leading-relaxed">
             Thank you for shopping at Kokob! You&apos;ll receive a confirmation email shortly.
           </p>
