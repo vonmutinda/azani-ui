@@ -6,11 +6,13 @@ import {
   ArrowLeft,
   Baby,
   Check,
+  Clock,
   CreditCard,
   MapPin,
   Package,
   ShoppingBag,
   Truck,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -26,7 +28,9 @@ import {
 } from "@/lib/medusa-api";
 import { formatPrice } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
-import { MedusaAddress } from "@/types/medusa";
+import { MedusaAddress, MedusaShippingOption } from "@/types/medusa";
+
+const FREE_SHIPPING_THRESHOLD = 5_000;
 
 type Step = "address" | "shipping" | "payment" | "review";
 
@@ -70,6 +74,115 @@ function toCheckoutAddress(address: Partial<MedusaAddress>) {
     country_code: address.country_code ?? "et",
     phone: address.phone ?? "+251",
   };
+}
+
+const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string; note?: string }> =
+  {
+    "Free Shipping": { icon: Truck, delivery: "Within 24 hours", note: "Orders over Br5,000" },
+    "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "Br150" },
+    "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "Br500" },
+  };
+
+function ShippingStep({
+  options,
+  isLoading,
+  selectedShipping,
+  isPending,
+  cartSubtotal,
+  onSelect,
+  onBack,
+}: {
+  options: MedusaShippingOption[];
+  isLoading: boolean;
+  selectedShipping: string | null;
+  isPending: boolean;
+  cartSubtotal: number;
+  onSelect: (optionId: string) => void;
+  onBack: () => void;
+}) {
+  const qualifiesForFree = cartSubtotal >= FREE_SHIPPING_THRESHOLD;
+
+  const sortedOptions = useMemo(() => {
+    const order = ["Free Shipping", "Standard Shipping", "Express Shipping"];
+    return [...options].sort((a, b) => {
+      const ai = order.indexOf(a.name);
+      const bi = order.indexOf(b.name);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }, [options]);
+
+  return (
+    <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+      <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
+
+      {qualifiesForFree && (
+        <div className="border-accent-green/30 bg-accent-green-light text-accent-green flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium">
+          <Check className="h-4 w-4" />
+          Your order qualifies for free shipping!
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+        </div>
+      ) : sortedOptions.length === 0 ? (
+        <p className="text-muted text-sm">
+          No shipping methods available. Please go back and verify your address.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {sortedOptions.map((option) => {
+            const isFreeOption = option.name === "Free Shipping";
+            const disabled = isPending || (isFreeOption && !qualifiesForFree);
+            const meta = SHIPPING_META[option.name] ?? { icon: Truck, delivery: "" };
+            const Icon = meta.icon;
+
+            return (
+              <button
+                key={option.id}
+                onClick={() => onSelect(option.id)}
+                disabled={disabled}
+                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left text-sm transition ${
+                  disabled && !isPending
+                    ? "border-border bg-background cursor-not-allowed opacity-50"
+                    : selectedShipping === option.id
+                      ? "border-secondary bg-secondary-light"
+                      : "border-border hover:border-foreground/30"
+                } disabled:opacity-50`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="text-secondary h-5 w-5" />
+                  <div>
+                    <p className="text-foreground font-medium">{option.name}</p>
+                    <p className="text-muted text-xs">
+                      {meta.delivery}
+                      {isFreeOption && !qualifiesForFree && (
+                        <span className="text-danger ml-1">
+                          (orders over Br{FREE_SHIPPING_THRESHOLD.toLocaleString()})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-primary font-semibold">
+                  {option.amount === 0 ? "Free" : formatPrice(option.amount)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <button
+        onClick={onBack}
+        className="text-muted hover:text-foreground text-sm font-medium transition"
+      >
+        &larr; Back to Address
+      </button>
+    </div>
+  );
 }
 
 export default function CheckoutPage() {
@@ -163,8 +276,25 @@ export default function CheckoutPage() {
         billing_address: address,
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+
+      const qualifies = (cart?.subtotal ?? 0) >= FREE_SHIPPING_THRESHOLD;
+      if (qualifies) {
+        try {
+          const res = await getShippingOptions();
+          const freeOption = res.shipping_options.find(
+            (o: MedusaShippingOption) => o.name === "Free Shipping",
+          );
+          if (freeOption) {
+            setSelectedShipping(freeOption.id);
+            shippingMutation.mutate(freeOption.id);
+            return;
+          }
+        } catch {
+          // fall through to manual shipping selection
+        }
+      }
       setStep("shipping");
     },
     onError: (err: Error) => {
@@ -224,7 +354,7 @@ export default function CheckoutPage() {
   if (orderPlaced) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
           <div className="bg-accent-green-light flex h-20 w-20 items-center justify-center rounded-full">
             <Check className="text-success h-9 w-9" />
           </div>
@@ -234,7 +364,7 @@ export default function CheckoutPage() {
           </p>
           <Link
             href="/products"
-            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -245,12 +375,20 @@ export default function CheckoutPage() {
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center">
-          <ShoppingBag className="text-muted-light h-16 w-16" />
-          <h1 className="text-foreground text-2xl font-bold">No items to checkout</h1>
-          <Link href="/products" className="text-primary text-sm font-medium hover:underline">
-            Continue Shopping
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+          <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <ShoppingBag className="text-primary h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-foreground text-2xl font-bold">No items to checkout</h1>
+            <p className="text-muted mt-1 text-sm">Add some products to your cart first.</p>
+          </div>
+          <Link
+            href="/products"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
         </div>
       </div>
@@ -258,47 +396,51 @@ export default function CheckoutPage() {
   }
 
   const inputClass =
-    "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+    "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
   const selectClass =
-    "h-10 w-full appearance-none rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+    "h-10 w-full appearance-none rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3">
         <Link
           href="/cart"
-          className="text-muted hover:bg-primary-light hover:text-primary rounded-full p-2 transition"
+          className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full p-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-foreground text-2xl font-bold">Checkout</h1>
       </div>
 
-      {/* Step indicator (bagisto style) */}
-      <div className="mb-10 flex items-center gap-0">
+      {/* Mobile: compact horizontal stepper */}
+      <div className="mb-6 flex items-center gap-0 lg:hidden">
         {steps.map((s, i) => (
           <div key={s.id} className="flex flex-1 items-center">
-            <div className="flex flex-1 flex-col items-center gap-1.5">
+            <div className="flex flex-1 flex-col items-center gap-1">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs transition ${
                   i < currentIdx
                     ? "border-success bg-success text-white"
                     : i === currentIdx
-                      ? "border-primary bg-primary text-white"
-                      : "border-border bg-card text-muted"
+                      ? "border-secondary bg-secondary text-white"
+                      : "border-border text-muted bg-white"
                 }`}
               >
-                {i < currentIdx ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
+                {i < currentIdx ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <s.icon className="h-3.5 w-3.5" />
+                )}
               </div>
               <span
-                className={`text-xs font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
+                className={`text-[10px] font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
               >
                 {s.label}
               </span>
             </div>
             {i < steps.length - 1 && (
               <div
-                className={`mt-[-1rem] h-0.5 w-full ${i < currentIdx ? "bg-success" : "bg-border"}`}
+                className={`mt-[-0.75rem] h-0.5 w-full ${i < currentIdx ? "bg-success" : "bg-border"}`}
               />
             )}
           </div>
@@ -312,441 +454,471 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          {/* Step: Address */}
-          {step === "address" && (
-            <form
-              onSubmit={handleAddressSubmit}
-              className="border-border bg-card space-y-5 rounded-2xl border p-6"
-            >
-              <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
-              {customerQuery.data && (
-                <div className="border-primary/15 bg-primary-light/40 rounded-2xl border p-4">
-                  <p className="text-foreground text-sm font-medium">
-                    Checking out as {customerQuery.data.email}
-                  </p>
-                  <p className="text-muted mt-1 text-sm">
-                    You can use a saved address or enter a different delivery address.
-                  </p>
-                </div>
-              )}
-
-              {isUsingSavedAddress && selectedSavedAddress && (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <p className="text-foreground text-sm font-medium">Saved addresses</p>
-                    {savedAddresses.map((address) => {
-                      const isSelected = address.id === selectedSavedAddress.id;
-                      return (
-                        <button
-                          key={address.id}
-                          type="button"
-                          onClick={() => setSelectedSavedAddressId(address.id ?? null)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            isSelected
-                              ? "border-primary bg-primary-light/40"
-                              : "border-border hover:border-primary/40"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="text-foreground font-medium">
-                                {address.first_name} {address.last_name}
-                              </p>
-                              <p className="text-muted text-sm">{address.address_1}</p>
-                              <p className="text-muted text-sm">
-                                {address.city}
-                                {address.province ? `, ${address.province}` : ""}{" "}
-                                {address.postal_code}
-                              </p>
-                              {address.phone && (
-                                <p className="text-muted mt-1 text-sm">{address.phone}</p>
-                              )}
-                            </div>
-                            {isSelected && (
-                              <span className="bg-primary rounded-full px-2.5 py-1 text-xs font-semibold text-white">
-                                Selected
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="submit"
-                      disabled={addressMutation.isPending}
-                      className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+      <div className="flex gap-8">
+        {/* Desktop: vertical stepper sidebar */}
+        <div className="hidden w-48 shrink-0 lg:block">
+          <div className="sticky top-24">
+            <div className="flex flex-col">
+              {steps.map((s, i) => (
+                <div key={s.id} className="flex items-start gap-3">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition ${
+                        i < currentIdx
+                          ? "border-success bg-success text-white"
+                          : i === currentIdx
+                            ? "border-secondary bg-secondary text-white"
+                            : "border-border text-muted bg-white"
+                      }`}
                     >
-                      {addressMutation.isPending ? "Saving..." : "Continue with Selected Address"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUseManualAddress(true)}
-                      className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
-                    >
-                      Use Different Address
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {(!isUsingSavedAddress || !selectedSavedAddress) && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">
-                      First Name
-                    </label>
-                    <input
-                      required
-                      value={form.first_name}
-                      onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
-                    <input
-                      required
-                      value={form.last_name}
-                      onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
-                    {customerQuery.data ? (
-                      <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
-                        {customerQuery.data.email}
-                      </div>
-                    ) : (
-                      <input
-                        type="email"
-                        required
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        className={inputClass}
+                      {i < currentIdx ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <s.icon className="h-4 w-4" />
+                      )}
+                    </div>
+                    {i < steps.length - 1 && (
+                      <div
+                        className={`h-10 w-0.5 ${i < currentIdx ? "bg-success" : "bg-border"}`}
                       />
                     )}
                   </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+251 9XX XXX XXX"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
-                    <select
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      className={selectClass}
+                  <div className="pt-2">
+                    <p
+                      className={`text-sm font-semibold ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
                     >
-                      {ETHIOPIAN_CITIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                      <option value="">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">Region</label>
-                    <select
-                      value={form.province}
-                      onChange={(e) => setForm({ ...form, province: e.target.value })}
-                      className={selectClass}
-                    >
-                      {ETHIOPIAN_REGIONS.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">
-                      Postal Code
-                    </label>
-                    <input
-                      value={form.postal_code}
-                      onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-muted mb-1.5 block text-xs font-medium">
-                      Street Address / Kebele / House No.
-                    </label>
-                    <input
-                      required
-                      value={form.address_1}
-                      onChange={(e) => setForm({ ...form, address_1: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted mb-1.5 block text-xs font-medium">Country</label>
-                    <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
-                      Ethiopia (ET)
-                    </div>
-                  </div>
-                </div>
-              )}
-              {(!isUsingSavedAddress || !selectedSavedAddress) && (
-                <button
-                  type="submit"
-                  disabled={addressMutation.isPending}
-                  className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
-                >
-                  {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
-                </button>
-              )}
-              {useManualAddress && savedAddresses.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setUseManualAddress(false)}
-                  className="text-muted hover:text-primary ml-4 text-sm font-medium transition"
-                >
-                  Use a saved address instead
-                </button>
-              )}
-            </form>
-          )}
-
-          {/* Step: Shipping */}
-          {step === "shipping" && (
-            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
-              <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
-              {shippingQuery.isLoading ? (
-                <div className="space-y-2">
-                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
-                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
-                  <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
-                </div>
-              ) : (shippingQuery.data?.shipping_options ?? []).length === 0 ? (
-                <p className="text-muted text-sm">
-                  No shipping methods available. Please go back and verify your address.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {(shippingQuery.data?.shipping_options ?? []).map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => {
-                        setSelectedShipping(option.id);
-                        shippingMutation.mutate(option.id);
-                      }}
-                      disabled={shippingMutation.isPending}
-                      className={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left text-sm transition disabled:opacity-50 ${
-                        selectedShipping === option.id
-                          ? "border-primary bg-primary-light"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Truck className="text-primary h-5 w-5" />
-                        <div>
-                          <p className="text-foreground font-medium">{option.name}</p>
-                          {option.amount === 0 && <p className="text-muted text-xs">Free</p>}
-                        </div>
-                      </div>
-                      <span className="text-primary font-semibold">
-                        {option.amount === 0 ? "Free" : formatPrice(option.amount, currencyCode)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button
-                onClick={() => {
-                  setStep("address");
-                  setErrorMessage(null);
-                }}
-                className="text-muted hover:text-primary text-sm font-medium transition"
-              >
-                &larr; Back to Address
-              </button>
-            </div>
-          )}
-
-          {/* Step: Payment */}
-          {step === "payment" && (
-            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
-              <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
-              <button
-                onClick={() => paymentMutation.mutate()}
-                disabled={paymentMutation.isPending}
-                className="border-border hover:border-primary/40 flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition disabled:opacity-50"
-              >
-                <CreditCard className="text-primary h-5 w-5" />
-                <div>
-                  <p className="text-foreground font-medium">Cash on Delivery / Manual Payment</p>
-                  <p className="text-muted text-xs">
-                    {paymentMutation.isPending
-                      ? "Initializing payment..."
-                      : "Pay when you receive your order"}
-                  </p>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  setStep("shipping");
-                  setErrorMessage(null);
-                }}
-                className="text-muted hover:text-primary text-sm font-medium transition"
-              >
-                &larr; Back to Shipping
-              </button>
-            </div>
-          )}
-
-          {/* Step: Review */}
-          {step === "review" && (
-            <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
-              <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
-
-              {/* Address summary */}
-              {cart.shipping_address && (
-                <div className="border-border bg-background rounded-xl border p-4 text-sm">
-                  <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
-                    Shipping to
-                  </p>
-                  <p className="text-foreground">
-                    {cart.shipping_address.first_name} {cart.shipping_address.last_name}
-                  </p>
-                  <p className="text-muted">
-                    {cart.shipping_address.address_1}, {cart.shipping_address.city}
-                  </p>
-                  <p className="text-muted">
-                    {cart.shipping_address.province}, {cart.shipping_address.postal_code}
-                  </p>
-                  {cart.shipping_address.phone && (
-                    <p className="text-muted">{cart.shipping_address.phone}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Shipping method summary */}
-              {cart.shipping_methods && cart.shipping_methods.length > 0 && (
-                <div className="border-border bg-background rounded-xl border p-4 text-sm">
-                  <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
-                    Shipping method
-                  </p>
-                  {cart.shipping_methods.map((m) => (
-                    <p key={m.id} className="text-foreground">
-                      {m.name} — {formatPrice(m.amount, currencyCode)}
+                      {s.label}
                     </p>
-                  ))}
+                    {i === currentIdx && <p className="text-secondary text-xs">Current step</p>}
+                    {i < currentIdx && <p className="text-success text-xs">Completed</p>}
+                  </div>
                 </div>
-              )}
-
-              <p className="text-muted text-sm">
-                Review your order details and click below to complete your purchase.
-              </p>
-              <button
-                onClick={() => completeMutation.mutate()}
-                disabled={completeMutation.isPending}
-                className="bg-primary hover:bg-primary-hover rounded-full px-6 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
-              >
-                {completeMutation.isPending ? "Placing Order..." : "Place Order"}
-              </button>
-              <button
-                onClick={() => {
-                  setStep("payment");
-                  setErrorMessage(null);
-                }}
-                className="text-muted hover:text-primary ml-4 text-sm font-medium transition"
-              >
-                &larr; Back to Payment
-              </button>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Order Summary sidebar (bagisto style) */}
-        <div className="border-border bg-card rounded-2xl border p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
-          <h3 className="text-foreground mb-4 text-sm font-bold tracking-wider uppercase">
-            Order Summary
-            <span className="text-muted ml-1.5 text-xs font-medium">
-              ({cart.items.length} {cart.items.length === 1 ? "item" : "items"})
-            </span>
-          </h3>
-
-          {/* Cart items */}
-          <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
-            {cart.items.map((item) => (
-              <div key={item.id} className="flex gap-3">
-                <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border">
-                  {item.thumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.thumbnail}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-muted flex h-full w-full items-center justify-center">
-                      <Package className="h-5 w-5" />
+        {/* Main content: form + order summary */}
+        <div className="min-w-0 flex-1">
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            <div className="space-y-6">
+              {/* Step: Address */}
+              {step === "address" && (
+                <form
+                  onSubmit={handleAddressSubmit}
+                  className="border-border bg-card space-y-5 rounded-2xl border p-6 shadow-sm"
+                >
+                  <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
+                  {customerQuery.data && (
+                    <div className="border-secondary/15 bg-secondary-light/40 rounded-2xl border p-4">
+                      <p className="text-foreground text-sm font-medium">
+                        Checking out as {customerQuery.data.email}
+                      </p>
+                      <p className="text-muted mt-1 text-sm">
+                        You can use a saved address or enter a different delivery address.
+                      </p>
                     </div>
                   )}
-                  <span className="bg-primary absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow">
-                    {item.quantity}
+
+                  {isUsingSavedAddress && selectedSavedAddress && (
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <p className="text-foreground text-sm font-medium">Saved addresses</p>
+                        {savedAddresses.map((address) => {
+                          const isSelected = address.id === selectedSavedAddress.id;
+                          return (
+                            <button
+                              key={address.id}
+                              type="button"
+                              onClick={() => setSelectedSavedAddressId(address.id ?? null)}
+                              className={`w-full rounded-2xl border p-4 text-left transition ${
+                                isSelected
+                                  ? "border-secondary bg-secondary-light/40 shadow-sm"
+                                  : "border-border hover:border-border-hover bg-white"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <p className="text-foreground font-medium">
+                                    {address.first_name} {address.last_name}
+                                  </p>
+                                  <p className="text-muted text-sm">{address.address_1}</p>
+                                  <p className="text-muted text-sm">
+                                    {address.city}
+                                    {address.province ? `, ${address.province}` : ""}{" "}
+                                    {address.postal_code}
+                                  </p>
+                                  {address.phone && (
+                                    <p className="text-muted mt-1 text-sm">{address.phone}</p>
+                                  )}
+                                </div>
+                                {isSelected && (
+                                  <span className="bg-foreground rounded-full px-2.5 py-1 text-xs font-semibold text-white">
+                                    Selected
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="submit"
+                          disabled={addressMutation.isPending}
+                          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                        >
+                          {addressMutation.isPending
+                            ? "Saving..."
+                            : "Continue with Selected Address"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUseManualAddress(true)}
+                          className="border-border text-foreground hover:border-border-hover hover:bg-background focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                        >
+                          Use Different Address
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(!isUsingSavedAddress || !selectedSavedAddress) && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          First Name
+                        </label>
+                        <input
+                          required
+                          value={form.first_name}
+                          onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          Last Name
+                        </label>
+                        <input
+                          required
+                          value={form.last_name}
+                          onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
+                        {customerQuery.data ? (
+                          <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
+                            {customerQuery.data.email}
+                          </div>
+                        ) : (
+                          <input
+                            type="email"
+                            required
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            className={inputClass}
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="+251 9XX XXX XXX"
+                          value={form.phone}
+                          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
+                        <select
+                          value={form.city}
+                          onChange={(e) => setForm({ ...form, city: e.target.value })}
+                          className={selectClass}
+                        >
+                          {ETHIOPIAN_CITIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                          <option value="">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          Region
+                        </label>
+                        <select
+                          value={form.province}
+                          onChange={(e) => setForm({ ...form, province: e.target.value })}
+                          className={selectClass}
+                        >
+                          {ETHIOPIAN_REGIONS.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          Postal Code
+                        </label>
+                        <input
+                          value={form.postal_code}
+                          onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          Street Address / Kebele / House No.
+                        </label>
+                        <input
+                          required
+                          value={form.address_1}
+                          onChange={(e) => setForm({ ...form, address_1: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-muted mb-1.5 block text-xs font-medium">
+                          Country
+                        </label>
+                        <div className="border-border bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
+                          Ethiopia (ET)
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {(!isUsingSavedAddress || !selectedSavedAddress) && (
+                    <button
+                      type="submit"
+                      disabled={addressMutation.isPending}
+                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    >
+                      {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
+                    </button>
+                  )}
+                  {useManualAddress && savedAddresses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setUseManualAddress(false)}
+                      className="text-muted hover:text-foreground ml-4 text-sm font-medium transition"
+                    >
+                      Use a saved address instead
+                    </button>
+                  )}
+                </form>
+              )}
+
+              {/* Step: Shipping */}
+              {step === "shipping" && (
+                <ShippingStep
+                  options={shippingQuery.data?.shipping_options ?? []}
+                  isLoading={shippingQuery.isLoading}
+                  selectedShipping={selectedShipping}
+                  isPending={shippingMutation.isPending}
+                  cartSubtotal={cart.subtotal ?? 0}
+                  onSelect={(optionId) => {
+                    setSelectedShipping(optionId);
+                    shippingMutation.mutate(optionId);
+                  }}
+                  onBack={() => {
+                    setStep("address");
+                    setErrorMessage(null);
+                  }}
+                />
+              )}
+
+              {/* Step: Payment */}
+              {step === "payment" && (
+                <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+                  <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
+                  <button
+                    onClick={() => paymentMutation.mutate()}
+                    disabled={paymentMutation.isPending}
+                    className="border-border hover:border-primary/40 flex w-full items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 text-left text-sm transition disabled:opacity-50"
+                  >
+                    <CreditCard className="text-secondary h-5 w-5" />
+                    <div>
+                      <p className="text-foreground font-medium">
+                        Cash on Delivery / Manual Payment
+                      </p>
+                      <p className="text-muted text-xs">
+                        {paymentMutation.isPending
+                          ? "Initializing payment..."
+                          : "Pay when you receive your order"}
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStep("shipping");
+                      setErrorMessage(null);
+                    }}
+                    className="text-muted hover:text-foreground text-sm font-medium transition"
+                  >
+                    &larr; Back to Shipping
+                  </button>
+                </div>
+              )}
+
+              {/* Step: Review */}
+              {step === "review" && (
+                <div className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm">
+                  <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
+
+                  {/* Address summary */}
+                  {cart.shipping_address && (
+                    <div className="border-border bg-background/80 rounded-2xl border p-4 text-sm">
+                      <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
+                        Shipping to
+                      </p>
+                      <p className="text-foreground">
+                        {cart.shipping_address.first_name} {cart.shipping_address.last_name}
+                      </p>
+                      <p className="text-muted">
+                        {cart.shipping_address.address_1}, {cart.shipping_address.city}
+                      </p>
+                      <p className="text-muted">
+                        {cart.shipping_address.province}, {cart.shipping_address.postal_code}
+                      </p>
+                      {cart.shipping_address.phone && (
+                        <p className="text-muted">{cart.shipping_address.phone}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Shipping method summary */}
+                  {cart.shipping_methods && cart.shipping_methods.length > 0 && (
+                    <div className="border-border bg-background/80 rounded-2xl border p-4 text-sm">
+                      <p className="text-muted mb-1 text-xs font-bold tracking-wider uppercase">
+                        Shipping method
+                      </p>
+                      {cart.shipping_methods.map((m) => (
+                        <p key={m.id} className="text-foreground">
+                          {m.name} — {formatPrice(m.amount, currencyCode)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-muted text-sm">
+                    Review your order details and click below to complete your purchase.
+                  </p>
+                  <button
+                    onClick={() => completeMutation.mutate()}
+                    disabled={completeMutation.isPending}
+                    className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                  >
+                    {completeMutation.isPending ? "Placing Order..." : "Place Order"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStep("payment");
+                      setErrorMessage(null);
+                    }}
+                    className="text-muted hover:text-foreground ml-4 text-sm font-medium transition"
+                  >
+                    &larr; Back to Payment
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Order Summary sidebar */}
+            <div className="border-border bg-card rounded-2xl border p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
+              <h3 className="text-foreground mb-4 text-sm font-bold tracking-wider uppercase">
+                Order Summary
+                <span className="text-muted ml-1.5 text-xs font-medium">
+                  ({cart.items.length} {cart.items.length === 1 ? "item" : "items"})
+                </span>
+              </h3>
+
+              {/* Cart items */}
+              <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
+                {cart.items.map((item) => (
+                  <div key={item.id} className="flex gap-3">
+                    <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border">
+                      {item.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.thumbnail}
+                          alt={item.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-muted flex h-full w-full items-center justify-center">
+                          <Package className="h-5 w-5" />
+                        </div>
+                      )}
+                      <span className="bg-foreground absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow">
+                        {item.quantity}
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-center overflow-hidden">
+                      <p className="text-foreground truncate text-xs font-medium">{item.title}</p>
+                      <div className="text-muted flex items-center gap-2 text-xs">
+                        <span>{formatPrice(item.unit_price, currencyCode)}</span>
+                        {item.quantity > 1 && (
+                          <span className="text-[10px]">× {item.quantity}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-foreground flex flex-shrink-0 items-center text-xs font-semibold">
+                      {formatPrice(
+                        item.total || item.subtotal || item.unit_price * item.quantity,
+                        currencyCode,
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totals */}
+              <div className="border-border space-y-2.5 border-t pt-4 text-sm">
+                <div className="text-muted flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="text-foreground">
+                    {formatPrice(cart.subtotal, currencyCode)}
                   </span>
                 </div>
-                <div className="flex flex-1 flex-col justify-center overflow-hidden">
-                  <p className="text-foreground truncate text-xs font-medium">{item.title}</p>
-                  <div className="text-muted flex items-center gap-2 text-xs">
-                    <span>{formatPrice(item.unit_price, currencyCode)}</span>
-                    {item.quantity > 1 && <span className="text-[10px]">× {item.quantity}</span>}
+                {cart.shipping_total > 0 && (
+                  <div className="text-muted flex justify-between">
+                    <span>Shipping</span>
+                    <span className="text-foreground">
+                      {formatPrice(cart.shipping_total, currencyCode)}
+                    </span>
+                  </div>
+                )}
+                {cart.tax_total > 0 && (
+                  <div className="text-muted flex justify-between">
+                    <span>Tax</span>
+                    <span className="text-foreground">
+                      {formatPrice(cart.tax_total, currencyCode)}
+                    </span>
+                  </div>
+                )}
+                {cart.discount_total > 0 && (
+                  <div className="text-success flex justify-between">
+                    <span>Discount</span>
+                    <span className="font-medium">
+                      -{formatPrice(cart.discount_total, currencyCode)}
+                    </span>
+                  </div>
+                )}
+                <div className="border-border border-t pt-3">
+                  <div className="text-foreground flex justify-between text-base font-bold">
+                    <span>Total</span>
+                    <span>{formatPrice(cart.total, currencyCode)}</span>
                   </div>
                 </div>
-                <div className="text-foreground flex flex-shrink-0 items-center text-xs font-semibold">
-                  {formatPrice(item.total, currencyCode)}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="border-border space-y-2.5 border-t pt-4 text-sm">
-            <div className="text-muted flex justify-between">
-              <span>Subtotal</span>
-              <span className="text-foreground">{formatPrice(cart.subtotal, currencyCode)}</span>
-            </div>
-            {cart.shipping_total > 0 && (
-              <div className="text-muted flex justify-between">
-                <span>Shipping</span>
-                <span className="text-foreground">
-                  {formatPrice(cart.shipping_total, currencyCode)}
-                </span>
-              </div>
-            )}
-            {cart.tax_total > 0 && (
-              <div className="text-muted flex justify-between">
-                <span>Tax</span>
-                <span className="text-foreground">{formatPrice(cart.tax_total, currencyCode)}</span>
-              </div>
-            )}
-            {cart.discount_total > 0 && (
-              <div className="text-success flex justify-between">
-                <span>Discount</span>
-                <span className="font-medium">
-                  -{formatPrice(cart.discount_total, currencyCode)}
-                </span>
-              </div>
-            )}
-            <div className="border-border border-t pt-3">
-              <div className="text-foreground flex justify-between text-base font-bold">
-                <span>Total</span>
-                <span className="text-primary">{formatPrice(cart.total, currencyCode)}</span>
               </div>
             </div>
           </div>

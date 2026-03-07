@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
 import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
+import { ShoppingBag } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
@@ -88,12 +89,12 @@ function ProductsContent() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
+      <div className="mb-5">
+        <h1 className="text-foreground text-2xl font-bold">
           {categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products")}
         </h1>
         {!selectedProductId && (
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-muted mt-1 text-sm">
             {total} product{total !== 1 ? "s" : ""} found
           </p>
         )}
@@ -106,7 +107,7 @@ function ProductsContent() {
           categories={categoriesQuery.data?.product_categories ?? []}
         />
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {selectedProductId ? (
             <ProductDetail
               productId={selectedProductId}
@@ -115,12 +116,26 @@ function ProductsContent() {
           ) : isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-border/40" />
+                <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-12 text-center">
-              <p className="text-sm text-muted">No products found. Try adjusting your filters.</p>
+            <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+              <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+                <ShoppingBag className="text-secondary h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-foreground text-lg font-semibold">No products found</p>
+                <p className="text-muted mt-1 text-sm">
+                  Try adjusting your filters or search terms.
+                </p>
+              </div>
+              <button
+                onClick={() => updateFilters({})}
+                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                Clear Filters
+              </button>
             </div>
           ) : (
             <>
@@ -144,10 +159,10 @@ function ProductsContent() {
                         params.set("page", String(p));
                         router.push(`/products?${params.toString()}`);
                       }}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition ${
+                      className={`focus-visible:ring-primary/30 flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                         p === page
-                          ? "bg-primary text-white"
-                          : "border border-border text-muted hover:border-primary hover:text-primary"
+                          ? "bg-foreground text-white shadow-sm"
+                          : "border-border text-muted hover:border-border-hover hover:text-foreground border bg-white"
                       }`}
                     >
                       {p}

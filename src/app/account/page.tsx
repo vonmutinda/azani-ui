@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getCustomer,
@@ -11,6 +11,7 @@ import {
   deleteCustomerAddress,
   getOrders,
   getOrderById,
+  getWishlistProductIds,
 } from "@/lib/medusa-api";
 import { clearAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
@@ -18,25 +19,23 @@ import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/formatters";
-import { MedusaAddress } from "@/types/medusa";
+import { MedusaAddress, MedusaOrder } from "@/types/medusa";
 import {
   User,
   MapPin,
   Package,
   LogOut,
   ChevronRight,
+  ChevronDown,
   Pencil,
   Trash2,
   Plus,
-  ArrowLeft,
   Phone,
   ShoppingBag,
   Baby,
-  Clock,
   Heart,
+  Mail,
 } from "lucide-react";
-
-type Section = "profile" | "orders";
 
 const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
   first_name: "",
@@ -51,7 +50,7 @@ const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
 };
 
 const INPUT_CLASS =
-  "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -64,15 +63,14 @@ function getStatusColor(status: string) {
     case "canceled":
       return "bg-danger/10 text-danger";
     default:
-      return "bg-primary/10 text-primary";
+      return "bg-foreground/10 text-foreground";
   }
 }
 
 export default function AccountPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<Section>("profile");
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const addressesRef = useRef<HTMLDivElement>(null);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer"],
@@ -91,6 +89,12 @@ export default function AccountPage() {
     enabled: !!customer,
   });
 
+  const { data: wishlistIds } = useQuery({
+    queryKey: ["wishlist"],
+    queryFn: getWishlistProductIds,
+    enabled: !!customer,
+  });
+
   useEffect(() => {
     if (!isLoading && !customer) {
       router.replace("/account/login");
@@ -105,23 +109,26 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6" role="status" aria-label="Loading">
+      <div
+        className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+        role="status"
+        aria-label="Loading"
+      >
         <span className="sr-only">Loading...</span>
-        {/* Welcome header skeleton */}
         <div className="mb-8 flex items-center gap-4">
-          <div className="bg-border/40 h-14 w-14 animate-pulse rounded-full" />
+          <div className="bg-border/40 h-12 w-12 animate-pulse rounded-full" />
           <div className="space-y-2">
             <div className="bg-border/40 h-5 w-40 animate-pulse rounded-lg" />
             <div className="bg-border/40 h-4 w-28 animate-pulse rounded-lg" />
           </div>
         </div>
-        {/* Grid skeleton */}
-        <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-          <div className="bg-border/40 h-64 animate-pulse rounded-2xl" />
-          <div className="space-y-6">
-            <div className="bg-border/40 h-48 animate-pulse rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-4">
+            <div className="bg-border/40 h-40 animate-pulse rounded-2xl" />
+            <div className="bg-border/40 h-32 animate-pulse rounded-2xl" />
             <div className="bg-border/40 h-48 animate-pulse rounded-2xl" />
           </div>
+          <div className="bg-border/40 h-64 animate-pulse rounded-2xl" />
         </div>
       </div>
     );
@@ -131,247 +138,146 @@ export default function AccountPage() {
 
   const initials =
     ((customer.first_name?.[0] ?? "") + (customer.last_name?.[0] ?? "")).toUpperCase() || "?";
-  const latestOrder = orders?.length
+
+  const sortedOrders = orders?.length
     ? [...orders].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )[0]
-    : null;
-
-  const navItems: { key: Section; label: string; icon: React.ReactNode }[] = [
-    { key: "profile", label: "Profile", icon: <User className="h-4 w-4" /> },
-    { key: "orders", label: "Orders", icon: <Package className="h-4 w-4" /> },
-  ];
+      )
+    : [];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      <div className="border-border from-primary-light via-card to-secondary-light mb-8 overflow-hidden rounded-[28px] border bg-gradient-to-br p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-primary flex h-16 w-16 items-center justify-center rounded-full bg-white text-xl font-bold shadow-sm">
-              {initials}
-            </div>
-            <div>
-              <p className="text-primary mb-1 inline-flex rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase">
-                My Account
-              </p>
-              <h1 className="text-foreground text-2xl font-bold sm:text-3xl">
-                Welcome back, {customer.first_name || "there"}!
-              </h1>
-              <p className="text-muted mt-1 text-sm">{customer.email}</p>
-            </div>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Slim welcome header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-foreground flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
+            {initials}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Saved Addresses
-              </p>
-              <p className="text-foreground mt-1 text-sm font-medium">
-                {addresses?.length ?? 0} {addresses?.length === 1 ? "address" : "addresses"} ready
-                for checkout
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 backdrop-blur">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Latest Order
-              </p>
-              <p className="text-foreground mt-1 text-sm font-medium">
-                {latestOrder
-                  ? `Order #${latestOrder.display_id} on ${new Date(latestOrder.created_at).toLocaleDateString()}`
-                  : "No orders yet"}
-              </p>
-            </div>
+          <div>
+            <h1 className="text-foreground text-xl font-bold">
+              {customer.first_name || "Welcome"} {customer.last_name || ""}
+            </h1>
+            <p className="text-muted text-sm">{customer.email}</p>
           </div>
         </div>
+        <button
+          onClick={handleSignOut}
+          className="border-border text-muted hover:border-danger/20 hover:bg-danger/5 hover:text-danger hidden items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm transition sm:flex"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-        {/* Sidebar Navigation */}
-        <nav>
-          {/* Desktop sidebar */}
-          <div className="border-border bg-card hidden rounded-3xl border p-3 shadow-sm lg:block">
-            {navItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => {
-                  setActiveSection(item.key);
-                  setSelectedOrderId(null);
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium transition ${
-                  activeSection === item.key
-                    ? "border-primary bg-primary-light text-primary border-l-[3px]"
-                    : "text-muted hover:bg-background border-l-[3px] border-transparent"
-                }`}
-              >
-                {item.icon}
-                {item.label}
-                {activeSection === item.key && <ChevronRight className="ml-auto h-4 w-4" />}
-              </button>
-            ))}
-            <div className="border-border my-2 border-t" />
-            <button
-              onClick={handleSignOut}
-              className="text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center gap-3 rounded-lg border-l-[3px] border-transparent px-4 py-2.5 text-left text-sm font-medium transition"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
+      <div className="grid items-start gap-8 lg:grid-cols-[1fr_300px]">
+        {/* Left column -- all content sections */}
+        <div className="min-w-0 space-y-5">
+          <ProfileDetails customer={customer} />
+          <AddressesSection ref={addressesRef} />
+          <OrdersSection orders={sortedOrders} isLoading={!orders && !!customer} />
+        </div>
+
+        {/* Right column -- sticky sidebar */}
+        <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          {/* Quick Stats */}
+          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+            <div className="px-5 pt-4 pb-1">
+              <h2 className="text-muted text-[11px] font-bold tracking-wider uppercase">
+                Account Snapshot
+              </h2>
+            </div>
+            <div className="divide-border divide-y">
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-accent-yellow-light flex h-8 w-8 items-center justify-center rounded-lg">
+                    <Package className="text-accent-yellow h-4 w-4" />
+                  </div>
+                  <span className="text-foreground text-sm">Orders</span>
+                </div>
+                <span className="text-foreground text-sm font-bold">{orders?.length ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-secondary-light flex h-8 w-8 items-center justify-center rounded-lg">
+                    <MapPin className="text-secondary h-4 w-4" />
+                  </div>
+                  <span className="text-foreground text-sm">Addresses</span>
+                </div>
+                <span className="text-foreground text-sm font-bold">{addresses?.length ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-danger/10 flex h-8 w-8 items-center justify-center rounded-lg">
+                    <Heart className="text-danger h-4 w-4" />
+                  </div>
+                  <span className="text-foreground text-sm">Wishlist</span>
+                </div>
+                <span className="text-foreground text-sm font-bold">
+                  {wishlistIds?.length ?? 0}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Mobile horizontal pills */}
-          <div className="border-border bg-card flex gap-2 overflow-x-auto rounded-2xl border p-2 lg:hidden">
-            {navItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => {
-                  setActiveSection(item.key);
-                  setSelectedOrderId(null);
-                }}
-                className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
-                  activeSection === item.key
-                    ? "bg-primary text-white"
-                    : "border-border bg-card text-muted border"
-                }`}
+          {/* Quick Actions */}
+          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+            <div className="px-5 pt-4 pb-1">
+              <h2 className="text-muted text-[11px] font-bold tracking-wider uppercase">
+                Quick Actions
+              </h2>
+            </div>
+            <div className="divide-border divide-y">
+              <Link
+                href="/products"
+                className="text-foreground hover:bg-background/60 flex items-center justify-between px-5 py-3 text-sm transition"
               >
-                {item.icon}
-                {item.label}
+                <div className="flex items-center gap-2.5">
+                  <ShoppingBag className="text-secondary h-4 w-4" />
+                  Continue Shopping
+                </div>
+                <ChevronRight className="text-muted h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href="/account/wishlist"
+                className="text-foreground hover:bg-background/60 flex items-center justify-between px-5 py-3 text-sm transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Heart className="text-danger h-4 w-4" />
+                  Open Wishlist
+                </div>
+                <ChevronRight className="text-muted h-3.5 w-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() =>
+                  addressesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="text-foreground hover:bg-background/60 flex w-full items-center justify-between px-5 py-3 text-left text-sm transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <MapPin className="text-secondary h-4 w-4" />
+                  Manage Addresses
+                </div>
+                <ChevronRight className="text-muted h-3.5 w-3.5" />
               </button>
-            ))}
-            <button
-              onClick={handleSignOut}
-              className="border-border bg-card text-muted hover:bg-danger/5 hover:text-danger flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
+            </div>
           </div>
-        </nav>
 
-        {/* Right content */}
-        <div className="min-w-0 flex-1">
-          {activeSection === "profile" && <ProfileSection customer={customer} />}
-          {activeSection === "orders" && !selectedOrderId && (
-            <OrdersSection onSelectOrder={setSelectedOrderId} />
-          )}
-          {activeSection === "orders" && selectedOrderId && (
-            <OrderDetailSection orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />
-          )}
+          {/* Mobile sign out */}
+          <button
+            onClick={handleSignOut}
+            className="border-border bg-card text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition sm:hidden"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Profile Section (includes addresses) ───────────────────────────
-
-function ProfileSection({
-  customer,
-}: {
-  customer: NonNullable<Awaited<ReturnType<typeof getCustomer>>>;
-}) {
-  const { data: addresses } = useQuery({
-    queryKey: ["addresses"],
-    queryFn: getCustomerAddresses,
-  });
-  const { data: orders } = useQuery({
-    queryKey: ["orders"],
-    queryFn: getOrders,
-  });
-  const latestOrder = orders?.length
-    ? [...orders].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )[0]
-    : null;
-
-  return (
-    <div className="space-y-8">
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="bg-primary-light text-primary flex h-11 w-11 items-center justify-center rounded-2xl">
-              <User className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-foreground text-lg font-semibold">Account Overview</h2>
-              <p className="text-muted text-sm">
-                Everything important about your account at a glance.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="bg-background rounded-2xl px-4 py-4">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Orders
-              </p>
-              <p className="text-foreground mt-2 text-2xl font-bold">{orders?.length ?? 0}</p>
-              <p className="text-muted mt-1 text-sm">Placed through your account</p>
-            </div>
-            <div className="bg-background rounded-2xl px-4 py-4">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Addresses
-              </p>
-              <p className="text-foreground mt-2 text-2xl font-bold">{addresses?.length ?? 0}</p>
-              <p className="text-muted mt-1 text-sm">Saved for faster checkout</p>
-            </div>
-            <div className="bg-background rounded-2xl px-4 py-4">
-              <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-                Latest Order
-              </p>
-              <p className="text-foreground mt-2 text-sm font-semibold">
-                {latestOrder ? `#${latestOrder.display_id}` : "No orders"}
-              </p>
-              <p className="text-muted mt-1 text-sm">
-                {latestOrder
-                  ? new Date(latestOrder.created_at).toLocaleDateString()
-                  : "Start shopping to see orders here"}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="bg-secondary-light text-secondary flex h-11 w-11 items-center justify-center rounded-2xl">
-              <Heart className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-foreground text-lg font-semibold">Quick Actions</h2>
-              <p className="text-muted text-sm">
-                Jump back into the parts of the shop you use most.
-              </p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <Link
-              href="/products"
-              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
-            >
-              Continue Shopping
-              <ChevronRight className="text-muted h-4 w-4" />
-            </Link>
-            <Link
-              href="/account/wishlist"
-              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
-            >
-              Open Wishlist
-              <ChevronRight className="text-muted h-4 w-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={() =>
-                window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
-              }
-              className="border-border text-foreground hover:border-primary hover:bg-primary-light/40 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition"
-            >
-              Manage Addresses
-              <ChevronRight className="text-muted h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-      <ProfileDetails customer={customer} />
-      <AddressesSection />
-    </div>
-  );
-}
+// ── Profile Details (compact receipt-style) ─────────────────────────
 
 function ProfileDetails({
   customer,
@@ -400,33 +306,28 @@ function ProfileDetails({
   };
 
   return (
-    <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
-      <div className="mb-5 flex items-center justify-between">
+    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
-          <User className="text-primary h-5 w-5" />
-          <div>
-            <h2 className="text-foreground text-lg font-semibold">Personal Information</h2>
-            <p className="text-muted text-sm">
-              Keep your contact information current for smoother checkout.
-            </p>
-          </div>
+          <User className="text-secondary h-4 w-4" />
+          <h2 className="text-foreground text-sm font-semibold">Personal Information</h2>
         </div>
         {!editing && (
           <button
             onClick={() => setEditing(true)}
-            className="border-border text-muted hover:border-primary hover:text-primary flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+            className="text-muted hover:text-foreground flex items-center gap-1 text-xs font-medium transition"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3 w-3" />
             Edit
           </button>
         )}
       </div>
 
       {editing ? (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="border-border border-t px-5 py-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1.5 block text-xs font-medium">First Name</label>
+              <label className="text-muted mb-1 block text-xs font-medium">First Name</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -434,7 +335,7 @@ function ProfileDetails({
               />
             </div>
             <div>
-              <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
+              <label className="text-muted mb-1 block text-xs font-medium">Last Name</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -442,14 +343,14 @@ function ProfileDetails({
               />
             </div>
           </div>
-          <div>
-            <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
+          <div className="mt-3">
+            <label className="text-muted mb-1 block text-xs font-medium">Email</label>
             <div className="bg-background/50 text-muted flex h-10 items-center rounded-lg px-3 text-sm">
               {customer.email}
             </div>
           </div>
-          <div>
-            <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
+          <div className="mt-3">
+            <label className="text-muted mb-1 block text-xs font-medium">Phone</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -457,39 +358,50 @@ function ProfileDetails({
             />
           </div>
           {mutation.isError && (
-            <p className="text-sm text-red-500">Failed to update profile. Please try again.</p>
+            <p className="text-danger mt-2 text-sm">Failed to update profile. Please try again.</p>
           )}
-          <div className="flex gap-3">
+          <div className="mt-4 flex gap-2">
             <button
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
-              className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50"
             >
               {mutation.isPending ? "Saving..." : "Save"}
             </button>
             <button
               onClick={handleCancel}
-              className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
+              className="border-border text-foreground hover:border-border-hover hover:bg-background rounded-full border bg-white px-5 py-2 text-sm font-semibold shadow-sm transition"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="bg-background rounded-2xl px-4 py-4">
-            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Name</p>
-            <p className="text-foreground text-sm font-medium">
+        <div className="divide-border divide-y">
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-muted flex items-center gap-2 text-sm">
+              <User className="h-3.5 w-3.5" />
+              Name
+            </div>
+            <span className="text-foreground text-sm font-medium">
               {customer.first_name} {customer.last_name}
-            </p>
+            </span>
           </div>
-          <div className="bg-background rounded-2xl px-4 py-4">
-            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Email</p>
-            <p className="text-foreground text-sm font-medium">{customer.email}</p>
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-muted flex items-center gap-2 text-sm">
+              <Mail className="h-3.5 w-3.5" />
+              Email
+            </div>
+            <span className="text-foreground text-sm font-medium">{customer.email}</span>
           </div>
-          <div className="bg-background rounded-2xl px-4 py-4">
-            <p className="text-muted text-[11px] font-semibold tracking-wider uppercase">Phone</p>
-            <p className="text-foreground text-sm font-medium">{customer.phone || "Not set"}</p>
+          <div className="flex items-center justify-between px-5 py-2.5">
+            <div className="text-muted flex items-center gap-2 text-sm">
+              <Phone className="h-3.5 w-3.5" />
+              Phone
+            </div>
+            <span className="text-foreground text-sm font-medium">
+              {customer.phone || "Not set"}
+            </span>
           </div>
         </div>
       )}
@@ -497,10 +409,13 @@ function ProfileDetails({
   );
 }
 
-// ── Addresses Section ──────────────────────────────────────────────
+// ── Addresses Section (collapsible) ─────────────────────────────────
 
-function AddressesSection() {
+import { forwardRef } from "react";
+
+const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_props, ref) {
   const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<MedusaAddress, "id">>(EMPTY_ADDRESS);
@@ -549,6 +464,7 @@ function AddressesSection() {
       phone: addr.phone ?? "",
     });
     setShowForm(false);
+    setExpanded(true);
   };
 
   const handleCancel = () => {
@@ -557,133 +473,131 @@ function AddressesSection() {
     setForm(EMPTY_ADDRESS);
   };
 
+  const handleAddNew = () => {
+    setShowForm(true);
+    setForm(EMPTY_ADDRESS);
+    setExpanded(true);
+  };
+
   if (isLoading) {
-    return <div className="bg-border/40 h-32 animate-pulse rounded-2xl" />;
+    return <div className="bg-border/40 h-14 animate-pulse rounded-2xl" />;
   }
 
   const isFormVisible = showForm || editingId !== null;
+  const count = addresses?.length ?? 0;
 
   return (
-    <div className="border-border bg-card rounded-3xl border p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+    <div ref={ref} className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="hover:bg-background/40 flex w-full items-center justify-between px-5 py-3.5 text-left transition"
+      >
         <div className="flex items-center gap-2">
-          <MapPin className="text-secondary h-5 w-5" />
-          <div>
-            <h2 className="text-foreground text-lg font-semibold">Delivery Addresses</h2>
-            <p className="text-muted text-sm">
-              Save multiple addresses so checkout takes only a few taps.
-            </p>
-          </div>
+          <MapPin className="text-secondary h-4 w-4" />
+          <h2 className="text-foreground text-sm font-semibold">Delivery Addresses</h2>
+          <span className="bg-secondary-light text-secondary rounded-full px-2 py-0.5 text-[11px] font-semibold">
+            {count}
+          </span>
         </div>
-        {!isFormVisible && (
-          <button
-            onClick={() => {
-              setShowForm(true);
-              setForm(EMPTY_ADDRESS);
-            }}
-            className="bg-primary-light text-primary hover:bg-primary/15 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add New
-          </button>
-        )}
-      </div>
+        <ChevronDown
+          className={`text-muted h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
 
-      <div className="space-y-4">
-        {addresses && addresses.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {addresses.map((addr) =>
-              editingId === addr.id ? (
-                <div key={addr.id} className="sm:col-span-2">
-                  <AddressForm
-                    form={form}
-                    setForm={setForm}
-                    onSave={() => updateMutation.mutate()}
-                    onCancel={handleCancel}
-                    saving={updateMutation.isPending}
-                  />
-                </div>
-              ) : (
-                <div key={addr.id} className="border-border bg-card rounded-2xl border p-5">
-                  <div className="flex gap-4">
-                    <div className="bg-secondary-light flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                      <MapPin className="text-secondary h-5 w-5" />
-                    </div>
+      {expanded && (
+        <div className="border-border border-t">
+          {count > 0 ? (
+            <div className="divide-border divide-y">
+              {addresses!.map((addr) =>
+                editingId === addr.id ? (
+                  <div key={addr.id} className="px-5 py-4">
+                    <AddressForm
+                      form={form}
+                      setForm={setForm}
+                      onSave={() => updateMutation.mutate()}
+                      onCancel={handleCancel}
+                      saving={updateMutation.isPending}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    key={addr.id}
+                    className="hover:bg-background/40 flex items-center gap-3 px-5 py-3 transition"
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="text-foreground font-medium">
+                      <p className="text-foreground text-sm font-medium">
                         {addr.first_name} {addr.last_name}
                       </p>
-                      <p className="text-muted text-sm">
+                      <p className="text-muted truncate text-xs">
                         {addr.address_1}
-                        {addr.address_2 ? `, ${addr.address_2}` : ""}
+                        {addr.city ? `, ${addr.city}` : ""}
+                        {addr.province ? `, ${addr.province}` : ""}
+                        {addr.phone ? ` · ${addr.phone}` : ""}
                       </p>
-                      <p className="text-muted text-sm">
-                        {addr.city}
-                        {addr.province ? `, ${addr.province}` : ""} {addr.postal_code}
-                      </p>
-                      {addr.phone && (
-                        <p className="text-muted mt-1 flex items-center gap-1 text-sm">
-                          <Phone className="h-3.5 w-3.5" />
-                          {addr.phone}
-                        </p>
-                      )}
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <button
                         onClick={() => startEdit(addr)}
-                        className="text-muted hover:bg-background hover:text-primary flex h-8 w-8 items-center justify-center rounded-lg transition"
+                        className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Edit address"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate(addr.id!)}
                         disabled={deleteMutation.isPending}
-                        className="text-muted hover:bg-danger/5 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg transition"
+                        className="text-muted hover:bg-danger/5 hover:text-danger focus-visible:ring-danger/20 flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Delete address"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
+                ),
+              )}
+            </div>
+          ) : (
+            !isFormVisible && (
+              <div className="flex flex-col items-center py-8">
+                <div className="bg-secondary-light mb-2 flex h-10 w-10 items-center justify-center rounded-full">
+                  <MapPin className="text-secondary h-5 w-5" />
                 </div>
-              ),
-            )}
-          </div>
-        ) : (
-          !isFormVisible && (
-            <div className="border-border flex flex-col items-center rounded-2xl border-2 border-dashed py-10">
-              <div className="bg-secondary-light mb-3 flex h-12 w-12 items-center justify-center rounded-full">
-                <MapPin className="text-secondary h-6 w-6" />
+                <p className="text-foreground text-sm font-medium">No saved addresses</p>
+                <p className="text-muted mt-0.5 text-xs">Add one for faster checkout</p>
               </div>
-              <p className="text-foreground font-medium">No saved addresses</p>
-              <p className="text-muted mt-1 text-sm">Add a delivery address for faster checkout</p>
+            )
+          )}
+
+          {showForm && (
+            <div className="border-border border-t px-5 py-4">
+              <AddressForm
+                form={form}
+                setForm={setForm}
+                onSave={() => addMutation.mutate()}
+                onCancel={handleCancel}
+                saving={addMutation.isPending}
+              />
+            </div>
+          )}
+
+          {!isFormVisible && (
+            <div className="border-border border-t px-5 py-2.5">
               <button
-                onClick={() => {
-                  setShowForm(true);
-                  setForm(EMPTY_ADDRESS);
-                }}
-                className="bg-primary hover:bg-primary-hover mt-4 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+                onClick={handleAddNew}
+                className="text-secondary hover:text-secondary-hover flex items-center gap-1.5 text-xs font-medium transition"
               >
-                Add Address
+                <Plus className="h-3.5 w-3.5" />
+                Add New Address
               </button>
             </div>
-          )
-        )}
-
-        {showForm && (
-          <AddressForm
-            form={form}
-            setForm={setForm}
-            onSave={() => addMutation.mutate()}
-            onCancel={handleCancel}
-            saving={addMutation.isPending}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+});
 
 function AddressForm({
   form,
@@ -701,10 +615,10 @@ function AddressForm({
   const update = (field: string, value: string) => setForm({ ...form, [field]: value });
 
   return (
-    <div className="border-border bg-card rounded-2xl border p-6">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">First Name</label>
+          <label className="text-muted mb-1 block text-xs font-medium">First Name</label>
           <input
             value={form.first_name ?? ""}
             onChange={(e) => update("first_name", e.target.value)}
@@ -712,7 +626,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Last Name</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Last Name</label>
           <input
             value={form.last_name ?? ""}
             onChange={(e) => update("last_name", e.target.value)}
@@ -720,7 +634,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1.5 block text-xs font-medium">Address Line 1</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Address Line 1</label>
           <input
             value={form.address_1 ?? ""}
             onChange={(e) => update("address_1", e.target.value)}
@@ -728,7 +642,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1.5 block text-xs font-medium">Address Line 2</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Address Line 2</label>
           <input
             value={form.address_2 ?? ""}
             onChange={(e) => update("address_2", e.target.value)}
@@ -736,7 +650,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
+          <label className="text-muted mb-1 block text-xs font-medium">City</label>
           <input
             value={form.city ?? ""}
             onChange={(e) => update("city", e.target.value)}
@@ -744,7 +658,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Province</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Province</label>
           <input
             value={form.province ?? ""}
             onChange={(e) => update("province", e.target.value)}
@@ -752,7 +666,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Postal Code</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Postal Code</label>
           <input
             value={form.postal_code ?? ""}
             onChange={(e) => update("postal_code", e.target.value)}
@@ -760,7 +674,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Phone</label>
+          <label className="text-muted mb-1 block text-xs font-medium">Phone</label>
           <input
             value={form.phone ?? ""}
             onChange={(e) => update("phone", e.target.value)}
@@ -768,17 +682,17 @@ function AddressForm({
           />
         </div>
       </div>
-      <div className="mt-6 flex gap-3">
+      <div className="mt-4 flex gap-2">
         <button
           onClick={onSave}
           disabled={saving}
-          className="bg-primary hover:bg-primary-hover rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+          className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
         <button
           onClick={onCancel}
-          className="border-border text-foreground hover:bg-muted/10 rounded-full border px-6 py-2.5 text-sm font-semibold transition"
+          className="border-border text-foreground hover:border-border-hover hover:bg-background rounded-full border bg-white px-5 py-2 text-sm font-semibold shadow-sm transition"
         >
           Cancel
         </button>
@@ -787,36 +701,37 @@ function AddressForm({
   );
 }
 
-// ── Orders Section ─────────────────────────────────────────────────
+// ── Orders Section (receipt-style with inline accordion) ────────────
 
-function OrdersSection({ onSelectOrder }: { onSelectOrder: (id: string) => void }) {
-  const { data: orders, isLoading } = useQuery({
-    queryKey: ["orders"],
-    queryFn: getOrders,
-  });
+function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading: boolean }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-border/40 h-16 animate-pulse rounded-2xl" />
+          <div key={i} className="bg-border/40 h-14 animate-pulse rounded-2xl" />
         ))}
       </div>
     );
   }
 
-  if (!orders || orders.length === 0) {
+  if (orders.length === 0) {
     return (
-      <div className="border-border bg-card rounded-2xl border p-6">
-        <div className="flex flex-col items-center py-8">
-          <div className="bg-primary-light mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            <ShoppingBag className="text-primary h-8 w-8" />
+      <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+        <div className="flex items-center gap-2 px-5 py-3.5">
+          <Package className="text-accent-yellow h-4 w-4" />
+          <h2 className="text-foreground text-sm font-semibold">Order History</h2>
+        </div>
+        <div className="border-border flex flex-col items-center border-t py-10">
+          <div className="bg-secondary-light mb-3 flex h-14 w-14 items-center justify-center rounded-full">
+            <ShoppingBag className="text-secondary h-6 w-6" />
           </div>
-          <h3 className="text-foreground text-lg font-semibold">No orders yet</h3>
-          <p className="text-muted mt-1 text-sm">When you place an order, it will appear here</p>
+          <p className="text-foreground font-medium">No orders yet</p>
+          <p className="text-muted mt-0.5 text-sm">When you place an order, it will appear here</p>
           <Link
             href="/products"
-            className="bg-primary hover:bg-primary-hover mt-6 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-foreground hover:bg-foreground/85 mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
           >
             <Baby className="h-4 w-4" />
             Start Shopping
@@ -826,92 +741,91 @@ function OrdersSection({ onSelectOrder }: { onSelectOrder: (id: string) => void 
     );
   }
 
-  const sortedOrders = [...orders].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
-
   return (
-    <div className="border-border bg-card overflow-hidden rounded-3xl border shadow-sm">
-      <div className="border-border bg-background/70 flex items-center justify-between border-b px-6 py-4">
-        <div>
-          <h2 className="text-foreground text-lg font-semibold">Order History</h2>
-          <p className="text-muted text-sm">Newest orders appear first.</p>
+    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="flex items-center justify-between px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <Package className="text-accent-yellow h-4 w-4" />
+          <h2 className="text-foreground text-sm font-semibold">Order History</h2>
         </div>
-        <span className="bg-primary-light text-primary rounded-full px-3 py-1 text-xs font-semibold">
-          {sortedOrders.length} {sortedOrders.length === 1 ? "order" : "orders"}
+        <span className="bg-accent-yellow-light text-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          {orders.length}
         </span>
-      </div>
-      {/* Desktop header */}
-      <div className="bg-background hidden gap-4 px-6 py-3 sm:grid sm:grid-cols-[1fr_1fr_1fr_1fr_40px]">
-        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-          Order #
-        </span>
-        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">Date</span>
-        <span className="text-muted text-[11px] font-semibold tracking-wider uppercase">
-          Status
-        </span>
-        <span className="text-muted text-right text-[11px] font-semibold tracking-wider uppercase">
-          Total
-        </span>
-        <span />
       </div>
 
-      <div className="divide-border divide-y">
-        {sortedOrders.map((order) => (
-          <button
-            key={order.id}
-            onClick={() => onSelectOrder(order.id)}
-            className="hover:bg-background/50 block w-full text-left transition"
-          >
-            {/* Desktop row */}
-            <div className="hidden items-center gap-4 px-6 py-4 sm:grid sm:grid-cols-[1.1fr_1fr_1fr_1fr_40px]">
-              <span className="text-foreground text-sm font-medium">Order #{order.display_id}</span>
-              <span className="text-muted text-sm">
-                {new Date(order.created_at).toLocaleDateString()}
-              </span>
-              <span>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(order.status)}`}
-                >
-                  {order.status}
-                </span>
-              </span>
-              <span className="text-foreground text-right text-sm font-medium">
-                {formatPrice(order.total)}
-              </span>
-              <ChevronRight className="text-muted h-4 w-4" />
+      {/* Column header (desktop) */}
+      <div className="border-border bg-background/60 text-muted hidden items-center border-t px-5 py-2 text-[11px] font-semibold tracking-wider uppercase sm:flex">
+        <span className="flex-1">Order</span>
+        <span className="w-24 text-center">Status</span>
+        <span className="w-24 text-right">Total</span>
+        <span className="w-8" />
+      </div>
+
+      <div className="divide-border border-border divide-y border-t">
+        {orders.map((order) => {
+          const isOpen = expandedId === order.id;
+          return (
+            <div key={order.id}>
+              <button
+                type="button"
+                onClick={() => setExpandedId(isOpen ? null : order.id)}
+                className="hover:bg-background/50 flex w-full items-center px-5 py-3 text-left transition"
+              >
+                {/* Desktop row */}
+                <div className="hidden flex-1 items-center sm:flex">
+                  <div className="flex-1">
+                    <span className="text-foreground text-sm font-medium">#{order.display_id}</span>
+                    <span className="text-muted ml-2 text-xs">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="w-24 text-center">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusColor(order.status)}`}
+                    >
+                      {order.status}
+                    </span>
+                  </div>
+                  <span className="text-foreground w-24 text-right text-sm font-medium">
+                    {formatPrice(order.total)}
+                  </span>
+                </div>
+                {/* Mobile row */}
+                <div className="flex flex-1 flex-col gap-1 sm:hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-foreground text-sm font-medium">#{order.display_id}</span>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusColor(order.status)}`}
+                    >
+                      {order.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted text-xs">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </span>
+                    <span className="text-foreground text-sm font-medium">
+                      {formatPrice(order.total)}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`text-muted ml-2 h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isOpen && <OrderDetail orderId={order.id} />}
             </div>
-            {/* Mobile row */}
-            <div className="flex flex-col gap-2 px-5 py-4 sm:hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-foreground text-sm font-medium">
-                  Order #{order.display_id}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(order.status)}`}
-                >
-                  {order.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted text-xs">
-                  {new Date(order.created_at).toLocaleDateString()}
-                </span>
-                <span className="text-foreground text-sm font-medium">
-                  {formatPrice(order.total)}
-                </span>
-              </div>
-            </div>
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// ── Order Detail Section (inline) ──────────────────────────────────
+// ── Order Detail (inline accordion content) ─────────────────────────
 
-function OrderDetailSection({ orderId, onBack }: { orderId: string; onBack: () => void }) {
+function OrderDetail({ orderId }: { orderId: string }) {
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrderById(orderId),
@@ -919,10 +833,9 @@ function OrderDetailSection({ orderId, onBack }: { orderId: string; onBack: () =
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-border/40 h-40 animate-pulse rounded-2xl" />
-        ))}
+      <div className="space-y-2 px-5 pb-4">
+        <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+        <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
       </div>
     );
   }
@@ -930,119 +843,72 @@ function OrderDetailSection({ orderId, onBack }: { orderId: string; onBack: () =
   if (!order) return null;
 
   return (
-    <div className="space-y-6">
-      <button
-        onClick={onBack}
-        className="text-muted hover:text-primary flex items-center gap-1.5 text-sm transition"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Orders
-      </button>
-
-      {/* Header card */}
-      <div className="border-border bg-card rounded-2xl border p-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary-light flex h-12 w-12 items-center justify-center rounded-full">
-            <Package className="text-primary h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <h2 className="text-foreground text-xl font-bold">Order #{order.display_id}</h2>
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(order.status)}`}
-              >
-                {order.status}
-              </span>
-            </div>
-            <p className="text-muted mt-1 flex items-center gap-1.5 text-sm">
-              <Clock className="h-3.5 w-3.5" />
-              {new Date(order.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="border-border bg-background/40 border-t border-dashed px-5 pt-3 pb-4">
       {/* Items */}
-      <div className="border-border bg-card rounded-2xl border p-6">
-        <h3 className="text-muted mb-4 text-[11px] font-semibold tracking-wider uppercase">
-          Items
-        </h3>
-        <div className="divide-border divide-y">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex gap-4 py-3">
-              {item.thumbnail ? (
-                <Image
-                  src={item.thumbnail}
-                  alt={item.title}
-                  width={64}
-                  height={64}
-                  className="border-border h-16 w-16 rounded-xl border object-cover"
-                />
-              ) : (
-                <div className="border-border bg-background flex h-16 w-16 items-center justify-center rounded-xl border">
-                  <Package className="text-muted h-6 w-6" />
-                </div>
-              )}
-              <div className="flex-1">
-                <p className="text-foreground font-medium">{item.title}</p>
-                <p className="text-muted text-sm">Qty: {item.quantity}</p>
+      <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
+        {order.items.map((item) => (
+          <div key={item.id} className="flex gap-3 px-3 py-2.5">
+            {item.thumbnail ? (
+              <Image
+                src={item.thumbnail}
+                alt={item.title}
+                width={48}
+                height={48}
+                className="border-border h-12 w-12 shrink-0 rounded-lg border object-cover"
+              />
+            ) : (
+              <div className="border-border bg-background flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
+                <Package className="text-muted h-5 w-5" />
               </div>
-              <p className="text-foreground text-sm font-medium">{formatPrice(item.total)}</p>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
+              <p className="text-muted text-xs">Qty: {item.quantity}</p>
             </div>
-          ))}
-        </div>
+            <span className="text-foreground shrink-0 text-sm font-medium">
+              {formatPrice(item.total || item.subtotal || item.unit_price * item.quantity)}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* Shipping Address */}
+      {/* Shipping address (compact) */}
       {order.shipping_address && (
-        <div className="border-border bg-card rounded-2xl border p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <MapPin className="text-secondary h-5 w-5" />
-            <h3 className="text-foreground font-semibold">Shipping Address</h3>
-          </div>
-          <div className="bg-background rounded-xl p-4">
-            <p className="text-foreground text-sm font-medium">
-              {order.shipping_address.first_name} {order.shipping_address.last_name}
-            </p>
-            <p className="text-muted text-sm">{order.shipping_address.address_1}</p>
-            {order.shipping_address.address_2 && (
-              <p className="text-muted text-sm">{order.shipping_address.address_2}</p>
-            )}
-            <p className="text-muted text-sm">
-              {order.shipping_address.city}
-              {order.shipping_address.province ? `, ${order.shipping_address.province}` : ""}{" "}
-              {order.shipping_address.postal_code}
-            </p>
-          </div>
+        <div className="text-muted mt-3 flex items-start gap-2 text-xs">
+          <MapPin className="text-secondary mt-0.5 h-3 w-3 shrink-0" />
+          <span>
+            {order.shipping_address.first_name} {order.shipping_address.last_name},{" "}
+            {order.shipping_address.address_1}
+            {order.shipping_address.city ? `, ${order.shipping_address.city}` : ""}
+          </span>
         </div>
       )}
 
       {/* Totals */}
-      <div className="border-border bg-card rounded-2xl border p-6">
-        <h3 className="text-foreground mb-4 font-semibold">Order Summary</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted">Subtotal</span>
-            <span className="text-foreground">{formatPrice(order.subtotal)}</span>
+      <div className="mt-3 space-y-1 text-xs">
+        <div className="text-muted flex justify-between">
+          <span>Subtotal</span>
+          <span>{formatPrice(order.subtotal)}</span>
+        </div>
+        <div className="text-muted flex justify-between">
+          <span>Shipping</span>
+          <span>{order.shipping_total === 0 ? "Free" : formatPrice(order.shipping_total)}</span>
+        </div>
+        {order.discount_total > 0 && (
+          <div className="text-success flex justify-between">
+            <span>Discount</span>
+            <span>-{formatPrice(order.discount_total)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted">Shipping</span>
-            <span className="text-foreground">{formatPrice(order.shipping_total)}</span>
+        )}
+        {order.tax_total > 0 && (
+          <div className="text-muted flex justify-between">
+            <span>Tax</span>
+            <span>{formatPrice(order.tax_total)}</span>
           </div>
-          {order.discount_total > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted">Discount</span>
-              <span className="text-success">-{formatPrice(order.discount_total)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted">Tax</span>
-            <span className="text-foreground">{formatPrice(order.tax_total)}</span>
-          </div>
-          <div className="border-border flex justify-between border-t pt-2">
-            <span className="text-foreground font-bold">Total</span>
-            <span className="text-primary font-bold">{formatPrice(order.total)}</span>
-          </div>
+        )}
+        <div className="border-border text-foreground flex justify-between border-t pt-1.5 text-sm font-bold">
+          <span>Total</span>
+          <span>{formatPrice(order.total)}</span>
         </div>
       </div>
     </div>

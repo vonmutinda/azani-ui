@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MedusaProduct } from "@/types/medusa";
 import { getProductPrice, getProductOriginalPrice, resolveProductImage } from "@/lib/formatters";
 import { addToCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import { useToast } from "@/components/toast";
 
 type Props = {
   product: MedusaProduct;
@@ -15,6 +16,7 @@ type Props = {
 
 export function ProductCard({ product, onSelect }: Props) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const imageUrl = resolveProductImage(product);
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
@@ -28,7 +30,10 @@ export function ProductCard({ product, onSelect }: Props) {
 
   const cartMutation = useMutation({
     mutationFn: (variantId: string) => addToCart(variantId, 1),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      showToast(`${product.title} added to cart`, "cart");
+    },
   });
 
   const wishlistMutation = useMutation({
@@ -67,22 +72,22 @@ export function ProductCard({ product, onSelect }: Props) {
   );
 
   return (
-    <article className="group border-border bg-card hover:border-border-hover relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-md">
+    <article className="group border-border bg-card relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow duration-300 hover:shadow-md">
       {isNew && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="bg-secondary rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase shadow-sm">
+          <span className="bg-accent-yellow text-foreground rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase shadow-sm">
             New
           </span>
         </div>
       )}
 
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-0 transition-all duration-200 group-hover:opacity-100">
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-0 transition-all duration-200 group-focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`bg-card/90 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur transition disabled:opacity-50 ${
-            isWishlisted ? "text-primary" : "text-muted hover:bg-primary-light hover:text-primary"
+          className={`border-border focus-visible:ring-primary/30 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+            isWishlisted ? "text-primary" : "text-muted hover:bg-background hover:text-foreground"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -113,14 +118,14 @@ export function ProductCard({ product, onSelect }: Props) {
         <Link
           href={productHref}
           onClick={handleClick}
-          className="text-foreground hover:text-primary line-clamp-2 text-[13px] leading-snug font-medium transition"
+          className="text-foreground hover:text-secondary line-clamp-2 text-[13px] leading-snug font-medium transition"
         >
           {product.title}
         </Link>
 
         <div className="mt-auto flex items-center justify-between pt-1">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-primary text-base font-bold">{price?.formatted ?? "--"}</span>
+            <span className="text-foreground text-base font-bold">{price?.formatted ?? "--"}</span>
             {originalPrice && (
               <span className="text-muted text-[11px] line-through">{originalPrice}</span>
             )}
@@ -131,7 +136,7 @@ export function ProductCard({ product, onSelect }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending}
-              className="bg-primary hover:bg-primary-hover flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm transition disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
               title="Add to cart"
             >
               <ShoppingBag className="h-3.5 w-3.5" />

@@ -11,6 +11,7 @@ import {
 } from "@/lib/medusa-api";
 import { getVariantPrice, stripHtml } from "@/lib/formatters";
 import { MedusaProductVariant } from "@/types/medusa";
+import { useToast } from "@/components/toast";
 
 type Props = {
   productId: string;
@@ -19,6 +20,7 @@ type Props = {
 
 export function ProductDetail({ productId, onBack }: Props) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -42,12 +44,18 @@ export function ProductDetail({ productId, onBack }: Props) {
       addToCart(variantId, qty),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+      showToast(`${product?.title ?? "Item"} added to cart`, "cart");
     },
   });
   const wishlistMutation = useMutation({
     mutationFn: () => toggleWishlistProduct(productId),
     onSuccess: (wishlistIds) => {
       queryClient.setQueryData(["wishlist"], wishlistIds);
+      const wasAdded = wishlistIds.includes(productId);
+      showToast(
+        wasAdded ? "Saved to wishlist" : "Removed from wishlist",
+        wasAdded ? "success" : "info",
+      );
     },
   });
 
@@ -56,7 +64,7 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div>
         <button
           onClick={onBack}
-          className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
+          className="text-muted hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm transition"
         >
           <ArrowLeft className="h-4 w-4" /> Back to products
         </button>
@@ -74,14 +82,22 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (!product) {
     return (
-      <div className="py-12 text-center">
+      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center shadow-sm">
+        <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
+          <ShoppingBag className="text-primary h-8 w-8" />
+        </div>
+        <div>
+          <p className="text-foreground text-lg font-semibold">Product not found</p>
+          <p className="text-muted mt-1 text-sm">
+            This product may have been removed or is no longer available.
+          </p>
+        </div>
         <button
           onClick={onBack}
-          className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
+          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to products
+          <ArrowLeft className="h-4 w-4" /> Back to Products
         </button>
-        <p className="text-muted">Product not found.</p>
       </div>
     );
   }
@@ -119,7 +135,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     <div>
       <button
         onClick={onBack}
-        className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
+        className="text-muted hover:text-foreground focus-visible:ring-border mb-6 inline-flex items-center gap-1.5 rounded-full text-sm transition focus-visible:ring-2 focus-visible:outline-none"
       >
         <ArrowLeft className="h-4 w-4" /> Back to products
       </button>
@@ -147,10 +163,10 @@ export function ProductDetail({ productId, onBack }: Props) {
                 <button
                   key={i}
                   onClick={() => setActiveImageIndex(i)}
-                  className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                  className={`focus-visible:ring-primary/30 h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                     i === activeImageIndex
-                      ? "border-primary"
-                      : "border-border hover:border-primary/40"
+                      ? "border-foreground"
+                      : "border-border hover:border-foreground/40"
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -162,7 +178,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </div>
 
         {/* Details */}
-        <div className="space-y-5">
+        <div className="border-border bg-card space-y-5 rounded-2xl border p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
@@ -176,10 +192,10 @@ export function ProductDetail({ productId, onBack }: Props) {
               type="button"
               onClick={handleWishlistToggle}
               disabled={wishlistMutation.isPending}
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+              className={`focus-visible:ring-primary/30 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 isWishlisted
-                  ? "border-primary bg-primary-light text-primary"
-                  : "border-border text-muted hover:border-primary hover:text-primary"
+                  ? "border-primary text-primary"
+                  : "border-border text-muted hover:border-foreground/40 hover:text-foreground"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -188,7 +204,7 @@ export function ProductDetail({ productId, onBack }: Props) {
             </button>
           </div>
 
-          <p className="text-primary text-2xl font-bold">{price}</p>
+          <p className="text-foreground text-2xl font-bold">{price}</p>
 
           {product.description && (
             <p className="text-muted text-sm leading-relaxed">{stripHtml(product.description)}</p>
@@ -205,10 +221,10 @@ export function ProductDetail({ productId, onBack }: Props) {
                     onClick={() =>
                       setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
                     }
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    className={`focus-visible:ring-primary/20 rounded-full border px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                       selectedOptions[option.id] === val.value
-                        ? "border-primary bg-primary-light text-primary"
-                        : "border-border text-foreground hover:border-primary/40"
+                        ? "border-foreground bg-foreground/5 text-foreground"
+                        : "border-border text-foreground hover:border-foreground/40"
                     }`}
                   >
                     {val.value}
@@ -220,10 +236,10 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
-            <div className="border-border flex items-center rounded-full border">
+            <div className="border-border flex items-center rounded-full border bg-white shadow-sm">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="text-muted hover:text-foreground flex h-9 w-9 items-center justify-center rounded-l-full transition"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-9 w-9 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -232,7 +248,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="text-muted hover:text-foreground flex h-9 w-9 items-center justify-center rounded-r-full transition"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-9 w-9 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -241,19 +257,16 @@ export function ProductDetail({ productId, onBack }: Props) {
             <button
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !selectedVariant}
-              className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
             >
               <ShoppingBag className="h-4 w-4" />
               {cartMutation.isPending ? "Adding..." : "Add to Cart"}
             </button>
           </div>
 
-          {cartMutation.isSuccess && (
-            <p className="text-success text-sm font-medium">Added to cart!</p>
-          )}
-          {wishlistMutation.isSuccess && (
-            <p className="text-primary text-sm font-medium">
-              {isWishlisted ? "Saved to wishlist." : "Removed from wishlist."}
+          {cartMutation.isError && (
+            <p className="text-danger text-sm font-medium">
+              Failed to add to cart. Please try again.
             </p>
           )}
         </div>

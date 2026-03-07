@@ -1,37 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { Baby, ChevronDown, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import Image from "next/image";
+import {
+  ChevronDown,
+  Heart,
+  Menu,
+  Search,
+  ShoppingBag,
+  Truck,
+  User,
+  X,
+  Shield,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
-import { KokobCategory, toKokobCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
+import {
+  KokobCategory,
+  toKokobCategory,
+  TOP_LEVEL_HANDLES,
+  resolveToMainAndSub,
+} from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
+
+const TRUST_SIGNALS = [
+  { icon: Truck, text: "Free delivery over Br5,000" },
+  { icon: Shield, text: "Safe & certified products" },
+];
 
 function MegaMenu({ category, onClose }: { category: KokobCategory; onClose: () => void }) {
   const children = category.children ?? [];
   return (
-    <div className="absolute left-0 top-full z-50 w-full border-b border-border bg-card shadow-lg">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-8 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="border-border absolute top-full left-0 z-50 w-full border-b bg-white shadow-lg">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         {children.map((sub) => (
           <div key={sub.slug}>
             <Link
               href={`/products?category=${sub.slug}`}
               onClick={onClose}
-              className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground transition hover:text-primary"
+              className="text-foreground hover:text-secondary mb-2 flex items-center gap-2 text-sm font-semibold transition"
             >
-              <CategoryIcon icon={sub.icon} size={16} className="text-primary" />
+              <CategoryIcon icon={sub.icon} size={16} colored />
               {sub.name}
             </Link>
             {sub.children && sub.children.length > 0 && (
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {sub.children.map((child) => (
                   <li key={child.slug}>
                     <Link
                       href={`/products?category=${child.slug}`}
                       onClick={onClose}
-                      className="block py-0.5 text-xs text-muted transition hover:text-primary"
+                      className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-2 py-1.5 text-xs transition"
                     >
                       {child.name}
                     </Link>
@@ -51,7 +72,9 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
+  const [trustIdx, setTrustIdx] = useState(0);
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const pathname = usePathname();
   const headerSearchParams = useSearchParams();
@@ -78,7 +101,11 @@ export function SiteHeader() {
     queryKey: ["cart"],
     queryFn: getCart,
   });
-  const cartCount = cartQuery.data?.items?.length ?? 0;
+  const cartCount =
+    cartQuery.data?.items?.reduce(
+      (sum: number, item: { quantity: number }) => sum + item.quantity,
+      0,
+    ) ?? 0;
 
   const customerQuery = useQuery({
     queryKey: ["customer"],
@@ -91,6 +118,7 @@ export function SiteHeader() {
     e.preventDefault();
     if (searchQuery.trim()) {
       window.location.href = `/products?q=${encodeURIComponent(searchQuery.trim())}`;
+      setSearchOpen(false);
     }
   };
 
@@ -103,70 +131,157 @@ export function SiteHeader() {
     megaTimeout.current = setTimeout(() => setActiveMega(null), 200);
   };
 
+  const toggleSearch = useCallback(() => {
+    setSearchOpen((prev) => {
+      if (!prev) setTimeout(() => searchInputRef.current?.focus(), 50);
+      return !prev;
+    });
+  }, []);
+
   useEffect(() => {
-    return () => { if (megaTimeout.current) clearTimeout(megaTimeout.current); };
+    return () => {
+      if (megaTimeout.current) clearTimeout(megaTimeout.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrustIdx((i) => (i + 1) % TRUST_SIGNALS.length);
+    }, 3500);
+    return () => clearInterval(interval);
   }, []);
 
   const activeCategory = topCategories.find((c) => c.slug === activeMega);
+  const TrustIcon = TRUST_SIGNALS[trustIdx].icon;
 
   return (
-    <header className="sticky top-0 z-50 bg-card">
-      <div className="bg-primary px-4 py-1.5 text-center text-xs font-medium text-white sm:text-sm">
-        Free delivery on orders over Br500 &mdash; Shop baby essentials with love
+    <header className="sticky top-0 z-50 bg-white">
+      {/* Announcement / trust bar */}
+      <div className="bg-foreground text-white">
+        <div className="mx-auto flex h-8 max-w-7xl items-center justify-center gap-6 px-4 text-[11px] font-medium tracking-wide sm:px-6 lg:px-8">
+          {/* Mobile: rotating single signal */}
+          <div className="flex items-center gap-1.5 sm:hidden">
+            <TrustIcon className="h-3 w-3 opacity-70" />
+            <span className="transition-opacity duration-300">{TRUST_SIGNALS[trustIdx].text}</span>
+          </div>
+          {/* Desktop: show all signals */}
+          <div className="hidden items-center gap-6 sm:flex">
+            {TRUST_SIGNALS.map((s) => (
+              <div key={s.text} className="flex items-center gap-1.5">
+                <s.icon className="h-3 w-3 opacity-60" />
+                <span>{s.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="border-b border-border">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
-              <Baby className="h-5 w-5" />
-            </div>
-            <div className="leading-none">
-              <span className="text-lg font-extrabold tracking-tight text-foreground">Kokob</span>
-              <span className="block text-[10px] font-medium uppercase tracking-widest text-muted">Baby Shop</span>
-            </div>
+      {/* Main header row: logo | nav | actions */}
+      <div className="border-border border-b">
+        <div className="mx-auto flex h-[84px] w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+          {/* Logo */}
+          <Link href="/" className="shrink-0">
+            <Image
+              src="/logo.png"
+              alt="Kokob Baby Shop"
+              width={288}
+              height={96}
+              className="h-20 w-auto"
+              priority
+            />
           </Link>
 
-          <form onSubmit={handleSearch} className="hidden flex-1 items-center lg:flex lg:max-w-xl">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search baby products, brands..."
-                className="h-10 w-full rounded-full border border-border bg-background pl-10 pr-4 text-sm outline-none transition placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
+          {/* Desktop nav — centered */}
+          <nav className="hide-scrollbar hidden flex-1 items-center justify-center overflow-x-auto lg:flex">
+            <div className="flex items-center whitespace-nowrap">
+              <Link
+                href="/products"
+                className={`relative px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
+                  isProductsPage && !currentCategorySlug
+                    ? "text-foreground"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                All Products
+                {isProductsPage && !currentCategorySlug && (
+                  <span className="bg-secondary absolute right-3 bottom-0 left-3 h-[2px] rounded-full" />
+                )}
+              </Link>
+              {topCategories.map((cat) => {
+                const isNavActive = activeMainSlug === cat.slug;
+                return (
+                  <div
+                    key={cat.slug}
+                    className="relative"
+                    onMouseEnter={() => openMega(cat.slug)}
+                    onMouseLeave={closeMega}
+                  >
+                    <Link
+                      href={`/products?category=${cat.slug}`}
+                      className={`relative flex items-center gap-1 px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
+                        activeMega === cat.slug || isNavActive
+                          ? "text-foreground"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {cat.name}
+                      <ChevronDown
+                        className={`h-3 w-3 shrink-0 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
+                      />
+                      {isNavActive && (
+                        <span className="bg-secondary absolute right-3 bottom-0 left-3 h-[2px] rounded-full" />
+                      )}
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
-          </form>
+          </nav>
 
-          <div className="flex items-center gap-1">
+          {/* Actions */}
+          <div className="ml-auto flex items-center gap-1">
             <button
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary lg:hidden"
+              onClick={toggleSearch}
+              aria-label="Search"
+              className="text-muted hover:text-foreground focus-visible:ring-border relative rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
-              <Search className="h-5 w-5" />
+              {searchOpen ? (
+                <X className="h-[18px] w-[18px]" />
+              ) : (
+                <Search className="h-[18px] w-[18px]" />
+              )}
             </button>
-            <Link href={isLoggedIn ? "/account" : "/account/login"} className="hidden rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary sm:inline-flex">
-              <User className="h-5 w-5" />
+            <Link
+              href={isLoggedIn ? "/account" : "/account/login"}
+              aria-label="Account"
+              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+            >
+              <User className="h-[18px] w-[18px]" />
             </Link>
-            <Link href="/account/wishlist" className="hidden rounded-full p-2.5 text-muted transition hover:bg-primary-light hover:text-primary sm:inline-flex">
-              <Heart className="h-5 w-5" />
+            <Link
+              href="/account/wishlist"
+              aria-label="Wishlist"
+              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+            >
+              <Heart className="h-[18px] w-[18px]" />
             </Link>
             <Link
               href="/cart"
-              className="relative inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
+              aria-label="Cart"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 relative ml-1 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <ShoppingBag className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold text-primary">
+                <span className="bg-primary flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="ml-1 rounded-full p-2.5 text-muted transition hover:bg-primary-light lg:hidden"
+              aria-label="Menu"
+              className="text-muted hover:text-foreground focus-visible:ring-border ml-1 rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -174,107 +289,104 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div className="relative hidden border-b border-border bg-card lg:block">
-        <nav className="mx-auto flex w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-          <Link
-            href="/products"
-            className={`border-b-2 px-4 py-3 text-sm font-medium transition ${
-              isProductsPage && !currentCategorySlug
-                ? "border-primary text-primary"
-                : "border-transparent text-muted hover:border-primary hover:text-primary"
-            }`}
-          >
-            All Products
-          </Link>
-          {topCategories.map((cat) => {
-            const isNavActive = activeMainSlug === cat.slug;
-            return (
-              <div
-                key={cat.slug}
-                className="relative"
-                onMouseEnter={() => openMega(cat.slug)}
-                onMouseLeave={closeMega}
-              >
-                <Link
-                  href={`/products?category=${cat.slug}`}
-                  className={`flex items-center gap-1 border-b-2 px-4 py-3 text-sm font-medium transition ${
-                    activeMega === cat.slug || isNavActive
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted hover:border-primary/40 hover:text-primary"
-                  }`}
-                >
-                  {cat.name}
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            );
-          })}
-        </nav>
-
-        {activeCategory && (
-          <div onMouseEnter={() => openMega(activeCategory.slug)} onMouseLeave={closeMega}>
-            <MegaMenu category={activeCategory} onClose={() => setActiveMega(null)} />
-          </div>
-        )}
-      </div>
-
-      {searchOpen && (
-        <div className="border-b border-border bg-card px-4 py-3 lg:hidden">
-          <form onSubmit={handleSearch} className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="h-10 w-full rounded-full border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            <button type="submit" className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white">
-              Search
-            </button>
-          </form>
+      {/* Mega menu */}
+      {activeCategory && (
+        <div
+          className="relative hidden lg:block"
+          onMouseEnter={() => openMega(activeCategory.slug)}
+          onMouseLeave={closeMega}
+        >
+          <MegaMenu category={activeCategory} onClose={() => setActiveMega(null)} />
         </div>
       )}
 
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="border-border border-b bg-white">
+          <div className="mx-auto max-w-2xl px-4 py-4 sm:px-6">
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="text-muted absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="What are you looking for?"
+                className="border-border bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/15 h-12 w-full rounded-2xl border pr-4 pl-11 text-sm transition outline-none focus:ring-2"
+              />
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile nav */}
       {mobileOpen && (
-        <nav className="border-b border-border bg-card px-4 py-4 lg:hidden">
-          <div className="space-y-1">
-            <Link href="/products" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-light">
-              All Products
-            </Link>
-            {topCategories.map((cat) => (
-              <div key={cat.slug}>
-                <Link
-                  href={`/products?category=${cat.slug}`}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-light"
-                >
-                  <CategoryIcon icon={cat.icon} size={16} className="text-primary" />
-                  {cat.name}
-                </Link>
-                {cat.children && (
-                  <div className="ml-7 space-y-0.5">
-                    {cat.children.slice(0, 5).map((sub) => (
-                      <Link
-                        key={sub.slug}
-                        href={`/products?category=${sub.slug}`}
-                        onClick={() => setMobileOpen(false)}
-                        className="block rounded-md px-3 py-1.5 text-xs text-muted hover:text-primary"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+        <nav className="border-border border-b bg-white lg:hidden">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+            {/* Mobile search */}
+            <form onSubmit={handleSearch} className="mb-4">
+              <div className="relative">
+                <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="border-border bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/15 h-11 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
+                />
               </div>
-            ))}
-            <div className="border-t border-border pt-3">
-              <Link href="/account/wishlist" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-primary-light hover:text-primary">
+            </form>
+
+            <div className="space-y-0.5">
+              <Link
+                href="/products"
+                onClick={() => setMobileOpen(false)}
+                className="text-foreground hover:bg-background block rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+              >
+                All Products
+              </Link>
+              {topCategories.map((cat) => (
+                <div key={cat.slug}>
+                  <Link
+                    href={`/products?category=${cat.slug}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="text-foreground hover:bg-background flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                  >
+                    <CategoryIcon icon={cat.icon} size={16} colored />
+                    {cat.name}
+                  </Link>
+                  {cat.children && (
+                    <div className="ml-8 space-y-0.5">
+                      {cat.children.slice(0, 5).map((sub) => (
+                        <Link
+                          key={sub.slug}
+                          href={`/products?category=${sub.slug}`}
+                          onClick={() => setMobileOpen(false)}
+                          className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-3 py-1.5 text-xs transition"
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-border mt-3 border-t pt-3">
+              <Link
+                href="/account/wishlist"
+                onClick={() => setMobileOpen(false)}
+                className="text-muted hover:bg-background hover:text-foreground flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition"
+              >
+                <Heart className="h-4 w-4" />
                 Wishlist
               </Link>
-              <Link href={isLoggedIn ? "/account" : "/account/login"} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-muted hover:bg-primary-light hover:text-primary">
+              <Link
+                href={isLoggedIn ? "/account" : "/account/login"}
+                onClick={() => setMobileOpen(false)}
+                className="text-muted hover:bg-background hover:text-foreground flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition"
+              >
+                <User className="h-4 w-4" />
                 Account
               </Link>
             </div>

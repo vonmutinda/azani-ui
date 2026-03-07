@@ -98,18 +98,23 @@ export default function LoginPage() {
   const isPending = loginMutation.isPending || registerMutation.isPending;
   const apiError = loginMutation.error || registerMutation.error;
 
-  const inputClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  const inputClass =
+    "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
-      <h1 className="mb-8 text-center text-2xl font-bold text-foreground">
+    <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
+      <h1 className="text-foreground mb-8 text-center text-2xl font-bold">
         {isRegister ? "Create Account" : "Sign In"}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm"
+      >
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
+              <label className="text-muted mb-1.5 block text-xs font-medium">First name</label>
               <input
                 placeholder="First name"
                 value={form.first_name}
@@ -117,10 +122,11 @@ export default function LoginPage() {
                 className={inputClass}
               />
               {validationErrors.first_name && (
-                <p className="mt-1 text-sm text-danger">{validationErrors.first_name}</p>
+                <p className="text-danger mt-1 text-sm">{validationErrors.first_name}</p>
               )}
             </div>
             <div>
+              <label className="text-muted mb-1.5 block text-xs font-medium">Last name</label>
               <input
                 placeholder="Last name"
                 value={form.last_name}
@@ -128,12 +134,13 @@ export default function LoginPage() {
                 className={inputClass}
               />
               {validationErrors.last_name && (
-                <p className="mt-1 text-sm text-danger">{validationErrors.last_name}</p>
+                <p className="text-danger mt-1 text-sm">{validationErrors.last_name}</p>
               )}
             </div>
           </div>
         )}
         <div>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
           <input
             type="text"
             placeholder="Email"
@@ -142,10 +149,11 @@ export default function LoginPage() {
             className={inputClass}
           />
           {validationErrors.email && (
-            <p className="mt-1 text-sm text-danger">{validationErrors.email}</p>
+            <p className="text-danger mt-1 text-sm">{validationErrors.email}</p>
           )}
         </div>
         <div>
+          <label className="text-muted mb-1.5 block text-xs font-medium">Password</label>
           <input
             type="password"
             placeholder="Password"
@@ -154,28 +162,26 @@ export default function LoginPage() {
             className={inputClass}
           />
           {validationErrors.password && (
-            <p className="mt-1 text-sm text-danger">{validationErrors.password}</p>
+            <p className="text-danger mt-1 text-sm">{validationErrors.password}</p>
           )}
         </div>
 
-        {apiError && (
-          <p className="text-sm text-danger">{normalizeError(apiError as Error)}</p>
-        )}
+        {apiError && <p className="text-danger text-sm">{normalizeError(apiError as Error)}</p>}
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {isPending ? "Please wait..." : isRegister ? "Create Account" : "Sign In"}
         </button>
 
-        <p className="text-center text-sm text-muted">
+        <p className="text-muted text-center text-sm">
           {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
             type="button"
             onClick={handleToggleMode}
-            className="font-medium text-primary hover:underline"
+            className="text-secondary focus-visible:ring-secondary/20 rounded font-medium transition hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {isRegister ? "Sign in" : "Create one"}
           </button>

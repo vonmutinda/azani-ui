@@ -25,11 +25,11 @@ export default function WishlistPage() {
 
   if (isLoading || wishlistQuery.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mb-8 h-8 w-48 animate-pulse rounded-lg bg-border/40" />
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="bg-border/40 mb-8 h-8 w-48 animate-pulse rounded-lg" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl bg-border/40" />
+            <div key={index} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
           ))}
         </div>
       </div>
@@ -41,10 +41,12 @@ export default function WishlistPage() {
 
   if (wishlistIds.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:px-8">
-        <Heart className="mx-auto h-16 w-16 text-muted-light" />
-        <h1 className="mt-4 text-2xl font-bold text-foreground">Wishlist</h1>
-        <p className="mt-2 text-sm text-muted">
+      <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-6 lg:px-8">
+        <div className="bg-secondary-light mx-auto flex h-20 w-20 items-center justify-center rounded-full">
+          <Heart className="text-secondary h-8 w-8" />
+        </div>
+        <h1 className="text-foreground mt-4 text-2xl font-bold">Wishlist</h1>
+        <p className="text-muted mt-2 text-sm">
           {customer
             ? "Your wishlist is empty. Browse our products and save your favorites!"
             : "Save products to your wishlist as a guest, or sign in to keep them synced to your account."}
@@ -52,14 +54,14 @@ export default function WishlistPage() {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Browse Products
           </Link>
           {!customer && (
             <Link
               href="/account/login"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary"
+              className="border-border text-foreground hover:border-border-hover hover:text-foreground focus-visible:ring-border inline-flex items-center gap-2 rounded-full border bg-white px-6 py-3 text-sm font-semibold shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Sign In to Sync
             </Link>
@@ -73,14 +75,14 @@ export default function WishlistPage() {
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Wishlist</h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1 className="text-foreground text-2xl font-bold">Wishlist</h1>
+          <p className="text-muted mt-1 text-sm">
             {customer
               ? "Your saved favorites, synced to your account."
               : "Your saved favorites in this browser. Sign in to keep them across devices."}
           </p>
         </div>
-        <div className="rounded-full bg-primary-light px-3 py-1 text-xs font-semibold text-primary">
+        <div className="border-foreground/10 bg-foreground/5 text-foreground rounded-full border px-3 py-1 text-xs font-semibold">
           {wishlistIds.length} {wishlistIds.length === 1 ? "item" : "items"}
         </div>
       </div>
@@ -88,21 +90,23 @@ export default function WishlistPage() {
       {wishlistProductsQuery.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl bg-border/40" />
+            <div key={index} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
           ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-16 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-light">
-            <ShoppingBag className="h-8 w-8 text-primary" />
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <ShoppingBag className="text-secondary h-8 w-8" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-foreground">No saved products found</p>
-            <p className="mt-1 text-sm text-muted">Some wishlist items may no longer be available.</p>
+            <p className="text-foreground text-lg font-semibold">No saved products found</p>
+            <p className="text-muted mt-1 text-sm">
+              Some wishlist items may no longer be available.
+            </p>
           </div>
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
           >
             Browse Products
           </Link>

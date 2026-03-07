@@ -13,11 +13,13 @@ import {
 } from "@/lib/medusa-api";
 import { getVariantPrice, stripHtml } from "@/lib/formatters";
 import { MedusaProductVariant } from "@/types/medusa";
+import { useToast } from "@/components/toast";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -41,18 +43,21 @@ export default function ProductDetailPage() {
       addToCart(variantId, qty),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+      showToast(`${product?.title ?? "Item"} added to cart`, "cart");
     },
   });
   const wishlistMutation = useMutation({
     mutationFn: () => toggleWishlistProduct(id),
     onSuccess: (wishlistIds) => {
       queryClient.setQueryData(["wishlist"], wishlistIds);
+      const added = (wishlistIds ?? []).includes(id);
+      showToast(added ? "Saved to wishlist" : "Removed from wishlist", "success");
     },
   });
 
   if (productQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
           <div className="space-y-4">
@@ -67,14 +72,24 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
-        <p className="text-muted">Product not found.</p>
-        <Link
-          href="/products"
-          className="text-primary mt-4 inline-block text-sm font-medium hover:underline"
-        >
-          Back to products
-        </Link>
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-16 text-center shadow-sm">
+          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <ShoppingBag className="text-secondary h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-foreground text-lg font-semibold">Product not found</p>
+            <p className="text-muted mt-1 text-sm">
+              This product may have been removed or is no longer available.
+            </p>
+          </div>
+          <Link
+            href="/products"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            Back to Products
+          </Link>
+        </div>
       </div>
     );
   }
@@ -110,10 +125,10 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <button
         onClick={() => router.back()}
-        className="text-muted hover:text-primary mb-6 inline-flex items-center gap-1.5 text-sm transition"
+        className="border-border text-muted hover:border-border-hover hover:text-foreground focus-visible:ring-border mb-6 inline-flex items-center gap-1.5 rounded-full border bg-white px-4 py-2 text-sm shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
@@ -141,10 +156,10 @@ export default function ProductDetailPage() {
                 <button
                   key={i}
                   onClick={() => setActiveImageIndex(i)}
-                  className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                  className={`focus-visible:ring-primary/30 h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                     i === activeImageIndex
                       ? "border-primary"
-                      : "border-border hover:border-primary/40"
+                      : "border-border hover:border-foreground/40"
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,14 +171,14 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Details */}
-        <div className="space-y-6">
+        <div className="border-border bg-card space-y-6 rounded-2xl border p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-foreground text-2xl font-bold sm:text-3xl">{product.title}</h1>
               {product.categories?.[0] && (
                 <Link
                   href={`/products?category=${product.categories[0].handle}`}
-                  className="text-muted hover:text-primary mt-1 inline-block text-sm"
+                  className="text-muted hover:text-secondary mt-1 inline-block text-sm"
                 >
                   {product.categories[0].name}
                 </Link>
@@ -173,10 +188,10 @@ export default function ProductDetailPage() {
               type="button"
               onClick={handleWishlistToggle}
               disabled={wishlistMutation.isPending}
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+              className={`focus-visible:ring-primary/30 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 isWishlisted
-                  ? "border-primary bg-primary-light text-primary"
-                  : "border-border text-muted hover:border-primary hover:text-primary"
+                  ? "border-primary text-primary"
+                  : "border-border text-muted hover:border-foreground/40 hover:text-foreground"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -185,7 +200,7 @@ export default function ProductDetailPage() {
             </button>
           </div>
 
-          <p className="text-primary text-2xl font-bold">{price}</p>
+          <p className="text-foreground text-2xl font-bold">{price}</p>
 
           {product.description && (
             <p className="text-muted text-sm leading-relaxed">{stripHtml(product.description)}</p>
@@ -202,10 +217,10 @@ export default function ProductDetailPage() {
                     onClick={() =>
                       setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
                     }
-                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                    className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                       selectedOptions[option.id] === val.value
-                        ? "border-primary bg-primary-light text-primary"
-                        : "border-border text-foreground hover:border-primary/40"
+                        ? "border-foreground bg-foreground/5 text-foreground"
+                        : "border-border text-foreground hover:border-foreground/40"
                     }`}
                   >
                     {val.value}
@@ -217,10 +232,10 @@ export default function ProductDetailPage() {
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-4">
-            <div className="border-border flex items-center rounded-full border">
+            <div className="border-border flex items-center rounded-full border bg-white shadow-sm">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="text-muted hover:text-foreground flex h-10 w-10 items-center justify-center rounded-l-full transition"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-10 w-10 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -229,7 +244,7 @@ export default function ProductDetailPage() {
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="text-muted hover:text-foreground flex h-10 w-10 items-center justify-center rounded-r-full transition"
+                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-10 w-10 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -238,19 +253,16 @@ export default function ProductDetailPage() {
             <button
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !selectedVariant}
-              className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
             >
               <ShoppingBag className="h-4 w-4" />
               {cartMutation.isPending ? "Adding..." : "Add to Cart"}
             </button>
           </div>
 
-          {cartMutation.isSuccess && (
-            <p className="text-success text-sm font-medium">Added to cart!</p>
-          )}
-          {wishlistMutation.isSuccess && (
-            <p className="text-primary text-sm font-medium">
-              {isWishlisted ? "Saved to wishlist." : "Removed from wishlist."}
+          {cartMutation.isError && (
+            <p className="text-danger text-sm font-medium">
+              Failed to add to cart. Please try again.
             </p>
           )}
         </div>

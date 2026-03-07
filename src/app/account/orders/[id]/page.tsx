@@ -14,7 +14,7 @@ export default function OrderDetailPage() {
   }, [id, router]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16 text-center text-muted">
+    <div className="text-muted mx-auto max-w-2xl px-4 py-10 text-center sm:px-6 lg:px-8">
       Loading...
     </div>
   );
