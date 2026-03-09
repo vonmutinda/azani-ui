@@ -11,6 +11,7 @@ const mockToggleWishlistProduct = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   addToCart: (...args: unknown[]) => mockAddToCart(...args),
+  getCart: vi.fn().mockResolvedValue(null),
   getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
   toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
 }));

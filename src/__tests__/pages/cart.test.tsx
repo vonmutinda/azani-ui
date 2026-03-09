@@ -8,6 +8,7 @@ const mockGetCart = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: (...args: unknown[]) => mockGetCart(...args),
+  getProductsByIds: vi.fn().mockResolvedValue([]),
   updateLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
   removeLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
   addPromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
@@ -38,9 +39,7 @@ describe("CartPage", () => {
 
     renderWithProviders(<CartPage />);
     await waitFor(() => {
-      expect(
-        screen.getByText("Pampers Baby Dry Diapers - 24 Count"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Pampers Baby Dry Diapers - 24 Count")).toBeInTheDocument();
     });
   });
 
@@ -50,7 +49,7 @@ describe("CartPage", () => {
     renderWithProviders(<CartPage />);
     await waitFor(() => {
       expect(screen.getByText("Order Summary")).toBeInTheDocument();
-      expect(screen.getByText("Subtotal")).toBeInTheDocument();
+      expect(screen.getAllByText("Subtotal").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Total")).toBeInTheDocument();
     });
   });
@@ -80,7 +79,7 @@ describe("CartPage", () => {
 
     renderWithProviders(<CartPage />);
     await waitFor(() => {
-      expect(screen.getByText("2")).toBeInTheDocument();
+      expect(screen.getByText(/× 2/)).toBeInTheDocument();
     });
   });
 
@@ -89,7 +88,7 @@ describe("CartPage", () => {
 
     renderWithProviders(<CartPage />);
     await waitFor(() => {
-      expect(screen.getAllByText("$30.00").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Br3,000.00").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

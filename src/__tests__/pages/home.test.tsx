@@ -4,6 +4,10 @@ import Home from "@/app/page";
 import { renderWithProviders } from "../test-utils";
 
 vi.mock("@/lib/medusa-api", () => ({
+  getCart: vi.fn().mockResolvedValue(null),
+  getWishlistProductIds: vi.fn().mockResolvedValue([]),
+  addToCart: vi.fn(),
+  toggleWishlistProduct: vi.fn(),
   getProducts: vi.fn().mockResolvedValue({
     products: [
       {
@@ -62,9 +66,9 @@ describe("Home Page", () => {
     expect(shopNow.closest("a")).toHaveAttribute("href", "/products");
   });
 
-  it("renders featured products section heading", () => {
+  it("renders explore collection section heading", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Featured Products")).toBeInTheDocument();
+    expect(screen.getByText("Explore Our Collection")).toBeInTheDocument();
   });
 
   it("renders shop by category section heading", () => {
@@ -76,7 +80,7 @@ describe("Home Page", () => {
     renderWithProviders(<Home />);
     expect(screen.getByText("Free Shipping")).toBeInTheDocument();
     expect(screen.getByText("Safe Products")).toBeInTheDocument();
-    expect(screen.getByText("Curated Selection")).toBeInTheDocument();
+    expect(screen.getByText("Same-Day Express")).toBeInTheDocument();
     expect(screen.getByText("Expert Support")).toBeInTheDocument();
   });
 

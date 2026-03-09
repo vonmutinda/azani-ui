@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProductCard } from "@/components/product-card";
-import { getCustomer, getProductsByIds, getWishlistProductIds } from "@/lib/medusa-api";
+import {
+  getCustomer,
+  getProductsByIds,
+  getWishlistProductIds,
+  toggleWishlistProduct,
+} from "@/lib/medusa-api";
+import { useToast } from "@/components/toast";
 
 export default function WishlistPage() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer"],
     queryFn: getCustomer,
@@ -21,6 +30,14 @@ export default function WishlistPage() {
     queryKey: ["wishlist-products", wishlistQuery.data],
     queryFn: () => getProductsByIds(wishlistQuery.data ?? []),
     enabled: (wishlistQuery.data?.length ?? 0) > 0,
+  });
+
+  const removeFromWishlist = useMutation({
+    mutationFn: (productId: string) => toggleWishlistProduct(productId),
+    onSuccess: (wishlistIds) => {
+      queryClient.setQueryData(["wishlist"], wishlistIds);
+      showToast("Moved to cart", "success");
+    },
   });
 
   if (isLoading || wishlistQuery.isLoading) {
@@ -114,7 +131,11 @@ export default function WishlistPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddedToCart={(id) => removeFromWishlist.mutate(id)}
+            />
           ))}
         </div>
       )}

@@ -17,6 +17,7 @@ import {
   UtensilsCrossed,
   Zap,
 } from "lucide-react";
+import Image from "next/image";
 import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
@@ -94,8 +95,13 @@ function HeroCarousel({
               }}
             >
               {p.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image} alt={p.title} className="h-full w-full object-contain p-2" />
+                <Image
+                  src={p.image}
+                  alt={p.title}
+                  fill
+                  sizes="(max-width: 640px) 80vw, 300px"
+                  className="object-contain p-2"
+                />
               ) : (
                 <div className="bg-secondary-light text-secondary flex h-full items-center justify-center">
                   <Package className="h-12 w-12" />
@@ -269,7 +275,7 @@ export default function Home() {
               <div className="bg-background flex h-16 w-16 items-center justify-center rounded-2xl transition group-hover:scale-110">
                 <CategoryIcon icon={cat.icon} size={28} colored />
               </div>
-              <p className="text-foreground text-[13px] font-semibold">{cat.name}</p>
+              <p className="text-foreground text-sm font-semibold">{cat.name}</p>
             </Link>
           ))}
         </div>
@@ -283,7 +289,7 @@ export default function Home() {
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">
                 Explore Our Collection
               </h2>
-              <div className="mt-3 flex gap-1">
+              <div className="mt-3 flex gap-1" role="tablist">
                 {(
                   [
                     ["featured", "Featured"],
@@ -292,6 +298,8 @@ export default function Home() {
                 ).map(([key, label]) => (
                   <button
                     key={key}
+                    role="tab"
+                    aria-selected={productTab === key}
                     onClick={() => setProductTab(key)}
                     className={`relative rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       productTab === key

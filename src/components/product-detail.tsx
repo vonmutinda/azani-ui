@@ -1,16 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
-import { useState, useMemo } from "react";
+import { ArrowLeft, Check, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   getProductById,
   addToCart,
+  getCart,
   getWishlistProductIds,
   toggleWishlistProduct,
 } from "@/lib/medusa-api";
-import { getVariantPrice, stripHtml } from "@/lib/formatters";
-import { MedusaProductVariant } from "@/types/medusa";
+import { getVariantAvailability, getVariantPrice, stripHtml } from "@/lib/formatters";
+import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { useToast } from "@/components/toast";
 
 type Props = {
@@ -36,6 +38,8 @@ export function ProductDetail({ productId, onBack }: Props) {
     staleTime: 30 * 1000,
   });
 
+  const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart, staleTime: 10_000 });
+
   const product = productQuery.data?.product;
   const isWishlisted = product ? (wishlistQuery.data ?? []).includes(product.id) : false;
 
@@ -52,12 +56,21 @@ export function ProductDetail({ productId, onBack }: Props) {
   const effectiveOptions =
     Object.keys(selectedOptions).length > 0 ? selectedOptions : defaultOptions;
 
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const flashAdded = useCallback(() => {
+    setJustAdded(true);
+    clearTimeout(addedTimer.current);
+    addedTimer.current = setTimeout(() => setJustAdded(false), 1500);
+  }, []);
+
   const cartMutation = useMutation({
     mutationFn: ({ variantId, qty }: { variantId: string; qty: number }) =>
       addToCart(variantId, qty),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       showToast(`${product?.title ?? "Item"} added to cart`, "cart");
+      flashAdded();
     },
   });
   const wishlistMutation = useMutation({
@@ -71,6 +84,35 @@ export function ProductDetail({ productId, onBack }: Props) {
       );
     },
   });
+
+  const selectedVariant: MedusaProductVariant | undefined = useMemo(() => {
+    const opts = product?.options ?? [];
+    const vars = product?.variants ?? [];
+    return (
+      vars.find((v) => {
+        if (!v.options) return false;
+        return opts.every((opt) => {
+          const selected = effectiveOptions[opt.id];
+          if (!selected) return false;
+          return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
+        });
+      }) ?? vars[0]
+    );
+  }, [product, effectiveOptions]);
+
+  const availability = getVariantAvailability(selectedVariant);
+
+  const cartQtyForVariant = useMemo(() => {
+    if (!selectedVariant || !cartQuery.data) return 0;
+    const cart = cartQuery.data as MedusaCart;
+    return (cart.items ?? [])
+      .filter((li) => li.variant_id === selectedVariant.id)
+      .reduce((sum, li) => sum + li.quantity, 0);
+  }, [cartQuery.data, selectedVariant]);
+
+  const remainingStock = Math.max(availability.maxQuantity - cartQtyForVariant, 0);
+  const maxedOut = availability.canPurchase && availability.maxQuantity > 0 && remainingStock === 0;
+  const safeQuantity = Math.min(quantity, Math.max(remainingStock, 1));
 
   if (productQuery.isLoading) {
     return (
@@ -120,25 +162,15 @@ export function ProductDetail({ productId, onBack }: Props) {
     ? [{ url: product.thumbnail }, ...images.filter((img) => img.url !== product.thumbnail)]
     : images;
 
-  const options = product.options ?? [];
-  const variants = product.variants ?? [];
-
-  const selectedVariant: MedusaProductVariant | undefined =
-    variants.find((v) => {
-      if (!v.options) return false;
-      return options.every((opt) => {
-        const selected = effectiveOptions[opt.id];
-        if (!selected) return false;
-        return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
-      });
-    }) ?? variants[0];
-
   const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
 
   const handleAddToCart = () => {
-    if (selectedVariant) {
-      cartMutation.mutate({ variantId: selectedVariant.id, qty: quantity });
+    if (!selectedVariant || !availability.canPurchase) return;
+    if (maxedOut) {
+      showToast("Maximum quantity already in cart", "info");
+      return;
     }
+    cartMutation.mutate({ variantId: selectedVariant.id, qty: safeQuantity });
   };
   const handleWishlistToggle = () => {
     wishlistMutation.mutate();
@@ -156,13 +188,15 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">
-          <div className="border-border bg-background aspect-square overflow-hidden rounded-2xl border">
+          <div className="border-border bg-background relative aspect-square overflow-hidden rounded-2xl border">
             {allImages[activeImageIndex] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={allImages[activeImageIndex].url}
                 alt={product.title}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
               />
             ) : (
               <div className="text-muted flex h-full items-center justify-center">
@@ -176,14 +210,19 @@ export function ProductDetail({ productId, onBack }: Props) {
                 <button
                   key={i}
                   onClick={() => setActiveImageIndex(i)}
-                  className={`focus-visible:ring-primary/30 h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                  className={`focus-visible:ring-primary/30 bg-card relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                     i === activeImageIndex
                       ? "border-foreground"
                       : "border-border hover:border-foreground/40"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt="" className="h-full w-full object-cover" />
+                  <Image
+                    src={img.url}
+                    alt={`${product.title} thumbnail ${i + 1}`}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -205,7 +244,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               type="button"
               onClick={handleWishlistToggle}
               disabled={wishlistMutation.isPending}
-              className={`focus-visible:ring-primary/30 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`focus-visible:ring-primary/30 bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 isWishlisted
                   ? "border-primary text-primary"
                   : "border-border text-muted hover:border-foreground/40 hover:text-foreground"
@@ -218,13 +257,26 @@ export function ProductDetail({ productId, onBack }: Props) {
           </div>
 
           <p className="text-foreground text-2xl font-bold">{price}</p>
+          <p
+            className={`text-sm font-medium ${
+              maxedOut
+                ? "text-muted"
+                : availability.isOutOfStock
+                  ? "text-danger"
+                  : availability.isLowStock
+                    ? "text-accent-yellow"
+                    : "text-accent-green"
+            }`}
+          >
+            {maxedOut ? "Max quantity in cart" : availability.label}
+          </p>
 
           {product.description && (
             <p className="text-muted text-sm leading-relaxed">{stripHtml(product.description)}</p>
           )}
 
           {/* Options */}
-          {options.map((option) => (
+          {(product.options ?? []).map((option) => (
             <div key={option.id} className="space-y-2">
               <label className="text-foreground text-sm font-semibold">{option.title}</label>
               <div className="flex flex-wrap gap-2">
@@ -249,19 +301,21 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
-            <div className="border-border flex items-center rounded-full border bg-white shadow-sm">
+            <div className="border-border bg-card flex items-center rounded-full border shadow-sm">
               <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
                 className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
+                disabled={!availability.canPurchase || maxedOut}
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
               <span className="flex h-11 w-10 items-center justify-center text-sm font-semibold">
-                {quantity}
+                {safeQuantity}
               </span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
+                onClick={() => setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))}
                 className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
+                disabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -269,11 +323,41 @@ export function ProductDetail({ productId, onBack }: Props) {
 
             <button
               onClick={handleAddToCart}
-              disabled={cartMutation.isPending || !selectedVariant}
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+              disabled={
+                cartMutation.isPending ||
+                !selectedVariant ||
+                !availability.canPurchase ||
+                justAdded ||
+                maxedOut
+              }
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+                justAdded
+                  ? "bg-accent-green-bold"
+                  : maxedOut
+                    ? "bg-muted cursor-default"
+                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30"
+              }`}
             >
-              <ShoppingBag className="h-4 w-4" />
-              {cartMutation.isPending ? "Adding..." : "Add to Cart"}
+              {justAdded ? (
+                <>
+                  <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
+                  Added
+                </>
+              ) : maxedOut ? (
+                <>
+                  <Check className="h-4 w-4" strokeWidth={2.5} />
+                  Max in Cart
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-4 w-4" />
+                  {cartMutation.isPending
+                    ? "Adding..."
+                    : availability.canPurchase
+                      ? "Add to Cart"
+                      : "Out of Stock"}
+                </>
+              )}
             </button>
           </div>
 

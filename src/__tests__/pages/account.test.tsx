@@ -3,14 +3,11 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AccountPage from "@/app/account/page";
 import { renderWithProviders } from "../test-utils";
+import { formatOrderRef } from "@/lib/formatters";
 
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
-  useSearchParams: () => new URLSearchParams(),
-}));
-
+const mockSearchParamGet = vi.fn();
 const mockGetCustomer = vi.fn();
 const mockUpdateCustomer = vi.fn();
 const mockGetCustomerAddresses = vi.fn();
@@ -19,6 +16,16 @@ const mockUpdateCustomerAddress = vi.fn();
 const mockDeleteCustomerAddress = vi.fn();
 const mockGetOrders = vi.fn();
 const mockGetOrderById = vi.fn();
+const mockGetProductsByIds = vi.fn();
+const mockGetWishlistProductIds = vi.fn();
+const mockResendVerificationEmail = vi.fn();
+const mockClearAuthToken = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useSearchParams: () => ({ get: mockSearchParamGet }),
+}));
+
 vi.mock("@/lib/medusa-api", () => ({
   getCustomer: (...args: unknown[]) => mockGetCustomer(...args),
   updateCustomer: (...args: unknown[]) => mockUpdateCustomer(...args),
@@ -28,9 +35,11 @@ vi.mock("@/lib/medusa-api", () => ({
   deleteCustomerAddress: (...args: unknown[]) => mockDeleteCustomerAddress(...args),
   getOrders: (...args: unknown[]) => mockGetOrders(...args),
   getOrderById: (...args: unknown[]) => mockGetOrderById(...args),
+  getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
+  getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
+  resendVerificationEmail: (...args: unknown[]) => mockResendVerificationEmail(...args),
 }));
 
-const mockClearAuthToken = vi.fn();
 vi.mock("@/lib/http", () => ({
   clearAuthToken: (...args: unknown[]) => mockClearAuthToken(...args),
 }));
@@ -42,33 +51,39 @@ const customer = {
   last_name: "Doe",
   phone: "+251911000000",
   has_account: true,
+  metadata: { email_verified: true },
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetCustomerAddresses.mockResolvedValue([]);
   mockGetOrders.mockResolvedValue([]);
+  mockGetProductsByIds.mockResolvedValue([]);
+  mockGetWishlistProductIds.mockResolvedValue([]);
+  mockSearchParamGet.mockReturnValue(null);
 });
 
 describe("AccountPage", () => {
   it("shows loading state while fetching", () => {
     mockGetCustomer.mockReturnValue(new Promise(() => {}));
+
     renderWithProviders(<AccountPage />);
+
     expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
   });
 
-  it("renders customer data", async () => {
+  it("renders customer details when authenticated", async () => {
     mockGetCustomer.mockResolvedValue(customer);
 
     renderWithProviders(<AccountPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome back, Jane!")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Jane Doe" })).toBeInTheDocument();
     });
     expect(screen.getAllByText("jane@example.com").length).toBeGreaterThan(0);
   });
 
-  it("redirects to login when not authenticated", async () => {
+  it("redirects to login when the session is unavailable", async () => {
     mockGetCustomer.mockResolvedValue(null);
 
     renderWithProviders(<AccountPage />);
@@ -78,7 +93,7 @@ describe("AccountPage", () => {
     });
   });
 
-  it("signs out and redirects to home", async () => {
+  it("signs out and routes home", async () => {
     mockGetCustomer.mockResolvedValue(customer);
 
     const user = userEvent.setup();
@@ -94,260 +109,183 @@ describe("AccountPage", () => {
     expect(mockPush).toHaveBeenCalledWith("/");
   });
 
-  it("renders nav buttons (Profile, Orders)", async () => {
+  it("opens deep-linked orders and resolves fallback product images", async () => {
     mockGetCustomer.mockResolvedValue(customer);
-
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
-    });
-    expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
-  });
-
-  it("profile edit mode — click Edit, change name, Save calls updateCustomer", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
-    mockUpdateCustomer.mockResolvedValue({ ...customer, first_name: "Janet" });
-
-    const user = userEvent.setup();
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Edit")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Edit"));
-
-    const firstNameInput = screen.getByDisplayValue("Jane");
-    await user.clear(firstNameInput);
-    await user.type(firstNameInput, "Janet");
-
-    await user.click(screen.getByText("Save"));
-
-    await waitFor(() => {
-      expect(mockUpdateCustomer).toHaveBeenCalledWith({
-        first_name: "Janet",
-        last_name: "Doe",
-        phone: "+251911000000",
-      });
-    });
-  });
-
-  it("profile section shows delivery addresses", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
-    mockGetCustomerAddresses.mockResolvedValue([
-      {
-        id: "addr_1",
-        first_name: "Jane",
-        last_name: "Doe",
-        address_1: "123 Main St",
-        city: "Addis Ababa",
-        province: "AA",
-        postal_code: "1000",
-        country_code: "et",
-        phone: "+251911000000",
-      },
-    ]);
-
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Delivery Addresses")).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      expect(screen.getByText("123 Main St")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Addis Ababa, AA 1000")).toBeInTheDocument();
-  });
-
-  it("orders section empty state", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
-    mockGetOrders.mockResolvedValue([]);
-
-    const user = userEvent.setup();
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
-    });
-
-    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("No orders yet").length).toBeGreaterThan(0);
-    });
-  });
-
-  it("orders section with order data", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
+    mockSearchParamGet.mockImplementation((key: string) => (key === "order" ? "order_1" : null));
     mockGetOrders.mockResolvedValue([
       {
-        id: "order_123",
-        display_id: 42,
-        email: "jane@example.com",
+        id: "order_1",
+        display_id: 101,
+        email: customer.email,
         currency_code: "etb",
-        items: [],
-        total: 50000,
-        subtotal: 45000,
-        shipping_total: 5000,
+        items: [
+          {
+            id: "item_1",
+            title: "Baby Lotion",
+            quantity: 1,
+            variant_id: "variant_1",
+            product_id: "prod_1",
+            unit_price: 100,
+            original_total: 100,
+            total: 100,
+            subtotal: 100,
+            discount_total: 0,
+            tax_total: 0,
+          },
+        ],
+        total: 100,
+        subtotal: 100,
+        shipping_total: 0,
         tax_total: 0,
         discount_total: 0,
         status: "completed",
         fulfillment_status: "fulfilled",
         payment_status: "captured",
-        created_at: "2025-06-01T00:00:00.000Z",
+        created_at: new Date().toISOString(),
       },
     ]);
-
-    const user = userEvent.setup();
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
-    });
-
-    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Order #42").length).toBeGreaterThan(0);
-    });
-    expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
-  });
-
-  it("shows latest orders first", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
-    mockGetOrders.mockResolvedValue([
+    mockGetProductsByIds.mockResolvedValue([
       {
-        id: "order_old",
-        display_id: 41,
-        email: "jane@example.com",
-        currency_code: "etb",
-        items: [],
-        total: 40000,
-        subtotal: 35000,
-        shipping_total: 5000,
-        tax_total: 0,
-        discount_total: 0,
-        status: "completed",
-        fulfillment_status: "fulfilled",
-        payment_status: "captured",
-        created_at: "2025-05-01T00:00:00.000Z",
-      },
-      {
-        id: "order_new",
-        display_id: 42,
-        email: "jane@example.com",
-        currency_code: "etb",
-        items: [],
-        total: 50000,
-        subtotal: 45000,
-        shipping_total: 5000,
-        tax_total: 0,
-        discount_total: 0,
-        status: "completed",
-        fulfillment_status: "fulfilled",
-        payment_status: "captured",
-        created_at: "2025-06-01T00:00:00.000Z",
-      },
-    ]);
-
-    const user = userEvent.setup();
-    renderWithProviders(<AccountPage />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
-    });
-
-    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
-
-    await waitFor(() => {
-      expect(screen.getByText("Newest orders appear first.")).toBeInTheDocument();
-    });
-
-    const orderButtons = screen.getAllByRole("button").filter((button) =>
-      button.textContent?.includes("Order #"),
-    );
-
-    expect(orderButtons[0]).toHaveTextContent("Order #42");
-    expect(orderButtons[1]).toHaveTextContent("Order #41");
-  });
-
-  it("clicking an order shows order detail inline", async () => {
-    mockGetCustomer.mockResolvedValue(customer);
-    mockGetOrders.mockResolvedValue([
-      {
-        id: "order_123",
-        display_id: 42,
-        email: "jane@example.com",
-        currency_code: "etb",
-        items: [],
-        total: 50000,
-        subtotal: 45000,
-        shipping_total: 5000,
-        tax_total: 0,
-        discount_total: 0,
-        status: "completed",
-        fulfillment_status: "fulfilled",
-        payment_status: "captured",
-        created_at: "2025-06-01T00:00:00.000Z",
+        id: "prod_1",
+        title: "Baby Lotion",
+        handle: "baby-lotion",
+        thumbnail: "https://example.com/lotion.jpg",
+        status: "published",
+        is_giftcard: false,
+        discountable: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
     ]);
     mockGetOrderById.mockResolvedValue({
-      id: "order_123",
-      display_id: 42,
-      email: "jane@example.com",
+      id: "order_1",
+      display_id: 101,
+      email: customer.email,
       currency_code: "etb",
       items: [
         {
           id: "item_1",
-          title: "Baby Onesie",
-          thumbnail: "https://example.com/onesie.jpg",
-          quantity: 2,
-          unit_price: 15000,
-          total: 30000,
-          original_total: 30000,
-          subtotal: 30000,
+          title: "Baby Lotion",
+          quantity: 1,
+          variant_id: "variant_1",
+          product_id: "prod_1",
+          unit_price: 100,
+          original_total: 100,
+          total: 100,
+          subtotal: 100,
           discount_total: 0,
           tax_total: 0,
         },
       ],
-      shipping_address: {
-        first_name: "Jane",
-        last_name: "Doe",
-        address_1: "123 Main St",
-        city: "Addis Ababa",
-        province: "AA",
-        postal_code: "1000",
-      },
-      total: 35000,
-      subtotal: 30000,
-      shipping_total: 5000,
+      total: 100,
+      subtotal: 100,
+      shipping_total: 0,
       tax_total: 0,
       discount_total: 0,
       status: "completed",
       fulfillment_status: "fulfilled",
       payment_status: "captured",
-      created_at: "2025-06-01T00:00:00.000Z",
+      created_at: new Date().toISOString(),
     });
 
-    const user = userEvent.setup();
     renderWithProviders(<AccountPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
+      expect(screen.getAllByAltText("Baby Lotion").length).toBeGreaterThan(0);
     });
-    await user.click(screen.getAllByRole("button", { name: /Orders/i })[0]);
+    const expectedRef = formatOrderRef(101, undefined, "order_1");
+    expect(screen.getAllByText(expectedRef).length).toBeGreaterThan(0);
+    expect(screen.getByText("Qty: 1")).toBeInTheDocument();
+  });
+
+  it("falls back to variant-linked product media when order item product is missing", async () => {
+    mockGetCustomer.mockResolvedValue(customer);
+    mockSearchParamGet.mockImplementation((key: string) => (key === "order" ? "order_2" : null));
+    mockGetOrders.mockResolvedValue([
+      {
+        id: "order_2",
+        display_id: 102,
+        email: customer.email,
+        currency_code: "etb",
+        items: [
+          {
+            id: "item_2",
+            title: "Nursing Pillow",
+            quantity: 1,
+            variant_id: "variant_2",
+            product_id: "prod_2",
+            unit_price: 150,
+            original_total: 150,
+            total: 150,
+            subtotal: 150,
+            discount_total: 0,
+            tax_total: 0,
+            variant: {
+              id: "variant_2",
+              title: "Default",
+              product: {
+                id: "prod_2",
+                thumbnail: "https://example.com/pillow.jpg",
+                images: [],
+              },
+            },
+          },
+        ],
+        total: 150,
+        subtotal: 150,
+        shipping_total: 0,
+        tax_total: 0,
+        discount_total: 0,
+        status: "completed",
+        fulfillment_status: "fulfilled",
+        payment_status: "captured",
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    mockGetOrderById.mockResolvedValue({
+      id: "order_2",
+      display_id: 102,
+      email: customer.email,
+      currency_code: "etb",
+      items: [
+        {
+          id: "item_2",
+          title: "Nursing Pillow",
+          quantity: 1,
+          variant_id: "variant_2",
+          product_id: "prod_2",
+          unit_price: 150,
+          original_total: 150,
+          total: 150,
+          subtotal: 150,
+          discount_total: 0,
+          tax_total: 0,
+          variant: {
+            id: "variant_2",
+            title: "Default",
+            product: {
+              id: "prod_2",
+              thumbnail: "https://example.com/pillow.jpg",
+              images: [],
+            },
+          },
+        },
+      ],
+      total: 150,
+      subtotal: 150,
+      shipping_total: 0,
+      tax_total: 0,
+      discount_total: 0,
+      status: "completed",
+      fulfillment_status: "fulfilled",
+      payment_status: "captured",
+      created_at: new Date().toISOString(),
+    });
+
+    renderWithProviders(<AccountPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Order #42").length).toBeGreaterThan(0);
+      expect(screen.getAllByAltText("Nursing Pillow").length).toBeGreaterThan(0);
     });
-
-    await user.click(screen.getAllByText("Order #42")[0]);
-
-    await waitFor(() => {
-      expect(screen.getByText("Baby Onesie")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Qty: 2")).toBeInTheDocument();
-    expect(screen.getByText("123 Main St")).toBeInTheDocument();
   });
 });

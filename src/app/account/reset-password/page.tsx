@@ -1,21 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { resetPassword } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordPage() {
-  const searchParams = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search);
-  }, []);
+  const searchParams = useSearchParams();
 
-  const token = searchParams?.get("token") ?? "";
-  const email = searchParams?.get("email") ?? "";
+  const token = searchParams.get("token") ?? "";
+  const email = searchParams.get("email") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

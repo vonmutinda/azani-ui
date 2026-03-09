@@ -1,26 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import Image from "next/image";
+import { Check, Heart, Plus, ShoppingBag } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MedusaProduct } from "@/types/medusa";
-import { getProductPrice, getProductOriginalPrice, resolveProductImage } from "@/lib/formatters";
-import { addToCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import { MedusaCart, MedusaProduct } from "@/types/medusa";
+import {
+  getProductPrice,
+  getProductOriginalPrice,
+  getVariantAvailability,
+  resolveProductImage,
+} from "@/lib/formatters";
+import { addToCart, getCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
 import { useToast } from "@/components/toast";
 
 type Props = {
   product: MedusaProduct;
   onSelect?: (productId: string) => void;
+  onAddedToCart?: (productId: string) => void;
 };
 
-export function ProductCard({ product, onSelect }: Props) {
+export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const imageUrl = resolveProductImage(product);
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
-  const defaultVariant = product.variants?.[0];
+  const quickAddVariant =
+    product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
+    product.variants?.[0];
+  const availability = getVariantAvailability(quickAddVariant);
+
+  const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart, staleTime: 10_000 });
+  const cartQtyForVariant = useMemo(() => {
+    if (!quickAddVariant || !cartQuery.data) return 0;
+    const cart = cartQuery.data as MedusaCart;
+    return (cart.items ?? [])
+      .filter((li) => li.variant_id === quickAddVariant.id)
+      .reduce((sum, li) => sum + li.quantity, 0);
+  }, [cartQuery.data, quickAddVariant]);
+
+  const maxedOut =
+    availability.canPurchase &&
+    availability.maxQuantity > 0 &&
+    cartQtyForVariant >= availability.maxQuantity;
+
   const wishlistQuery = useQuery({
     queryKey: ["wishlist"],
     queryFn: getWishlistProductIds,
@@ -28,11 +53,22 @@ export function ProductCard({ product, onSelect }: Props) {
   });
   const isWishlisted = (wishlistQuery.data ?? []).includes(product.id);
 
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const flashAdded = useCallback(() => {
+    setJustAdded(true);
+    clearTimeout(addedTimer.current);
+    addedTimer.current = setTimeout(() => setJustAdded(false), 1500);
+  }, []);
+
   const cartMutation = useMutation({
     mutationFn: (variantId: string) => addToCart(variantId, 1),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       showToast(`${product.title} added to cart`, "cart");
+      flashAdded();
+      onAddedToCart?.(product.id);
     },
   });
 
@@ -46,9 +82,12 @@ export function ProductCard({ product, onSelect }: Props) {
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     e.preventDefault();
-    if (defaultVariant) {
-      cartMutation.mutate(defaultVariant.id);
+    if (!quickAddVariant || !availability.canPurchase) return;
+    if (maxedOut) {
+      showToast("Maximum quantity already in cart", "info");
+      return;
     }
+    cartMutation.mutate(quickAddVariant.id);
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -75,7 +114,7 @@ export function ProductCard({ product, onSelect }: Props) {
     <article className="group border-border bg-card relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow duration-300 hover:shadow-md">
       {isNew && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="bg-accent-yellow text-foreground rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase shadow-sm">
+          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase shadow-sm">
             New
           </span>
         </div>
@@ -86,7 +125,7 @@ export function ProductCard({ product, onSelect }: Props) {
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`border-border focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+          className={`border-border focus-visible:ring-primary/30 bg-card flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
             isWishlisted ? "text-primary" : "text-muted hover:bg-background hover:text-foreground"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -97,13 +136,14 @@ export function ProductCard({ product, onSelect }: Props) {
       </div>
 
       <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
-        <div className="bg-background aspect-square overflow-hidden">
+        <div className="bg-background relative aspect-square overflow-hidden">
           {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={imageUrl}
               alt={product.title}
-              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           ) : (
             <div className="text-muted-light flex h-full flex-col items-center justify-center gap-2">
@@ -114,32 +154,71 @@ export function ProductCard({ product, onSelect }: Props) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1 px-3 pt-2.5 pb-3">
         <Link
           href={productHref}
           onClick={handleClick}
-          className="text-foreground hover:text-secondary line-clamp-2 text-[13px] leading-snug font-medium transition"
+          className="text-foreground hover:text-secondary line-clamp-2 text-sm leading-snug font-medium transition"
         >
           {product.title}
         </Link>
 
-        <div className="mt-auto flex items-center justify-between pt-1">
+        <p
+          className={`text-xs font-medium ${
+            maxedOut
+              ? "text-muted"
+              : availability.isOutOfStock
+                ? "text-danger"
+                : availability.isLowStock
+                  ? "text-accent-yellow"
+                  : "text-accent-green"
+          }`}
+        >
+          {maxedOut ? "Max in cart" : availability.label}
+        </p>
+
+        <div className="mt-auto flex items-center justify-between">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-foreground text-base font-bold">{price?.formatted ?? "--"}</span>
+            <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
             {originalPrice && (
-              <span className="text-muted text-[11px] line-through">{originalPrice}</span>
+              <span className="text-muted text-2xs line-through">{originalPrice}</span>
             )}
           </div>
 
-          {defaultVariant && (
+          {quickAddVariant && (
             <button
               type="button"
               onClick={handleAddToCart}
-              disabled={cartMutation.isPending}
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
-              title="Add to cart"
+              disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                justAdded
+                  ? "bg-accent-green-bold scale-110"
+                  : maxedOut
+                    ? "bg-muted cursor-default opacity-60"
+                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 disabled:opacity-40"
+              }`}
+              aria-label={
+                maxedOut
+                  ? "Max quantity in cart"
+                  : availability.canPurchase
+                    ? "Add to cart"
+                    : "Out of stock"
+              }
+              title={
+                maxedOut
+                  ? "Max quantity in cart"
+                  : availability.canPurchase
+                    ? "Add to cart"
+                    : "Out of stock"
+              }
             >
-              <ShoppingBag className="h-3.5 w-3.5" />
+              {justAdded ? (
+                <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
+              ) : maxedOut ? (
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+              ) : (
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+              )}
             </button>
           )}
         </div>

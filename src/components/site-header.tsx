@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   ChevronDown,
   Heart,
+  LayoutGrid,
   Menu,
   Search,
   ShoppingBag,
@@ -33,7 +34,7 @@ const TRUST_SIGNALS = [
 function MegaMenu({ category, onClose }: { category: KokobCategory; onClose: () => void }) {
   const children = category.children ?? [];
   return (
-    <div className="border-border absolute top-full left-0 z-50 w-full border-b bg-white shadow-lg">
+    <div className="border-border bg-card absolute top-full left-0 z-50 w-full border-b shadow-lg">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         {children.map((sub) => (
           <div key={sub.slug}>
@@ -156,10 +157,10 @@ export function SiteHeader() {
   const TrustIcon = TRUST_SIGNALS[trustIdx].icon;
 
   return (
-    <header className="sticky top-0 z-50 bg-white">
+    <header className="bg-card sticky top-0 z-50">
       {/* Announcement / trust bar */}
       <div className="bg-foreground text-white">
-        <div className="mx-auto flex h-8 max-w-7xl items-center justify-center gap-6 px-4 text-[11px] font-medium tracking-wide sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-8 max-w-7xl items-center justify-center gap-6 px-4 text-xs font-medium tracking-wide sm:px-6 lg:px-8">
           {/* Mobile: rotating single signal */}
           <div className="flex items-center gap-1.5 sm:hidden">
             <TrustIcon className="h-3 w-3 opacity-70" />
@@ -193,19 +194,21 @@ export function SiteHeader() {
           </Link>
 
           {/* Desktop nav — centered */}
-          <nav className="hide-scrollbar hidden flex-1 items-center justify-center overflow-x-auto lg:flex">
+          <nav className="hide-scrollbar hidden max-w-[calc(100%-360px)] flex-1 items-center justify-center overflow-x-auto lg:flex">
             <div className="flex items-center whitespace-nowrap">
               <Link
                 href="/products"
-                className={`relative px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
+                aria-label="All Products"
+                title="All Products"
+                className={`relative flex items-center justify-center rounded-full p-2.5 transition ${
                   isProductsPage && !currentCategorySlug
                     ? "text-foreground"
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                All Products
+                <LayoutGrid className="h-4 w-4" />
                 {isProductsPage && !currentCategorySlug && (
-                  <span className="bg-secondary absolute right-3 bottom-0 left-3 h-[2px] rounded-full" />
+                  <span className="bg-secondary absolute right-1 bottom-0.5 left-1 h-[2px] rounded-full" />
                 )}
               </Link>
               {topCategories.map((cat) => {
@@ -219,7 +222,7 @@ export function SiteHeader() {
                   >
                     <Link
                       href={`/products?category=${cat.slug}`}
-                      className={`relative flex items-center gap-1 px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
+                      className={`relative flex items-center gap-1 px-2.5 py-2 text-xs font-medium whitespace-nowrap transition ${
                         activeMega === cat.slug || isNavActive
                           ? "text-foreground"
                           : "text-muted hover:text-foreground"
@@ -230,7 +233,7 @@ export function SiteHeader() {
                         className={`h-3 w-3 shrink-0 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
                       />
                       {isNavActive && (
-                        <span className="bg-secondary absolute right-3 bottom-0 left-3 h-[2px] rounded-full" />
+                        <span className="bg-secondary absolute right-2.5 bottom-0 left-2.5 h-[2px] rounded-full" />
                       )}
                     </Link>
                   </div>
@@ -259,7 +262,7 @@ export function SiteHeader() {
             >
               <User className="h-[18px] w-[18px]" />
               {isVerified && (
-                <span className="bg-secondary absolute right-1.5 bottom-1.5 h-2 w-2 rounded-full ring-2 ring-white" />
+                <span className="bg-secondary ring-card absolute right-1.5 bottom-1.5 h-2 w-2 rounded-full ring-2" />
               )}
             </Link>
             <Link
@@ -277,7 +280,7 @@ export function SiteHeader() {
               <ShoppingBag className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="bg-primary flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
+                <span className="bg-primary text-2xs flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-bold text-white">
                   {cartCount}
                 </span>
               )}
@@ -306,7 +309,7 @@ export function SiteHeader() {
 
       {/* Search overlay */}
       {searchOpen && (
-        <div className="border-border border-b bg-white">
+        <div className="border-border bg-card border-b">
           <div className="mx-auto max-w-2xl px-4 py-4 sm:px-6">
             <form onSubmit={handleSearch} className="relative">
               <Search className="text-muted absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2" />
@@ -325,7 +328,7 @@ export function SiteHeader() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <nav className="border-border border-b bg-white lg:hidden">
+        <nav className="border-border bg-card border-b lg:hidden">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
             {/* Mobile search */}
             <form onSubmit={handleSearch} className="mb-4">
@@ -393,7 +396,7 @@ export function SiteHeader() {
                 <User className="h-4 w-4" />
                 Account
                 {isVerified && (
-                  <span className="bg-secondary-light text-secondary ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                  <span className="bg-secondary-light text-secondary text-2xs ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium">
                     Verified
                   </span>
                 )}

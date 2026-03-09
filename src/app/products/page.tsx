@@ -12,7 +12,6 @@ import { MedusaProductCategory } from "@/types/medusa";
 
 type Filters = Record<string, string | number | undefined>;
 
-/** Collect all IDs from a category and its descendants */
 function collectCategoryIds(cat: MedusaProductCategory): string[] {
   const ids = [cat.id];
   if (cat.category_children) {
@@ -73,7 +72,6 @@ function ProductsContent() {
 
   const updateFilters = useCallback(
     (newFilters: Filters) => {
-      setSelectedProductId(null);
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(newFilters)) {
         if (value !== undefined && value !== "") {
@@ -89,90 +87,103 @@ function ProductsContent() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-5">
-        <h1 className="text-foreground text-2xl font-bold">
-          {categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products")}
-        </h1>
-        {!selectedProductId && (
+      {!selectedProductId && (
+        <div className="mb-5">
+          <h1 className="text-foreground text-xl font-bold sm:text-2xl">
+            {categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products")}
+          </h1>
           <p className="text-muted mt-1 text-sm">
             {total} product{total !== 1 ? "s" : ""} found
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="flex gap-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <FilterSidebar
           filters={filters}
-          onFilterChange={updateFilters}
+          onFilterChange={(newFilters) => {
+            setSelectedProductId(null);
+            updateFilters(newFilters);
+          }}
           categories={categoriesQuery.data?.product_categories ?? []}
         />
 
-        <div className="min-w-0 flex-1">
-          {selectedProductId ? (
+        {selectedProductId ? (
+          <div className="min-w-0 flex-1">
             <ProductDetail
               productId={selectedProductId}
-              onBack={() => setSelectedProductId(null)}
+              onBack={() => {
+                setSelectedProductId(null);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
-          ) : isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
-              <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
-                <ShoppingBag className="text-secondary h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-foreground text-lg font-semibold">No products found</p>
-                <p className="text-muted mt-1 text-sm">
-                  Try adjusting your filters or search terms.
-                </p>
-              </div>
-              <button
-                onClick={() => updateFilters({})}
-                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                Clear Filters
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onSelect={(id) => setSelectedProductId(id)}
-                  />
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1">
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
                 ))}
               </div>
-
-              {totalPages > 1 && (
-                <div className="mt-8 flex justify-center gap-2">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => {
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set("page", String(p));
-                        router.push(`/products?${params.toString()}`);
+            ) : products.length === 0 ? (
+              <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+                <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+                  <ShoppingBag className="text-secondary h-8 w-8" />
+                </div>
+                <div>
+                  <p className="text-foreground text-lg font-semibold">No products found</p>
+                  <p className="text-muted mt-1 text-sm">
+                    Try adjusting your filters or search terms.
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateFilters({})}
+                  className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onSelect={(id) => {
+                        setSelectedProductId(id);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                        p === page
-                          ? "bg-foreground text-white shadow-sm"
-                          : "border-border text-muted hover:border-border-hover hover:text-foreground border bg-white"
-                      }`}
-                    >
-                      {p}
-                    </button>
+                    />
                   ))}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+
+                {totalPages > 1 && (
+                  <div className="mt-8 flex justify-center gap-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => {
+                          const params = new URLSearchParams(searchParams.toString());
+                          params.set("page", String(p));
+                          router.push(`/products?${params.toString()}`);
+                        }}
+                        className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                          p === page
+                            ? "bg-foreground text-white shadow-sm"
+                            : "border-border text-muted hover:border-border-hover hover:text-foreground border bg-white"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

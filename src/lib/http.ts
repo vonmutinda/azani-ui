@@ -51,7 +51,12 @@ export async function medusaRequest<T>(path: string, options: RequestOptions = {
 
   if (!response.ok) {
     const error = json as { message?: string; type?: string };
-    throw new Error(error.message ?? `Request failed with status ${response.status}`);
+    const requestError = new Error(
+      error.message ?? `Request failed with status ${response.status}`,
+    ) as Error & { status?: number; type?: string };
+    requestError.status = response.status;
+    requestError.type = error.type;
+    throw requestError;
   }
 
   return json as T;

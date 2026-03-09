@@ -14,7 +14,7 @@ describe("FilterSidebar", () => {
 
   it("renders the Filters heading", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} />);
-    expect(screen.getAllByText("Filters")).toBeTruthy();
+    expect(screen.getAllByText("Filters").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders 'All Categories' button", () => {
@@ -33,9 +33,7 @@ describe("FilterSidebar", () => {
     const user = userEvent.setup();
     const onFilterChange = vi.fn();
 
-    renderWithProviders(
-      <FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />,
-    );
+    renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
 
     await user.click(screen.getByText("Bath & Diapering"));
     expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering" });
@@ -66,7 +64,7 @@ describe("FilterSidebar", () => {
       />,
     );
 
-    expect(screen.getAllByText("1")).toBeTruthy();
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows 'Clear all' button when filters are active", () => {

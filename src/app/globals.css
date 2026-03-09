@@ -13,6 +13,7 @@
   --accent-yellow: #f6d973;
   --accent-yellow-light: #fff9e5;
   --accent-green: #93d8bb;
+  --accent-green-bold: #34c759;
   --accent-green-light: #effbf4;
   --muted: #8e8391;
   --muted-light: #cbbecd;
@@ -44,6 +45,7 @@
   --color-accent-yellow: var(--accent-yellow);
   --color-accent-yellow-light: var(--accent-yellow-light);
   --color-accent-green: var(--accent-green);
+  --color-accent-green-bold: var(--accent-green-bold);
   --color-accent-green-light: var(--accent-green-light);
   --color-muted: var(--muted);
   --color-muted-light: var(--muted-light);
@@ -56,6 +58,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-dm-sans);
+  --text-2xs: 0.625rem;
 }
 
 html {
@@ -89,10 +92,10 @@ h4 {
 
 /* Star rating */
 .star-filled {
-  color: #f6d973;
+  color: var(--accent-yellow);
 }
 .star-empty {
-  color: #eaddea;
+  color: var(--border);
 }
 
 /* Custom scrollbar for filter panels */
@@ -150,6 +153,21 @@ h4 {
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  @keyframes pop {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
     }
   }
 }

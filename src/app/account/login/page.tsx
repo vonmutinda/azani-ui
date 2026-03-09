@@ -4,11 +4,12 @@ import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   loginCustomer,
+  loginWithGoogle,
   mergeWishlistAfterAuth,
   registerCustomer,
   requestPasswordReset,
 } from "@/lib/medusa-api";
-import { setAuthToken } from "@/lib/http";
+import { clearAuthToken, setAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
@@ -82,17 +83,46 @@ export default function LoginPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [postAuthError, setPostAuthError] = useState<string | null>(null);
+  const [registeredState, setRegisteredState] = useState<{
+    email: string;
+    canContinueToAccount: boolean;
+  } | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const strength = useMemo(() => getPasswordStrength(form.password), [form.password]);
   const passwordErrors = useMemo(() => getPasswordErrors(form.password), [form.password]);
 
+  const finalizeAuthenticatedSession = async () => {
+    try {
+      const { customer, wishlistIds } = await mergeWishlistAfterAuth();
+      queryClient.setQueryData(["wishlist"], wishlistIds);
+
+      if (!customer) {
+        clearAuthToken();
+        queryClient.setQueryData(["customer"], null);
+        return null;
+      }
+
+      queryClient.setQueryData(["customer"], customer);
+      return customer;
+    } catch {
+      clearAuthToken();
+      queryClient.setQueryData(["customer"], null);
+      return null;
+    }
+  };
+
   const loginMutation = useMutation({
     mutationFn: () => loginCustomer(form.email, form.password),
     onSuccess: async (data) => {
+      setPostAuthError(null);
       setAuthToken(data.token);
-      const { customer, wishlistIds } = await mergeWishlistAfterAuth();
-      queryClient.setQueryData(["customer"], customer);
-      queryClient.setQueryData(["wishlist"], wishlistIds);
+      const customer = await finalizeAuthenticatedSession();
+      if (!customer) {
+        setPostAuthError("We couldn't keep you signed in. Please sign in again.");
+        return;
+      }
       router.push("/account");
     },
   });
@@ -106,10 +136,13 @@ export default function LoginPage() {
         last_name: form.last_name,
       }),
     onSuccess: async (data) => {
+      setPostAuthError(null);
       setAuthToken(data.token);
-      const { customer, wishlistIds } = await mergeWishlistAfterAuth();
-      queryClient.setQueryData(["customer"], customer ?? data.customer);
-      queryClient.setQueryData(["wishlist"], wishlistIds);
+      const customer = await finalizeAuthenticatedSession();
+      setRegisteredState({
+        email: data.customer.email ?? form.email,
+        canContinueToAccount: !!customer,
+      });
       setView("registered");
     },
   });
@@ -154,6 +187,7 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setPostAuthError(null);
     if (!validate()) return;
     if (view === "register") {
       registerMutation.mutate();
@@ -171,6 +205,10 @@ export default function LoginPage() {
   const switchTo = (v: View) => {
     setView(v);
     setValidationErrors({});
+    setPostAuthError(null);
+    if (v !== "registered") {
+      setRegisteredState(null);
+    }
     loginMutation.reset();
     registerMutation.reset();
     forgotMutation.reset();
@@ -184,6 +222,9 @@ export default function LoginPage() {
 
   /* ── Post-registration verification notice ── */
   if (view === "registered") {
+    const registrationEmail = registeredState?.email ?? form.email;
+    const canContinueToAccount = registeredState?.canContinueToAccount ?? false;
+
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
         <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
@@ -193,17 +234,19 @@ export default function LoginPage() {
           <h1 className="text-foreground text-xl font-bold">Check Your Inbox</h1>
           <p className="text-muted text-sm leading-relaxed">
             We&apos;ve sent a verification email to{" "}
-            <span className="text-foreground font-medium">{form.email}</span>. Please click the link
-            in the email to verify your account.
+            <span className="text-foreground font-medium">{registrationEmail}</span>. Please click
+            the link in the email to verify your account.
           </p>
           <Link
-            href="/account"
+            href={canContinueToAccount ? "/account" : "/account/login"}
             className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
           >
-            Continue to Account
+            {canContinueToAccount ? "Continue to Account" : "Sign In to Continue"}
           </Link>
           <p className="text-muted text-xs">
-            Didn&apos;t receive it? Check your spam folder or sign in to resend.
+            {canContinueToAccount
+              ? "Didn't receive it? Check your spam folder or sign in to resend."
+              : "Your account is ready. If you aren't kept signed in, sign in again to continue."}
           </p>
         </div>
       </div>
@@ -286,6 +329,29 @@ export default function LoginPage() {
     );
   }
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setPostAuthError(null);
+    try {
+      const result = await loginWithGoogle();
+      if ("location" in result && result.location) {
+        window.location.href = result.location;
+        return;
+      }
+      if ("token" in result && typeof result.token === "string") {
+        setAuthToken(result.token);
+        await finalizeAuthenticatedSession();
+        router.push("/account");
+        return;
+      }
+      setPostAuthError("Google sign-in failed. Please try again.");
+    } catch {
+      setPostAuthError("Could not connect to Google. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   /* ── Login / Register form ── */
   const isRegister = view === "register";
 
@@ -294,6 +360,41 @@ export default function LoginPage() {
       <h1 className="text-foreground mb-8 text-center text-2xl font-bold">
         {isRegister ? "Create Account" : "Sign In"}
       </h1>
+
+      <div className="mb-4 space-y-4">
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={googleLoading || isPending}
+          className="border-border bg-card hover:bg-background focus-visible:ring-border flex w-full items-center justify-center gap-3 rounded-full border px-4 py-3 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+          {googleLoading ? "Connecting..." : "Continue with Google"}
+        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="bg-border h-px flex-1" />
+          <span className="text-muted text-xs font-medium uppercase">or</span>
+          <div className="bg-border h-px flex-1" />
+        </div>
+      </div>
 
       <form
         onSubmit={handleSubmit}
@@ -444,7 +545,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        {apiError && <p className="text-danger text-sm">{normalizeError(apiError as Error)}</p>}
+        {postAuthError && <p className="text-danger text-sm">{postAuthError}</p>}
+        {!postAuthError && apiError && (
+          <p className="text-danger text-sm">{normalizeError(apiError as Error)}</p>
+        )}
 
         <button
           type="submit"

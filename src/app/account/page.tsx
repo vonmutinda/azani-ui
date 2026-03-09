@@ -11,15 +11,16 @@ import {
   deleteCustomerAddress,
   getOrders,
   getOrderById,
+  getProductsByIds,
   getWishlistProductIds,
   resendVerificationEmail,
 } from "@/lib/medusa-api";
 import { clearAuthToken } from "@/lib/http";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { formatPrice, formatOrderRef } from "@/lib/formatters";
+import Image from "next/image";
+import { formatPrice, formatOrderRef, resolveOrderItemImage } from "@/lib/formatters";
 import { MedusaAddress, MedusaLineItem, MedusaOrder } from "@/types/medusa";
 import {
   User,
@@ -54,23 +55,148 @@ const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
 const INPUT_CLASS =
   "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "completed":
-    case "archived":
+type JourneyStep = { label: string; reached: boolean; active: boolean; failed?: boolean };
+
+/**
+ * Derive a customer-facing order journey from Medusa's three status fields.
+ *
+ * Medusa v2 statuses observed:
+ *   status:             pending | completed | archived | canceled | requires_action
+ *   fulfillment_status: not_fulfilled | partially_fulfilled | fulfilled | shipped |
+ *                       partially_shipped | delivered | partially_delivered | returned
+ *   payment_status:     not_paid | awaiting | authorized | captured |
+ *                       partially_refunded | refunded | canceled | requires_action
+ *
+ * Customer journey (4 steps, matching Amazon/Jumia style):
+ *   Confirmed -> Processing -> Shipped -> Delivered
+ *
+ * Special paths:
+ *   Canceled  — collapses to 2 steps: Confirmed -> Canceled
+ *   Refunded  — shows Refunded badge on the summary, journey stays at last reached step
+ */
+function getOrderJourney(order: MedusaOrder): JourneyStep[] {
+  const s = order.status;
+  const fs = order.fulfillment_status;
+  const ps = order.payment_status;
+
+  if (s === "canceled" || ps === "canceled") {
+    return [
+      { label: "Confirmed", reached: true, active: false },
+      { label: "Canceled", reached: true, active: true, failed: true },
+    ];
+  }
+
+  const confirmed = true;
+
+  const processing =
+    ["authorized", "captured", "partially_refunded"].includes(ps) ||
+    ["partially_fulfilled", "fulfilled"].includes(fs);
+
+  const shipped = ["shipped", "partially_shipped", "delivered", "partially_delivered"].includes(fs);
+
+  const delivered =
+    ["delivered", "partially_delivered"].includes(fs) || s === "completed" || s === "archived";
+
+  return [
+    { label: "Confirmed", reached: confirmed, active: confirmed && !processing },
+    { label: "Processing", reached: processing, active: processing && !shipped },
+    { label: "Shipped", reached: shipped, active: shipped && !delivered },
+    { label: "Delivered", reached: delivered, active: delivered },
+  ];
+}
+
+function getOrderSummaryLabel(order: MedusaOrder): string {
+  const s = order.status;
+  const fs = order.fulfillment_status;
+  const ps = order.payment_status;
+
+  if (s === "canceled" || ps === "canceled") return "Canceled";
+  if (["refunded"].includes(ps)) return "Refunded";
+  if (s === "completed" || s === "archived") return "Delivered";
+  if (["delivered", "partially_delivered"].includes(fs)) return "Delivered";
+  if (["shipped", "partially_shipped"].includes(fs)) return "Shipped";
+  if (["partially_fulfilled", "fulfilled"].includes(fs)) return "Processing";
+  if (["authorized", "captured"].includes(ps)) return "Confirmed";
+  if (ps === "requires_action" || s === "requires_action") return "Action needed";
+  return "Pending";
+}
+
+function getStatusColor(label: string) {
+  switch (label) {
+    case "Delivered":
+    case "Completed":
       return "bg-accent-green-light text-success";
-    case "pending":
-    case "requires_action":
+    case "Shipped":
+    case "Processing":
+      return "bg-secondary-light text-secondary";
+    case "Confirmed":
+    case "Pending":
       return "bg-accent-yellow-light text-accent-yellow";
-    case "canceled":
+    case "Canceled":
+      return "bg-danger/10 text-danger";
+    case "Refunded":
+      return "bg-foreground/10 text-foreground";
+    case "Action needed":
       return "bg-danger/10 text-danger";
     default:
       return "bg-foreground/10 text-foreground";
   }
 }
 
+function OrderJourney({ order }: { order: MedusaOrder }) {
+  const steps = getOrderJourney(order);
+  return (
+    <div className="flex items-center">
+      {steps.map((step, i) => (
+        <div key={step.label} className="flex items-center">
+          <div className="flex flex-col items-center">
+            <div
+              className={`text-2xs flex h-5 w-5 items-center justify-center rounded-full font-bold ${
+                step.failed
+                  ? "bg-danger text-white"
+                  : step.active
+                    ? "bg-accent-green-bold text-white shadow-sm"
+                    : step.reached
+                      ? "bg-accent-green-bold text-white"
+                      : "bg-border text-muted"
+              }`}
+            >
+              {step.failed ? "✕" : step.reached ? "✓" : i + 1}
+            </div>
+            <span
+              className={`text-2xs mt-1 w-12 text-center leading-tight ${
+                step.failed
+                  ? "text-danger font-semibold"
+                  : step.active
+                    ? "text-foreground font-semibold"
+                    : step.reached
+                      ? "text-foreground font-medium"
+                      : "text-muted"
+              }`}
+            >
+              {step.label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div
+              className={`mx-0.5 mb-3 h-[2px] w-5 sm:w-7 ${
+                step.failed
+                  ? "bg-danger/30"
+                  : steps[i + 1].reached
+                    ? "bg-accent-green-bold"
+                    : "bg-border"
+              }`}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const addressesRef = useRef<HTMLDivElement>(null);
 
@@ -109,6 +235,31 @@ export default function AccountPage() {
     router.push("/");
   };
 
+  const sortedOrders = orders?.length
+    ? [...orders].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+    : [];
+  const requestedOrderId = searchParams.get("order");
+  const orderProductIds = Array.from(
+    new Set(
+      sortedOrders.flatMap((order) =>
+        (order.items ?? []).flatMap((item) =>
+          [item.product_id, item.variant?.product?.id].filter((id): id is string => !!id),
+        ),
+      ),
+    ),
+  );
+  const orderProductsQuery = useQuery({
+    queryKey: ["order-products", orderProductIds],
+    queryFn: () => getProductsByIds(orderProductIds),
+    enabled: !!customer && orderProductIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const orderProductsById = new Map(
+    (orderProductsQuery.data ?? []).map((product) => [product.id, product]),
+  );
+
   if (isLoading) {
     return (
       <div
@@ -141,12 +292,6 @@ export default function AccountPage() {
   const initials =
     ((customer.first_name?.[0] ?? "") + (customer.last_name?.[0] ?? "")).toUpperCase() || "?";
 
-  const sortedOrders = orders?.length
-    ? [...orders].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )
-    : [];
-
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Slim welcome header */}
@@ -168,9 +313,32 @@ export default function AccountPage() {
                 {customer.first_name || "Welcome"} {customer.last_name || ""}
               </h1>
               {customer.metadata?.email_verified === true && (
-                <span className="bg-secondary-light text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                <span className="bg-secondary-light text-secondary text-2xs inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold">
                   <BadgeCheck className="h-3 w-3" />
                   Verified
+                </span>
+              )}
+              {customer.metadata?.auth_provider === "google" && (
+                <span className="text-2xs inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 font-medium text-gray-600 shadow-sm">
+                  <svg className="h-3 w-3" viewBox="0 0 24 24">
+                    <path
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  Google
                 </span>
               )}
             </div>
@@ -193,7 +361,12 @@ export default function AccountPage() {
         <div className="min-w-0 space-y-5">
           <ProfileDetails customer={customer} />
           <AddressesSection ref={addressesRef} />
-          <OrdersSection orders={sortedOrders} isLoading={!orders && !!customer} />
+          <OrdersSection
+            orders={sortedOrders}
+            isLoading={!orders && !!customer}
+            initialExpandedId={requestedOrderId}
+            productsById={orderProductsById}
+          />
         </div>
 
         {/* Right column -- sticky sidebar */}
@@ -201,7 +374,7 @@ export default function AccountPage() {
           {/* Quick Stats */}
           <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
             <div className="px-5 pt-4 pb-1">
-              <h2 className="text-muted text-[11px] font-bold tracking-wider uppercase">
+              <h2 className="text-muted text-xs font-bold tracking-wider uppercase">
                 Account Snapshot
               </h2>
             </div>
@@ -241,7 +414,7 @@ export default function AccountPage() {
           {/* Quick Actions */}
           <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
             <div className="px-5 pt-4 pb-1">
-              <h2 className="text-muted text-[11px] font-bold tracking-wider uppercase">
+              <h2 className="text-muted text-xs font-bold tracking-wider uppercase">
                 Quick Actions
               </h2>
             </div>
@@ -560,7 +733,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
         <div className="flex items-center gap-2">
           <MapPin className="text-secondary h-4 w-4" />
           <h2 className="text-foreground text-sm font-semibold">Delivery Addresses</h2>
-          <span className="bg-secondary-light text-secondary rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          <span className="bg-secondary-light text-secondary rounded-full px-2 py-0.5 text-xs font-semibold">
             {count}
           </span>
         </div>
@@ -609,7 +782,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => deleteMutation.mutate(addr.id!)}
+                        onClick={() => addr.id && deleteMutation.mutate(addr.id)}
                         disabled={deleteMutation.isPending}
                         className="text-muted hover:bg-danger/5 hover:text-danger focus-visible:ring-danger/20 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Delete address"
@@ -770,10 +943,12 @@ function OrderItemAvatars({
   items,
   size = 32,
   max = 4,
+  productsById,
 }: {
   items?: MedusaLineItem[];
   size?: number;
   max?: number;
+  productsById?: Map<string, Awaited<ReturnType<typeof getProductsByIds>>[number]>;
 }) {
   if (!items || items.length === 0) return null;
 
@@ -784,7 +959,11 @@ function OrderItemAvatars({
   return (
     <div className="flex items-center">
       {visible.map((item, i) => {
-        const thumb = item.thumbnail || item.product?.thumbnail || item.product?.images?.[0]?.url;
+        const fallback =
+          productsById?.get(item.product_id ?? "") ??
+          productsById?.get(item.variant?.product?.id ?? "") ??
+          null;
+        const thumb = resolveOrderItemImage(item, fallback);
 
         return (
           <div
@@ -815,7 +994,7 @@ function OrderItemAvatars({
       })}
       {overflow > 0 && (
         <div
-          className="bg-foreground/10 text-foreground relative flex shrink-0 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold shadow-sm"
+          className="bg-foreground/10 text-foreground text-2xs relative flex shrink-0 items-center justify-center rounded-full border-2 border-white font-bold shadow-sm"
           style={{ width: px, height: px, marginLeft: -8, zIndex: 0 }}
         >
           +{overflow}
@@ -827,8 +1006,18 @@ function OrderItemAvatars({
 
 // ── Orders Section (receipt-style with inline accordion) ────────────
 
-function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading: boolean }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+function OrdersSection({
+  orders,
+  isLoading,
+  initialExpandedId,
+  productsById,
+}: {
+  orders: MedusaOrder[];
+  isLoading: boolean;
+  initialExpandedId?: string | null;
+  productsById: Map<string, Awaited<ReturnType<typeof getProductsByIds>>[number]>;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
 
   if (isLoading) {
     return (
@@ -872,18 +1061,19 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
           <Package className="text-accent-yellow h-4 w-4" />
           <h2 className="text-foreground text-sm font-semibold">Order History</h2>
         </div>
-        <span className="bg-accent-yellow-light text-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold">
+        <span className="bg-accent-yellow-light text-foreground rounded-full px-2 py-0.5 text-xs font-semibold">
           {orders.length}
         </span>
       </div>
 
       {/* Column header (desktop) */}
-      <div className="border-border bg-background/60 text-muted hidden items-center border-t px-5 py-2 text-[11px] font-semibold tracking-wider uppercase sm:flex">
-        <span className="w-44">Order</span>
+      <div className="border-border bg-background/60 text-muted hidden items-center border-t px-5 py-2 text-xs font-semibold tracking-wider uppercase sm:flex">
+        <span className="w-40">Order</span>
         <span className="flex-1">Items</span>
         <span className="w-24 text-center">Status</span>
         <span className="w-24 text-right">Total</span>
-        <span className="w-8" />
+        <span className="ml-4 w-20 text-right">Date</span>
+        <span className="ml-2 w-4" />
       </div>
 
       <div className="divide-border border-border divide-y border-t">
@@ -898,56 +1088,86 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
               >
                 {/* Desktop row */}
                 <div className="hidden flex-1 items-center sm:flex">
-                  <div className="flex w-44 items-baseline gap-2">
-                    <span className="text-foreground text-xs font-semibold whitespace-nowrap">
-                      {formatOrderRef(order.display_id, order.created_at, order.id)}
-                    </span>
-                    <span className="text-muted text-xs">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </span>
+                  <div className="w-40">
+                    <div className="text-foreground text-xs font-semibold whitespace-nowrap">
+                      {formatOrderRef(
+                        order.display_id,
+                        order.created_at,
+                        order.id,
+                        order.metadata?.order_ref as string | undefined,
+                      )}
+                    </div>
+                    <div className="text-muted mt-0.5 text-xs">
+                      {order.items.length} {order.items.length === 1 ? "item" : "items"}
+                    </div>
                   </div>
                   <div className="flex flex-1 items-center">
-                    <OrderItemAvatars items={order.items} size={32} max={4} />
+                    <OrderItemAvatars
+                      items={order.items}
+                      size={32}
+                      max={4}
+                      productsById={productsById}
+                    />
                   </div>
                   <div className="w-24 text-center">
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusColor(order.status)}`}
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(getOrderSummaryLabel(order))}`}
                     >
-                      {order.status}
+                      {getOrderSummaryLabel(order)}
                     </span>
                   </div>
                   <span className="text-foreground w-24 text-right text-sm font-medium">
                     {formatPrice(order.total)}
+                  </span>
+                  <span className="text-muted ml-4 w-20 text-right text-xs whitespace-nowrap">
+                    {new Date(order.created_at).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </span>
                 </div>
                 {/* Mobile row */}
                 <div className="flex flex-1 flex-col gap-1.5 sm:hidden">
                   <div className="flex items-center justify-between">
                     <span className="text-foreground text-xs font-semibold whitespace-nowrap">
-                      {formatOrderRef(order.display_id, order.created_at, order.id)}
-                    </span>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusColor(order.status)}`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
-                  <OrderItemAvatars items={order.items} size={28} max={5} />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted text-xs">
-                      {new Date(order.created_at).toLocaleDateString()}
+                      {formatOrderRef(
+                        order.display_id,
+                        order.created_at,
+                        order.id,
+                        order.metadata?.order_ref as string | undefined,
+                      )}
                     </span>
                     <span className="text-foreground text-sm font-medium">
                       {formatPrice(order.total)}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted text-xs">
+                      {new Date(order.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(getOrderSummaryLabel(order))}`}
+                    >
+                      {getOrderSummaryLabel(order)}
+                    </span>
+                  </div>
+                  <OrderItemAvatars
+                    items={order.items}
+                    size={28}
+                    max={5}
+                    productsById={productsById}
+                  />
                 </div>
                 <ChevronDown
-                  className={`text-muted ml-2 h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  className={`text-muted ml-2 h-4 w-4 shrink-0 transition-transform duration-200 sm:ml-2 ${isOpen ? "rotate-180" : ""}`}
                 />
               </button>
 
-              {isOpen && <OrderDetail orderId={order.id} />}
+              {isOpen && <OrderDetail orderId={order.id} productsById={productsById} />}
             </div>
           );
         })}
@@ -958,11 +1178,33 @@ function OrdersSection({ orders, isLoading }: { orders: MedusaOrder[]; isLoading
 
 // ── Order Detail (inline accordion content) ─────────────────────────
 
-function OrderDetail({ orderId }: { orderId: string }) {
+function OrderDetail({
+  orderId,
+  productsById,
+}: {
+  orderId: string;
+  productsById: Map<string, Awaited<ReturnType<typeof getProductsByIds>>[number]>;
+}) {
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrderById(orderId),
   });
+  const detailProductIds = Array.from(
+    new Set(
+      (order?.items ?? []).flatMap((item) =>
+        [item.product_id, item.variant?.product?.id].filter((id): id is string => !!id),
+      ),
+    ),
+  );
+  const detailProductsQuery = useQuery({
+    queryKey: ["order-detail-products", orderId, detailProductIds],
+    queryFn: () => getProductsByIds(detailProductIds),
+    enabled: detailProductIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const detailProductsById = new Map(
+    (detailProductsQuery.data ?? []).map((product) => [product.id, product]),
+  );
 
   if (isLoading) {
     return (
@@ -977,10 +1219,39 @@ function OrderDetail({ orderId }: { orderId: string }) {
 
   return (
     <div className="border-border bg-background/40 border-t border-dashed px-5 pt-3 pb-4">
+      <div className="border-border bg-card mb-3 rounded-xl border border-dashed px-3 py-2.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-foreground text-sm font-semibold">
+              {formatOrderRef(
+                order.display_id,
+                order.created_at,
+                order.id,
+                order.metadata?.order_ref as string | undefined,
+              )}
+            </p>
+            <p className="text-muted text-xs">
+              Placed{" "}
+              {new Date(order.created_at).toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
+        <div className="border-border mt-2.5 border-t pt-2.5">
+          <OrderJourney order={order} />
+        </div>
+      </div>
+
       {/* Items */}
       <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
         {order.items.map((item) => {
-          const thumb = item.thumbnail || item.product?.thumbnail || item.product?.images?.[0]?.url;
+          const pid = item.product_id ?? item.variant?.product?.id ?? "";
+          const fallback = detailProductsById.get(pid) ?? productsById.get(pid) ?? null;
+          const thumb = resolveOrderItemImage(item, fallback);
 
           return (
             <div key={item.id} className="flex gap-3 px-3 py-2.5">

@@ -15,8 +15,10 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   getCart,
+  getProductsByIds,
   updateCart,
   getShippingOptions,
   addShippingMethod,
@@ -26,11 +28,17 @@ import {
   getCustomer,
   getCustomerAddresses,
 } from "@/lib/medusa-api";
-import { formatPrice, formatOrderRef } from "@/lib/formatters";
+import {
+  formatPrice,
+  formatOrderRef,
+  getVariantAvailability,
+  resolveOrderItemImage,
+} from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
-import { MedusaAddress, MedusaShippingOption } from "@/types/medusa";
+import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
 const FREE_SHIPPING_THRESHOLD = 5_000;
+const OTHER_LOCATION_OPTION = "__other__";
 
 type Step = "address" | "shipping" | "payment" | "review";
 
@@ -82,6 +90,23 @@ const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string;
     "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "Br150" },
     "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "Br500" },
   };
+
+function getCheckoutItemProduct(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  if (item.product_id) {
+    return productsById.get(item.product_id) ?? item.product;
+  }
+  return item.product;
+}
+
+function getCheckoutItemAvailability(
+  item: MedusaLineItem,
+  productsById: Map<string, MedusaProduct>,
+) {
+  const product = getCheckoutItemProduct(item, productsById);
+  const variant =
+    product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
+  return getVariantAvailability(variant);
+}
 
 function ShippingStep({
   options,
@@ -210,6 +235,30 @@ export default function CheckoutPage() {
   const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart });
   const cart = cartQuery.data;
   const currencyCode = "etb";
+  const checkoutProductIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (cart?.items ?? []).map((item) => item.product_id).filter((id): id is string => !!id),
+        ),
+      ),
+    [cart?.items],
+  );
+  const checkoutProductsQuery = useQuery({
+    queryKey: ["checkout-products", checkoutProductIds],
+    queryFn: () => getProductsByIds(checkoutProductIds),
+    enabled: checkoutProductIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const checkoutProductsById = useMemo(
+    () => new Map((checkoutProductsQuery.data ?? []).map((product) => [product.id, product])),
+    [checkoutProductsQuery.data],
+  );
+  const hasUnavailableItems =
+    checkoutProductsQuery.isFetched &&
+    (cart?.items ?? []).some(
+      (item) => !getCheckoutItemAvailability(item, checkoutProductsById).canPurchase,
+    );
 
   const customerQuery = useQuery({
     queryKey: ["customer"],
@@ -333,10 +382,16 @@ export default function CheckoutPage() {
       clearStoredCartId();
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       const order = data?.order as
-        | { display_id?: number; id?: string; created_at?: string }
+        | {
+            display_id?: number;
+            id?: string;
+            created_at?: string;
+            metadata?: Record<string, unknown> | null;
+          }
         | undefined;
       if (order?.display_id) {
-        setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id));
+        const stored = order.metadata?.order_ref as string | undefined;
+        setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id, stored));
       }
       setOrderPlaced(true);
     },
@@ -347,6 +402,10 @@ export default function CheckoutPage() {
 
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (hasUnavailableItems) {
+      setErrorMessage("Update your cart before checkout. Some items are out of stock.");
+      return;
+    }
     addressMutation.mutate();
   };
 
@@ -409,6 +468,12 @@ export default function CheckoutPage() {
     "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
   const selectClass =
     "h-10 w-full appearance-none rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+  const selectedCityValue = ETHIOPIAN_CITIES.includes(form.city)
+    ? form.city
+    : OTHER_LOCATION_OPTION;
+  const selectedProvinceValue = ETHIOPIAN_REGIONS.includes(form.province)
+    ? form.province
+    : OTHER_LOCATION_OPTION;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -443,7 +508,7 @@ export default function CheckoutPage() {
                 )}
               </div>
               <span
-                className={`text-[11px] font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
+                className={`text-xs font-medium ${i <= currentIdx ? "text-foreground" : "text-muted"}`}
               >
                 {s.label}
               </span>
@@ -461,6 +526,13 @@ export default function CheckoutPage() {
       {errorMessage && (
         <div className="border-danger/30 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm">
           {errorMessage}
+        </div>
+      )}
+
+      {hasUnavailableItems && (
+        <div className="border-danger/20 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm font-medium">
+          Some items in your cart are no longer available in the requested quantity. Return to your
+          cart to adjust them before checking out.
         </div>
       )}
 
@@ -575,7 +647,7 @@ export default function CheckoutPage() {
                       <div className="flex flex-wrap gap-3">
                         <button
                           type="submit"
-                          disabled={addressMutation.isPending}
+                          disabled={addressMutation.isPending || hasUnavailableItems}
                           className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                         >
                           {addressMutation.isPending
@@ -647,8 +719,13 @@ export default function CheckoutPage() {
                       <div>
                         <label className="text-muted mb-1.5 block text-xs font-medium">City</label>
                         <select
-                          value={form.city}
-                          onChange={(e) => setForm({ ...form, city: e.target.value })}
+                          value={selectedCityValue}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              city: e.target.value === OTHER_LOCATION_OPTION ? "" : e.target.value,
+                            })
+                          }
                           className={selectClass}
                         >
                           {ETHIOPIAN_CITIES.map((c) => (
@@ -656,16 +733,31 @@ export default function CheckoutPage() {
                               {c}
                             </option>
                           ))}
-                          <option value="">Other</option>
+                          <option value={OTHER_LOCATION_OPTION}>Other</option>
                         </select>
+                        {selectedCityValue === OTHER_LOCATION_OPTION && (
+                          <input
+                            required
+                            value={form.city}
+                            onChange={(e) => setForm({ ...form, city: e.target.value })}
+                            placeholder="Enter your city"
+                            className={`${inputClass} mt-2`}
+                          />
+                        )}
                       </div>
                       <div>
                         <label className="text-muted mb-1.5 block text-xs font-medium">
                           Region
                         </label>
                         <select
-                          value={form.province}
-                          onChange={(e) => setForm({ ...form, province: e.target.value })}
+                          value={selectedProvinceValue}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              province:
+                                e.target.value === OTHER_LOCATION_OPTION ? "" : e.target.value,
+                            })
+                          }
                           className={selectClass}
                         >
                           {ETHIOPIAN_REGIONS.map((r) => (
@@ -673,7 +765,17 @@ export default function CheckoutPage() {
                               {r}
                             </option>
                           ))}
+                          <option value={OTHER_LOCATION_OPTION}>Other</option>
                         </select>
+                        {selectedProvinceValue === OTHER_LOCATION_OPTION && (
+                          <input
+                            required
+                            value={form.province}
+                            onChange={(e) => setForm({ ...form, province: e.target.value })}
+                            placeholder="Enter your region"
+                            className={`${inputClass} mt-2`}
+                          />
+                        )}
                       </div>
                       <div>
                         <label className="text-muted mb-1.5 block text-xs font-medium">
@@ -709,7 +811,7 @@ export default function CheckoutPage() {
                   {(!isUsingSavedAddress || !selectedSavedAddress) && (
                     <button
                       type="submit"
-                      disabled={addressMutation.isPending}
+                      disabled={addressMutation.isPending || hasUnavailableItems}
                       className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
@@ -736,6 +838,7 @@ export default function CheckoutPage() {
                   isPending={shippingMutation.isPending}
                   cartSubtotal={cart.subtotal ?? 0}
                   onSelect={(optionId) => {
+                    if (hasUnavailableItems) return;
                     setSelectedShipping(optionId);
                     shippingMutation.mutate(optionId);
                   }}
@@ -752,7 +855,7 @@ export default function CheckoutPage() {
                   <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
                   <button
                     onClick={() => paymentMutation.mutate()}
-                    disabled={paymentMutation.isPending}
+                    disabled={paymentMutation.isPending || hasUnavailableItems}
                     className="border-border hover:border-primary/40 flex w-full items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 text-left text-sm transition disabled:opacity-50"
                   >
                     <CreditCard className="text-secondary h-5 w-5" />
@@ -824,7 +927,7 @@ export default function CheckoutPage() {
                   </p>
                   <button
                     onClick={() => completeMutation.mutate()}
-                    disabled={completeMutation.isPending}
+                    disabled={completeMutation.isPending || hasUnavailableItems}
                     className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
                     {completeMutation.isPending ? "Placing Order..." : "Place Order"}
@@ -853,42 +956,72 @@ export default function CheckoutPage() {
 
               {/* Cart items */}
               <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border">
-                      {item.thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.thumbnail}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-muted flex h-full w-full items-center justify-center">
-                          <Package className="h-5 w-5" />
+                {cart.items.map((item) => {
+                  const product = getCheckoutItemProduct(item, checkoutProductsById);
+                  const availability = checkoutProductsQuery.isFetched
+                    ? getCheckoutItemAvailability(item, checkoutProductsById)
+                    : {
+                        inStock: true,
+                        canPurchase: true,
+                        isLowStock: false,
+                        isOutOfStock: false,
+                        inventoryQuantity: 0,
+                        maxQuantity: 10,
+                        label: "",
+                      };
+                  const resolvedImage = resolveOrderItemImage(item, product);
+
+                  return (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border">
+                        {resolvedImage ? (
+                          <Image
+                            src={resolvedImage}
+                            alt={item.title}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="text-muted flex h-full w-full items-center justify-center">
+                            <Package className="h-5 w-5" />
+                          </div>
+                        )}
+                        <span className="bg-foreground text-2xs absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full font-bold text-white shadow">
+                          {item.quantity}
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col justify-center overflow-hidden">
+                        <p className="text-foreground truncate text-xs font-medium">{item.title}</p>
+                        <div className="text-muted flex items-center gap-2 text-xs">
+                          <span>{formatPrice(item.unit_price, currencyCode)}</span>
+                          {item.quantity > 1 && <span className="text-2xs">× {item.quantity}</span>}
                         </div>
-                      )}
-                      <span className="bg-foreground absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow">
-                        {item.quantity}
-                      </span>
-                    </div>
-                    <div className="flex flex-1 flex-col justify-center overflow-hidden">
-                      <p className="text-foreground truncate text-xs font-medium">{item.title}</p>
-                      <div className="text-muted flex items-center gap-2 text-xs">
-                        <span>{formatPrice(item.unit_price, currencyCode)}</span>
-                        {item.quantity > 1 && (
-                          <span className="text-[10px]">× {item.quantity}</span>
+                        <p
+                          className={`mt-1 text-xs font-medium ${
+                            availability.isOutOfStock
+                              ? "text-danger"
+                              : availability.isLowStock
+                                ? "text-accent-yellow"
+                                : "text-muted"
+                          }`}
+                        >
+                          {availability.isOutOfStock
+                            ? "Out of stock"
+                            : availability.isLowStock
+                              ? availability.label
+                              : ""}
+                        </p>
+                      </div>
+                      <div className="text-foreground flex flex-shrink-0 items-center text-xs font-semibold">
+                        {formatPrice(
+                          item.total || item.subtotal || item.unit_price * item.quantity,
+                          currencyCode,
                         )}
                       </div>
                     </div>
-                    <div className="text-foreground flex flex-shrink-0 items-center text-xs font-semibold">
-                      {formatPrice(
-                        item.total || item.subtotal || item.unit_price * item.quantity,
-                        currencyCode,
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Totals */}

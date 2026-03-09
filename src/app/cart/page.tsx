@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import Image from "next/image";
+import { useState, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -19,16 +20,16 @@ import {
 } from "lucide-react";
 import {
   getCart,
+  getProductsByIds,
   updateLineItem,
   removeLineItem,
   addPromoCode,
   removePromoCode,
 } from "@/lib/medusa-api";
-import { formatPrice } from "@/lib/formatters";
-import type { MedusaLineItem } from "@/types/medusa";
+import { formatPrice, getVariantAvailability, resolveOrderItemImage } from "@/lib/formatters";
+import type { MedusaLineItem, MedusaProduct } from "@/types/medusa";
 
 const FREE_SHIPPING_THRESHOLD = 5_000;
-const MAX_QUANTITY = 10;
 
 function variantLabel(item: MedusaLineItem): string | null {
   if (
@@ -42,6 +43,20 @@ function variantLabel(item: MedusaLineItem): string | null {
     return item.description;
   }
   return null;
+}
+
+function getCartItemProduct(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  if (item.product_id) {
+    return productsById.get(item.product_id) ?? item.product;
+  }
+  return item.product;
+}
+
+function getCartItemAvailability(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  const product = getCartItemProduct(item, productsById);
+  const variant =
+    product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
+  return getVariantAvailability(variant);
 }
 
 export default function CartPage() {
@@ -75,8 +90,26 @@ export default function CartPage() {
   });
 
   const cart = cartQuery.data;
-  const items = cart?.items ?? [];
+  const items = useMemo(() => cart?.items ?? [], [cart?.items]);
   const currencyCode = "etb";
+  const cartProductIds = useMemo(
+    () =>
+      Array.from(new Set(items.map((item) => item.product_id).filter((id): id is string => !!id))),
+    [items],
+  );
+  const cartProductsQuery = useQuery({
+    queryKey: ["cart-products", cartProductIds],
+    queryFn: () => getProductsByIds(cartProductIds),
+    enabled: cartProductIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const cartProductsById = useMemo(
+    () => new Map((cartProductsQuery.data ?? []).map((product) => [product.id, product])),
+    [cartProductsQuery.data],
+  );
+  const hasUnavailableItems =
+    cartProductsQuery.isFetched &&
+    items.some((item) => !getCartItemAvailability(item, cartProductsById).canPurchase);
 
   if (cartQuery.isLoading) {
     return (
@@ -137,10 +170,17 @@ export default function CartPage() {
         </span>
       </div>
 
+      {hasUnavailableItems && (
+        <div className="border-danger/20 bg-danger/5 text-danger mb-5 rounded-2xl border px-4 py-3 text-sm font-medium">
+          Some items are no longer available in the requested quantity. Update or remove them to
+          continue.
+        </div>
+      )}
+
       <div className="grid items-start gap-8 lg:grid-cols-3">
         {/* Items — single receipt-style card */}
         <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-2xl border shadow-sm lg:col-span-2">
-          <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-[11px] font-semibold tracking-widest uppercase sm:flex">
+          <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-xs font-semibold tracking-widest uppercase sm:flex">
             <span>Product</span>
             <div className="flex gap-8 lg:gap-16">
               <span>Qty</span>
@@ -156,6 +196,8 @@ export default function CartPage() {
               onRemove={(lineItemId) => removeMutation.mutate(lineItemId)}
               isUpdating={updateMutation.isPending}
               isRemoving={removeMutation.isPending}
+              productsById={cartProductsById}
+              productsLoaded={cartProductsQuery.isFetched}
             />
           ))}
         </div>
@@ -236,8 +278,8 @@ export default function CartPage() {
               })()}
               <div className="border-border border-t pt-3">
                 <div className="text-foreground flex justify-between text-lg font-bold">
-                  <span>Estimated Total</span>
-                  <span>{formatPrice(cart.subtotal ?? 0, currencyCode)}</span>
+                  <span>Total</span>
+                  <span>{formatPrice(cart.total ?? 0, currencyCode)}</span>
                 </div>
               </div>
             </div>
@@ -293,12 +335,22 @@ export default function CartPage() {
             )}
           </div>
 
-          <Link
-            href="/checkout"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            Proceed to Checkout <ArrowRight className="h-4 w-4" />
-          </Link>
+          {hasUnavailableItems ? (
+            <button
+              type="button"
+              disabled
+              className="bg-foreground flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white opacity-50"
+            >
+              Resolve Stock Issues First
+            </button>
+          ) : (
+            <Link
+              href="/checkout"
+              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              Proceed to Checkout <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -312,6 +364,8 @@ function CartItem({
   onRemove,
   isUpdating,
   isRemoving,
+  productsById,
+  productsLoaded,
 }: {
   item: MedusaLineItem;
   currencyCode: string;
@@ -319,16 +373,34 @@ function CartItem({
   onRemove: (lineItemId: string) => void;
   isUpdating: boolean;
   isRemoving: boolean;
+  productsById: Map<string, MedusaProduct>;
+  productsLoaded: boolean;
 }) {
   const [editQty, setEditQty] = useState<string>(String(item.quantity));
+  const product = getCartItemProduct(item, productsById);
+  const availability = productsLoaded
+    ? getCartItemAvailability(item, productsById)
+    : {
+        inStock: true,
+        canPurchase: true,
+        isLowStock: false,
+        isOutOfStock: false,
+        inventoryQuantity: 0,
+        maxQuantity: 10,
+        label: "",
+      };
+  const resolvedImage = resolveOrderItemImage(item, product);
+  const effectiveMaxQuantity = availability.isOutOfStock
+    ? item.quantity
+    : Math.max(item.quantity, availability.maxQuantity);
 
   const commitQuantity = useCallback(() => {
-    const parsed = Math.max(1, Math.min(MAX_QUANTITY, parseInt(editQty, 10) || 1));
+    const parsed = Math.max(1, Math.min(effectiveMaxQuantity, parseInt(editQty, 10) || 1));
     setEditQty(String(parsed));
     if (parsed !== item.quantity) {
       onUpdate(item.id, parsed);
     }
-  }, [editQty, item.id, item.quantity, onUpdate]);
+  }, [editQty, effectiveMaxQuantity, item.id, item.quantity, onUpdate]);
 
   const label = variantLabel(item);
   const productHref = item.product_id ? `/products/${item.product_id}` : "#";
@@ -337,11 +409,10 @@ function CartItem({
     <div className="hover:bg-background/50 flex gap-3 px-4 py-3 transition">
       <Link
         href={productHref}
-        className="bg-background h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
+        className="bg-background relative h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
       >
-        {item.thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" />
+        {resolvedImage ? (
+          <Image src={resolvedImage} alt={item.title} fill sizes="96px" className="object-cover" />
         ) : (
           <div className="text-muted-light flex h-full items-center justify-center">
             <ShoppingBag className="h-6 w-6" />
@@ -368,6 +439,23 @@ function CartItem({
                 {formatPrice(item.unit_price, currencyCode)} &times; {item.quantity}
               </span>
             </div>
+            {productsLoaded && (
+              <p
+                className={`mt-1 text-xs font-medium ${
+                  availability.isOutOfStock
+                    ? "text-danger"
+                    : availability.isLowStock
+                      ? "text-accent-yellow"
+                      : "text-accent-green"
+                }`}
+              >
+                {availability.isOutOfStock
+                  ? "Out of stock. Remove this item to continue."
+                  : availability.isLowStock
+                    ? `${availability.label} for this variant`
+                    : availability.label}
+              </p>
+            )}
           </div>
           <span className="text-foreground shrink-0 text-sm font-bold">
             {formatPrice(
@@ -385,7 +473,7 @@ function CartItem({
                 setEditQty(String(next));
                 onUpdate(item.id, next);
               }}
-              disabled={isUpdating || item.quantity <= 1}
+              disabled={isUpdating || availability.isOutOfStock || item.quantity <= 1}
               className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Minus className="h-3.5 w-3.5" />
@@ -404,15 +492,18 @@ function CartItem({
                   e.currentTarget.blur();
                 }
               }}
-              className="focus-visible:ring-primary/20 w-8 bg-transparent text-center text-xs font-bold outline-none focus-visible:ring-2"
+              disabled={availability.isOutOfStock}
+              className="focus-visible:ring-primary/20 w-8 bg-transparent text-center text-xs font-bold outline-none focus-visible:ring-2 disabled:opacity-40"
             />
             <button
               onClick={() => {
-                const next = Math.min(MAX_QUANTITY, item.quantity + 1);
+                const next = Math.min(effectiveMaxQuantity, item.quantity + 1);
                 setEditQty(String(next));
                 onUpdate(item.id, next);
               }}
-              disabled={isUpdating || item.quantity >= MAX_QUANTITY}
+              disabled={
+                isUpdating || availability.isOutOfStock || item.quantity >= effectiveMaxQuantity
+              }
               className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Plus className="h-3.5 w-3.5" />

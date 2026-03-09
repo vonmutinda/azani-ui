@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { verifyEmail, resendVerificationEmail } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle, Loader2, Mail } from "lucide-react";
 
 export default function VerifyEmailPage() {
-  const searchParams = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search);
-  }, []);
+  const searchParams = useSearchParams();
 
-  const token = searchParams?.get("token") ?? "";
-  const email = searchParams?.get("email") ?? "";
+  const token = searchParams.get("token") ?? "";
+  const email = searchParams.get("email") ?? "";
 
   const missingParams = !token || !email;
   const [status, setStatus] = useState<"loading" | "success" | "already" | "error">(

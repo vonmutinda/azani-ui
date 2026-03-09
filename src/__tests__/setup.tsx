@@ -19,6 +19,17 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
+// Mock next/image
+vi.mock("next/image", () => ({
+  default: (
+    props: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; priority?: boolean },
+  ) => {
+    const { fill, priority, ...rest } = props;
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    return <img {...rest} />;
+  },
+}));
+
 // Mock next/link
 vi.mock("next/link", () => ({
   default: ({

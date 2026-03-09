@@ -29,9 +29,18 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Kokob Baby Shop",
+  title: {
+    default: "Kokob Baby Shop",
+    template: "%s | Kokob Baby Shop",
+  },
   description:
-    "Quality baby products, clothing, toys and essentials for your little one — powered by Medusa",
+    "Quality baby products, clothing, toys and essentials for your little one. Shop baby care, feeding, clothing, and more.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://kokob.shop"),
+  openGraph: {
+    type: "website",
+    siteName: "Kokob Baby Shop",
+    locale: "en_US",
+  },
 };
 
 export default function RootLayout({

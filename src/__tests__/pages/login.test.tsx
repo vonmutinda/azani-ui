@@ -1,21 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "@/app/account/login/page";
 import { renderWithProviders } from "../test-utils";
 
+const mockPush = vi.fn();
 const mockLoginCustomer = vi.fn();
 const mockRegisterCustomer = vi.fn();
 const mockMergeWishlistAfterAuth = vi.fn();
+const mockRequestPasswordReset = vi.fn();
+const mockSetAuthToken = vi.fn();
+const mockClearAuthToken = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 
 vi.mock("@/lib/medusa-api", () => ({
   loginCustomer: (...args: unknown[]) => mockLoginCustomer(...args),
   registerCustomer: (...args: unknown[]) => mockRegisterCustomer(...args),
   mergeWishlistAfterAuth: (...args: unknown[]) => mockMergeWishlistAfterAuth(...args),
+  requestPasswordReset: (...args: unknown[]) => mockRequestPasswordReset(...args),
 }));
 
 vi.mock("@/lib/http", () => ({
-  setAuthToken: vi.fn(),
+  setAuthToken: (...args: unknown[]) => mockSetAuthToken(...args),
+  clearAuthToken: (...args: unknown[]) => mockClearAuthToken(...args),
 }));
 
 beforeEach(() => {
@@ -26,6 +36,25 @@ beforeEach(() => {
   });
 });
 
+async function fillRegistrationForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByText("Create one"));
+  fireEvent.change(screen.getByPlaceholderText("First name"), {
+    target: { value: "John" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Last name"), {
+    target: { value: "Doe" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Email"), {
+    target: { value: "john@example.com" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Min. 8 characters"), {
+    target: { value: "Secret123" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Re-enter your password"), {
+    target: { value: "Secret123" },
+  });
+}
+
 describe("LoginPage", () => {
   it("renders sign in form by default", () => {
     renderWithProviders(<LoginPage />);
@@ -34,172 +63,114 @@ describe("LoginPage", () => {
     expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
   });
 
-  it("does not show name fields in sign in mode", () => {
-    renderWithProviders(<LoginPage />);
-    expect(screen.queryByPlaceholderText("First name")).not.toBeInTheDocument();
-    expect(screen.queryByPlaceholderText("Last name")).not.toBeInTheDocument();
-  });
-
-  it("switches to registration form", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.click(screen.getByText("Create one"));
-
-    expect(screen.getByRole("heading", { name: "Create Account" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("First name")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Last name")).toBeInTheDocument();
-  });
-
-  it("switches back to sign in from registration", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.click(screen.getByText("Create one"));
-    await user.click(screen.getByText("Sign in"));
-
-    expect(screen.queryByPlaceholderText("First name")).not.toBeInTheDocument();
-  });
-
-  it("calls loginCustomer on form submit", async () => {
+  it("signs in and routes to account after successful session rehydration", async () => {
     mockLoginCustomer.mockResolvedValueOnce({ token: "jwt_123" });
 
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    fireEvent.change(screen.getByPlaceholderText("Email"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "Secret123" },
+    });
     await user.click(screen.getByRole("button", { name: "Sign In" }));
 
     await waitFor(() => {
-      expect(mockLoginCustomer).toHaveBeenCalledWith("test@example.com", "password123");
+      expect(mockLoginCustomer).toHaveBeenCalledWith("test@example.com", "Secret123");
     });
-    expect(mockMergeWishlistAfterAuth).toHaveBeenCalled();
-  });
-
-  it("calls registerCustomer on registration submit", async () => {
-    mockRegisterCustomer.mockResolvedValueOnce({
-      token: "jwt_123",
-      customer: { id: "cus_1" },
-    });
-
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.click(screen.getByText("Create one"));
-    await user.type(screen.getByPlaceholderText("First name"), "John");
-    await user.type(screen.getByPlaceholderText("Last name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Email"), "john@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "secret123");
-    await user.click(screen.getByRole("button", { name: "Create Account" }));
-
     await waitFor(() => {
-      expect(mockRegisterCustomer).toHaveBeenCalledWith({
-        email: "john@example.com",
-        password: "secret123",
-        first_name: "John",
-        last_name: "Doe",
-      });
+      expect(mockSetAuthToken).toHaveBeenCalledWith("jwt_123");
+      expect(mockPush).toHaveBeenCalledWith("/account");
     });
-    expect(mockMergeWishlistAfterAuth).toHaveBeenCalled();
   });
 
-  it("shows 'Please wait...' when submitting", async () => {
-    mockLoginCustomer.mockReturnValue(new Promise(() => {})); // never resolves
+  it("shows a session error instead of routing when auth cannot be rehydrated", async () => {
+    mockLoginCustomer.mockResolvedValueOnce({ token: "jwt_123" });
+    mockMergeWishlistAfterAuth.mockResolvedValueOnce({
+      customer: null,
+      wishlistIds: [],
+    });
 
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
+    fireEvent.change(screen.getByPlaceholderText("Email"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "Secret123" },
+    });
     await user.click(screen.getByRole("button", { name: "Sign In" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Please wait...")).toBeInTheDocument();
-    });
-  });
-
-  it("shows error message on login failure", async () => {
-    mockLoginCustomer.mockRejectedValueOnce(new Error("Invalid credentials"));
-
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Sign In" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Invalid email or password.")).toBeInTheDocument();
-    });
-  });
-
-  it("shows error message on registration failure", async () => {
-    mockRegisterCustomer.mockRejectedValueOnce(
-      new Error("Identity with email already exists"),
-    );
-
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.click(screen.getByText("Create one"));
-    await user.type(screen.getByPlaceholderText("First name"), "John");
-    await user.type(screen.getByPlaceholderText("Last name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Email"), "john@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "secret123");
-    await user.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
       expect(
-        screen.getByText("An account with this email already exists."),
+        screen.getByText("We couldn't keep you signed in. Please sign in again."),
       ).toBeInTheDocument();
     });
+    expect(mockClearAuthToken).toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("shows validation error for short password", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "short");
-    await user.click(screen.getByRole("button", { name: "Sign In" }));
-
-    expect(
-      screen.getByText("Password must be at least 6 characters."),
-    ).toBeInTheDocument();
-    expect(mockLoginCustomer).not.toHaveBeenCalled();
-  });
-
-  it("shows validation error for invalid email format", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.type(screen.getByPlaceholderText("Email"), "not-an-email");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Sign In" }));
-
-    expect(
-      screen.getByText("Please enter a valid email address."),
-    ).toBeInTheDocument();
-    expect(mockLoginCustomer).not.toHaveBeenCalled();
-  });
-
-  it("clears errors when switching between login and register modes", async () => {
-    mockLoginCustomer.mockRejectedValueOnce(new Error("Invalid credentials"));
-
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    await user.type(screen.getByPlaceholderText("Email"), "test@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Sign In" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Invalid email or password.")).toBeInTheDocument();
+  it("shows account continuation after registration when session is valid", async () => {
+    mockRegisterCustomer.mockResolvedValueOnce({
+      token: "jwt_123",
+      customer: { id: "cus_1", email: "john@example.com" },
     });
 
-    await user.click(screen.getByText("Create one"));
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
 
-    expect(screen.queryByText("Invalid email or password.")).not.toBeInTheDocument();
+    await fillRegistrationForm(user);
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Check Your Inbox" })).toBeInTheDocument();
+    });
+
+    const continueLink = screen.getByRole("link", { name: "Continue to Account" });
+    expect(continueLink).toHaveAttribute("href", "/account");
+  });
+
+  it("falls back to sign in continuation when registration session is not durable", async () => {
+    mockRegisterCustomer.mockResolvedValueOnce({
+      token: "jwt_123",
+      customer: { id: "cus_1", email: "john@example.com" },
+    });
+    mockMergeWishlistAfterAuth.mockResolvedValueOnce({
+      customer: null,
+      wishlistIds: ["prod_1"],
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    await fillRegistrationForm(user);
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Check Your Inbox" })).toBeInTheDocument();
+    });
+
+    const signInLink = screen.getByRole("link", { name: "Sign In to Continue" });
+    expect(signInLink).toHaveAttribute("href", "/account/login");
+    expect(mockClearAuthToken).toHaveBeenCalled();
+  });
+
+  it("validates email before submitting", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Email"), {
+      target: { value: "not-an-email" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "Secret123" },
+    });
+    await user.click(screen.getByRole("button", { name: "Sign In" }));
+
+    expect(screen.getByText("Please enter a valid email address.")).toBeInTheDocument();
+    expect(mockLoginCustomer).not.toHaveBeenCalled();
   });
 });

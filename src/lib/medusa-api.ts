@@ -13,6 +13,7 @@ import {
   getStoredCartId,
   setStoredCartId,
   getAuthToken,
+  clearAuthToken,
   clearStoredWishlistProductIds,
   getStoredWishlistProductIds,
   setStoredWishlistProductIds,
@@ -20,7 +21,9 @@ import {
 
 // ── Products ────────────────────────────────────────────────────────
 
-const PRODUCT_PRICE_FIELDS = "+variants.calculated_price,+variants.prices";
+const PRODUCT_PRICE_FIELDS =
+  "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder";
+const ORDER_FIELDS = "*items,*items.variant,*items.product,*items.product.images";
 const WISHLIST_METADATA_KEY = "wishlist_product_ids";
 
 async function getProductPricingParams() {
@@ -41,6 +44,22 @@ function normalizeWishlistProductIds(value: unknown): string[] {
   return Array.from(
     new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0)),
   );
+}
+
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
+
+function validateId(id: string): string {
+  if (!SAFE_ID_RE.test(id)) throw new Error("Invalid ID format");
+  return id;
+}
+
+function isAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const status = (error as Error & { status?: number }).status;
+  if (status === 401 || status === 403) return true;
+
+  return /unauthorized|forbidden|invalid token|jwt|auth/i.test(error.message);
 }
 
 export function getCustomerWishlistProductIds(
@@ -81,7 +100,7 @@ export async function getProductByHandle(handle: string) {
 export async function getProductById(id: string) {
   const pricingParams = await getProductPricingParams();
 
-  return medusaRequest<{ product: MedusaProduct }>(`store/products/${id}`, {
+  return medusaRequest<{ product: MedusaProduct }>(`store/products/${validateId(id)}`, {
     searchParams: pricingParams,
   });
 }
@@ -89,8 +108,19 @@ export async function getProductById(id: string) {
 export async function getProductsByIds(productIds: string[]) {
   if (productIds.length === 0) return [];
 
-  const products = await Promise.all(
-    productIds.map(async (productId) => {
+  let listedProducts: MedusaProduct[] = [];
+  try {
+    const listed = await getProducts({ id: productIds, limit: productIds.length });
+    listedProducts = listed.products ?? [];
+  } catch {
+    // Fallback to per-product fetches below.
+  }
+
+  const listedProductMap = new Map(listedProducts.map((product) => [product.id, product]));
+  const missingIds = productIds.filter((productId) => !listedProductMap.has(productId));
+
+  const fetchedProducts = await Promise.all(
+    missingIds.map(async (productId) => {
       try {
         const res = await getProductById(productId);
         return res.product;
@@ -101,7 +131,7 @@ export async function getProductsByIds(productIds: string[]) {
   );
 
   const productMap = new Map(
-    products
+    [...listedProducts, ...fetchedProducts]
       .filter((product): product is MedusaProduct => product !== null)
       .map((product) => [product.id, product]),
   );
@@ -146,7 +176,7 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
 
   if (cartId) {
     try {
-      const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
+      const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${validateId(cartId)}`);
       return res.cart;
     } catch {
       // Cart not found or expired, create new one
@@ -194,19 +224,25 @@ export async function updateLineItem(lineItemId: string, quantity: number) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/line-items/${lineItemId}`, {
-    method: "POST",
-    body: { quantity },
-  });
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${validateId(cartId)}/line-items/${validateId(lineItemId)}`,
+    {
+      method: "POST",
+      body: { quantity },
+    },
+  );
 }
 
 export async function removeLineItem(lineItemId: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/line-items/${lineItemId}`, {
-    method: "DELETE",
-  });
+  return medusaRequest<{ cart: MedusaCart }>(
+    `store/carts/${validateId(cartId)}/line-items/${validateId(lineItemId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 export async function updateCart(data: Record<string, unknown>) {
@@ -350,9 +386,51 @@ export async function getCustomer() {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.customer;
-  } catch {
+  } catch (error) {
+    if (isAuthError(error)) {
+      clearAuthToken();
+    }
     return null;
   }
+}
+
+// ── Google OAuth ─────────────────────────────────────────────────────
+
+export async function loginWithGoogle(callbackUrl?: string) {
+  const body: Record<string, string> = {};
+  if (callbackUrl) body.callback_url = callbackUrl;
+
+  return medusaRequest<{ location: string } | { token: string }>("auth/customer/google", {
+    method: "POST",
+    body,
+  });
+}
+
+export async function validateGoogleCallback(params: Record<string, string>) {
+  const res = await medusaRequest<{ token: string }>("auth/customer/google/callback", {
+    method: "POST",
+    searchParams: params,
+  });
+  return res.token;
+}
+
+export async function createCustomerFromOAuth(
+  token: string,
+  data: { email: string; first_name?: string; last_name?: string },
+) {
+  return medusaRequest<{ customer: MedusaCustomer }>("store/customers", {
+    method: "POST",
+    body: data,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function refreshAuthToken(token: string) {
+  const res = await medusaRequest<{ token: string }>("auth/token/refresh", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.token;
 }
 
 // ── Customer Profile ────────────────────────────────────────────────
@@ -413,6 +491,11 @@ export async function toggleWishlistProduct(productId: string) {
 export async function mergeWishlistAfterAuth() {
   const guestWishlistIds = getStoredWishlistProductIds();
   const customer = await getCustomer();
+
+  if (!customer) {
+    return { customer: null, wishlistIds: guestWishlistIds };
+  }
+
   const customerWishlistIds = getCustomerWishlistProductIds(customer);
   const mergedIds = Array.from(new Set([...customerWishlistIds, ...guestWishlistIds]));
 
@@ -464,7 +547,7 @@ export async function updateCustomerAddress(id: string, data: Omit<MedusaAddress
   if (!token) throw new Error("Not authenticated");
 
   const res = await medusaRequest<{ address: MedusaAddress }>(
-    `store/customers/me/addresses/${id}`,
+    `store/customers/me/addresses/${validateId(id)}`,
     {
       method: "POST",
       body: data,
@@ -478,7 +561,7 @@ export async function deleteCustomerAddress(id: string) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  await medusaRequest<void>(`store/customers/me/addresses/${id}`, {
+  await medusaRequest<void>(`store/customers/me/addresses/${validateId(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -490,8 +573,9 @@ export async function getOrders() {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ orders: MedusaOrder[] }>("store/orders?fields=*items", {
+  const res = await medusaRequest<{ orders: MedusaOrder[] }>("store/orders", {
     headers: { Authorization: `Bearer ${token}` },
+    searchParams: { fields: ORDER_FIELDS },
   });
   return res.orders;
 }
@@ -500,8 +584,9 @@ export async function getOrderById(id: string) {
   const token = getAuthToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await medusaRequest<{ order: MedusaOrder }>(`store/orders/${id}?fields=*items`, {
+  const res = await medusaRequest<{ order: MedusaOrder }>(`store/orders/${validateId(id)}`, {
     headers: { Authorization: `Bearer ${token}` },
+    searchParams: { fields: ORDER_FIELDS },
   });
   return res.order;
 }

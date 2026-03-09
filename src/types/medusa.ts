@@ -31,10 +31,12 @@ export type MedusaProductVariant = {
   id: string;
   title: string;
   sku?: string | null;
+  thumbnail?: string | null;
   inventory_quantity?: number;
   manage_inventory?: boolean;
   allow_backorder?: boolean;
   options?: { id: string; value: string; option_id: string }[];
+  product?: Pick<MedusaProduct, "id" | "thumbnail" | "images"> | null;
   calculated_price?: {
     calculated_amount: number;
     original_amount: number;
@@ -206,4 +208,5 @@ export type MedusaOrder = {
   fulfillment_status: string;
   payment_status: string;
   created_at: string;
+  metadata?: Record<string, unknown> | null;
 };

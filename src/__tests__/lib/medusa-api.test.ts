@@ -17,15 +17,27 @@ import {
   removePromoCode,
   getShippingOptions,
   addShippingMethod,
+  initializePaymentSession,
   completeCart,
   loginCustomer,
   registerCustomer,
   getCustomer,
+  updateCustomer,
+  getCustomerAddresses,
+  addCustomerAddress,
+  updateCustomerAddress,
+  deleteCustomerAddress,
+  getOrders,
+  getOrderById,
   getCustomerWishlistProductIds,
   getWishlistProductIds,
   setWishlistProductIds,
   toggleWishlistProduct,
   mergeWishlistAfterAuth,
+  requestPasswordReset,
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail,
   getRegions,
 } from "@/lib/medusa-api";
 import { mockProduct, mockCategory, mockCart, mockRegion } from "../fixtures";
@@ -35,6 +47,7 @@ vi.mock("@/lib/http", () => ({
   getStoredCartId: vi.fn(),
   setStoredCartId: vi.fn(),
   getAuthToken: vi.fn(),
+  clearAuthToken: vi.fn(),
   getStoredWishlistProductIds: vi.fn(),
   setStoredWishlistProductIds: vi.fn(),
   clearStoredWishlistProductIds: vi.fn(),
@@ -44,6 +57,7 @@ const mockRequest = http.medusaRequest as Mock;
 const mockGetCartId = http.getStoredCartId as Mock;
 const mockSetCartId = http.setStoredCartId as Mock;
 const mockGetAuthToken = http.getAuthToken as Mock;
+const mockClearAuthToken = http.clearAuthToken as Mock;
 const mockGetStoredWishlistIds = http.getStoredWishlistProductIds as Mock;
 const mockSetStoredWishlistIds = http.setStoredWishlistProductIds as Mock;
 const mockClearStoredWishlistIds = http.clearStoredWishlistProductIds as Mock;
@@ -68,7 +82,8 @@ describe("getProducts", () => {
       searchParams: {
         limit: 20,
         offset: 0,
-        fields: "+variants.calculated_price,+variants.prices",
+        fields:
+          "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
         region_id: "reg_01",
       },
     });
@@ -86,7 +101,8 @@ describe("getProducts", () => {
         limit: 5,
         offset: 0,
         q: "diapers",
-        fields: "+variants.calculated_price,+variants.prices",
+        fields:
+          "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
         region_id: "reg_01",
       },
     });
@@ -104,7 +120,8 @@ describe("getProductByHandle", () => {
       searchParams: {
         handle: "pampers-baby-dry",
         limit: 1,
-        fields: "+variants.calculated_price,+variants.prices",
+        fields:
+          "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
         region_id: "reg_01",
       },
     });
@@ -129,7 +146,8 @@ describe("getProductById", () => {
     const result = await getProductById("prod_01");
     expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products/prod_01", {
       searchParams: {
-        fields: "+variants.calculated_price,+variants.prices",
+        fields:
+          "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
         region_id: "reg_01",
       },
     });
@@ -138,28 +156,49 @@ describe("getProductById", () => {
 });
 
 describe("getProductsByIds", () => {
-  it("returns products in requested order", async () => {
+  it("returns empty array for empty input", async () => {
+    const result = await getProductsByIds([]);
+    expect(result).toEqual([]);
+  });
+
+  it("returns products in requested order via bulk fetch", async () => {
+    const prod02 = { ...mockProduct, id: "prod_02", title: "Baby Wipes" };
     mockRequest.mockImplementation((path: string) => {
       if (path === "store/regions") {
         return Promise.resolve({ regions: [mockRegion], count: 1 });
       }
-
-      if (path === "store/products/prod_01") {
-        return Promise.resolve({ product: mockProduct });
-      }
-
-      if (path === "store/products/prod_02") {
+      if (path === "store/products") {
         return Promise.resolve({
-          product: { ...mockProduct, id: "prod_02", title: "Baby Wipes" },
+          products: [mockProduct, prod02],
+          count: 2,
+          offset: 0,
+          limit: 2,
         });
       }
-
       return Promise.resolve({});
     });
 
     const result = await getProductsByIds(["prod_01", "prod_02"]);
+    expect(result.map((p) => p.id)).toEqual(["prod_01", "prod_02"]);
+  });
 
-    expect(result.map((product) => product.id)).toEqual(["prod_01", "prod_02"]);
+  it("falls back to individual fetches for missing products", async () => {
+    const prod02 = { ...mockProduct, id: "prod_02", title: "Baby Wipes" };
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/products") {
+        return Promise.resolve({ products: [mockProduct], count: 1, offset: 0, limit: 2 });
+      }
+      if (path === "store/products/prod_02") {
+        return Promise.resolve({ product: prod02 });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await getProductsByIds(["prod_01", "prod_02"]);
+    expect(result.map((p) => p.id)).toEqual(["prod_01", "prod_02"]);
   });
 });
 
@@ -395,6 +434,38 @@ describe("completeCart", () => {
 
 // ── Auth ────────────────────────────────────────────────────────────────
 
+describe("orders", () => {
+  it("fetches orders with expanded item media fields", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest.mockResolvedValueOnce({ orders: [] });
+
+    await getOrders();
+
+    expect(mockRequest).toHaveBeenCalledWith("store/orders", {
+      headers: { Authorization: "Bearer jwt_123" },
+      searchParams: {
+        fields: "*items,*items.variant,*items.product,*items.product.images",
+      },
+    });
+  });
+
+  it("fetches a single order with expanded item media fields", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest.mockResolvedValueOnce({ order: { id: "order_1", items: [] } });
+
+    await getOrderById("order_1");
+
+    expect(mockRequest).toHaveBeenCalledWith("store/orders/order_1", {
+      headers: { Authorization: "Bearer jwt_123" },
+      searchParams: {
+        fields: "*items,*items.variant,*items.product,*items.product.images",
+      },
+    });
+  });
+});
+
+// ── Auth ────────────────────────────────────────────────────────────────
+
 describe("loginCustomer", () => {
   it("sends email and password", async () => {
     mockRequest.mockResolvedValueOnce({ token: "jwt_123" });
@@ -410,11 +481,9 @@ describe("loginCustomer", () => {
 
 describe("registerCustomer", () => {
   it("creates auth identity then customer", async () => {
-    mockRequest
-      .mockResolvedValueOnce({ token: "jwt_123" })
-      .mockResolvedValueOnce({
-        customer: { id: "cus_1", email: "test@example.com", has_account: true },
-      });
+    mockRequest.mockResolvedValueOnce({ token: "jwt_123" }).mockResolvedValueOnce({
+      customer: { id: "cus_1", email: "test@example.com", has_account: true },
+    });
 
     const result = await registerCustomer({
       email: "test@example.com",
@@ -456,6 +525,15 @@ describe("getCustomer", () => {
 
     const result = await getCustomer();
     expect(result).toBeNull();
+  });
+
+  it("clears the stored token on auth failures", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_expired");
+    const authError = Object.assign(new Error("Unauthorized"), { status: 401 });
+    mockRequest.mockRejectedValueOnce(authError);
+
+    await expect(getCustomer()).resolves.toBeNull();
+    expect(mockClearAuthToken).toHaveBeenCalled();
   });
 });
 
@@ -543,6 +621,215 @@ describe("wishlist helpers", () => {
 
     expect(result.wishlistIds).toEqual(["prod_1", "prod_2"]);
     expect(mockClearStoredWishlistIds).toHaveBeenCalled();
+  });
+
+  it("keeps guest wishlist data when session rehydration fails", async () => {
+    mockGetStoredWishlistIds.mockReturnValue(["prod_2"]);
+    mockGetAuthToken.mockReturnValue("jwt_expired");
+    mockRequest.mockRejectedValueOnce(new Error("Unauthorized"));
+
+    const result = await mergeWishlistAfterAuth();
+
+    expect(result.customer).toBeNull();
+    expect(result.wishlistIds).toEqual(["prod_2"]);
+    expect(mockClearStoredWishlistIds).not.toHaveBeenCalled();
+  });
+});
+
+// ── Payment ──────────────────────────────────────────────────────────────
+
+describe("initializePaymentSession", () => {
+  it("creates payment collection then payment session", async () => {
+    mockGetCartId.mockReturnValue("cart_01");
+    mockRequest
+      .mockResolvedValueOnce({ payment_collection: { id: "pc_01" } })
+      .mockResolvedValueOnce({
+        payment_collection: {
+          id: "pc_01",
+          payment_sessions: [{ id: "ps_01", provider_id: "pp_system_default", status: "pending" }],
+        },
+      });
+
+    const result = await initializePaymentSession();
+    expect(mockRequest).toHaveBeenNthCalledWith(1, "store/payment-collections", {
+      method: "POST",
+      body: { cart_id: "cart_01" },
+    });
+    expect(mockRequest).toHaveBeenNthCalledWith(
+      2,
+      "store/payment-collections/pc_01/payment-sessions",
+      {
+        method: "POST",
+        body: { provider_id: "pp_system_default" },
+      },
+    );
+    expect(result.payment_collection.payment_sessions).toHaveLength(1);
+  });
+
+  it("throws when no cart ID", async () => {
+    mockGetCartId.mockReturnValue(null);
+    await expect(initializePaymentSession()).rejects.toThrow("No cart found");
+  });
+});
+
+// ── Customer Profile ────────────────────────────────────────────────────
+
+describe("updateCustomer", () => {
+  it("updates customer profile", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest.mockResolvedValueOnce({
+      customer: { id: "cus_1", email: "test@example.com", has_account: true, first_name: "Jane" },
+    });
+
+    const result = await updateCustomer({ first_name: "Jane" });
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/me", {
+      method: "POST",
+      body: { first_name: "Jane" },
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+    expect(result.first_name).toBe("Jane");
+  });
+
+  it("throws when not authenticated", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+    await expect(updateCustomer({ first_name: "Jane" })).rejects.toThrow("Not authenticated");
+  });
+});
+
+// ── Customer Addresses ──────────────────────────────────────────────────
+
+describe("getCustomerAddresses", () => {
+  it("fetches addresses with auth header", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest.mockResolvedValueOnce({ addresses: [{ id: "addr_1", first_name: "John" }] });
+
+    const result = await getCustomerAddresses();
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/me/addresses", {
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  it("throws when not authenticated", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+    await expect(getCustomerAddresses()).rejects.toThrow("Not authenticated");
+  });
+});
+
+describe("addCustomerAddress", () => {
+  it("adds an address", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    const addressData = {
+      first_name: "John",
+      last_name: "Doe",
+      address_1: "123 Main St",
+      city: "Addis Ababa",
+      country_code: "et",
+    };
+    mockRequest.mockResolvedValueOnce({ address: { id: "addr_1", ...addressData } });
+
+    const result = await addCustomerAddress(addressData);
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/me/addresses", {
+      method: "POST",
+      body: addressData,
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+    expect(result.id).toBe("addr_1");
+  });
+});
+
+describe("updateCustomerAddress", () => {
+  it("updates an address by ID", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    const data = {
+      first_name: "Jane",
+      last_name: "Doe",
+      address_1: "456 New St",
+      city: "Addis Ababa",
+      country_code: "et",
+    };
+    mockRequest.mockResolvedValueOnce({ address: { id: "addr_1", ...data } });
+
+    const result = await updateCustomerAddress("addr_1", data);
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/me/addresses/addr_1", {
+      method: "POST",
+      body: data,
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+    expect(result.first_name).toBe("Jane");
+  });
+});
+
+describe("deleteCustomerAddress", () => {
+  it("deletes an address by ID", async () => {
+    mockGetAuthToken.mockReturnValue("jwt_123");
+    mockRequest.mockResolvedValueOnce(undefined);
+
+    await deleteCustomerAddress("addr_1");
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/me/addresses/addr_1", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer jwt_123" },
+    });
+  });
+
+  it("throws when not authenticated", async () => {
+    mockGetAuthToken.mockReturnValue(null);
+    await expect(deleteCustomerAddress("addr_1")).rejects.toThrow("Not authenticated");
+  });
+});
+
+// ── Password Reset ──────────────────────────────────────────────────────
+
+describe("requestPasswordReset", () => {
+  it("sends reset request with email", async () => {
+    mockRequest.mockResolvedValueOnce({});
+
+    await requestPasswordReset("test@example.com");
+    expect(mockRequest).toHaveBeenCalledWith("auth/customer/emailpass/reset-password", {
+      method: "POST",
+      body: { identifier: "test@example.com" },
+    });
+  });
+});
+
+describe("resetPassword", () => {
+  it("sends new password with token", async () => {
+    mockRequest.mockResolvedValueOnce({});
+
+    await resetPassword("reset_token", "test@example.com", "newPassword123");
+    expect(mockRequest).toHaveBeenCalledWith("auth/customer/emailpass/update", {
+      method: "POST",
+      body: { email: "test@example.com", password: "newPassword123" },
+      headers: { Authorization: "Bearer reset_token" },
+    });
+  });
+});
+
+// ── Email Verification ──────────────────────────────────────────────────
+
+describe("verifyEmail", () => {
+  it("sends verification request", async () => {
+    mockRequest.mockResolvedValueOnce({ message: "ok", verified: true });
+
+    const result = await verifyEmail("verify_token", "test@example.com");
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/verify", {
+      method: "POST",
+      body: { token: "verify_token", email: "test@example.com" },
+    });
+    expect(result.verified).toBe(true);
+  });
+});
+
+describe("resendVerificationEmail", () => {
+  it("sends resend request", async () => {
+    mockRequest.mockResolvedValueOnce({ message: "sent" });
+
+    const result = await resendVerificationEmail("test@example.com");
+    expect(mockRequest).toHaveBeenCalledWith("store/customers/resend-verification", {
+      method: "POST",
+      body: { email: "test@example.com" },
+    });
+    expect(result.message).toBe("sent");
   });
 });
 
