@@ -198,6 +198,221 @@ describe("AccountPage", () => {
     expect(screen.getByText("Qty: 1")).toBeInTheDocument();
   });
 
+  describe("order journey status mapping", () => {
+    function makeOrder(overrides: {
+      status?: string;
+      fulfillment_status?: string;
+      payment_status?: string;
+    }) {
+      return {
+        id: "order_j",
+        display_id: 200,
+        email: customer.email,
+        currency_code: "etb",
+        items: [
+          {
+            id: "item_j",
+            title: "Test Item",
+            quantity: 1,
+            variant_id: "var_j",
+            product_id: "prod_j",
+            unit_price: 50,
+            original_total: 50,
+            total: 50,
+            subtotal: 50,
+            discount_total: 0,
+            tax_total: 0,
+          },
+        ],
+        total: 50,
+        subtotal: 50,
+        shipping_total: 0,
+        tax_total: 0,
+        discount_total: 0,
+        status: overrides.status ?? "pending",
+        fulfillment_status: overrides.fulfillment_status ?? "not_fulfilled",
+        payment_status: overrides.payment_status ?? "captured",
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    async function renderOrderWithStatuses(overrides: {
+      status?: string;
+      fulfillment_status?: string;
+      payment_status?: string;
+    }) {
+      const order = makeOrder(overrides);
+      mockGetCustomer.mockResolvedValue(customer);
+      mockSearchParamGet.mockImplementation((key: string) => (key === "order" ? order.id : null));
+      mockGetOrders.mockResolvedValue([order]);
+      mockGetOrderById.mockResolvedValue(order);
+      mockGetProductsByIds.mockResolvedValue([]);
+
+      renderWithProviders(<AccountPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Test Item")).toBeInTheDocument();
+      });
+    }
+
+    it("shows Ordered as active for a new unfulfilled order", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "not_paid",
+      });
+
+      expect(screen.getAllByText("Ordered").length).toBeGreaterThan(0);
+      const journeyLabels = ["Ordered", "Confirmed", "Shipped", "Delivered"];
+      for (const label of journeyLabels) {
+        expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+      }
+    });
+
+    it("shows Confirmed after admin fulfils items", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "fulfilled",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Confirmed");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Confirmed for partially_fulfilled status", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "partially_fulfilled",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Confirmed");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Confirmed via payment authorization even when not_fulfilled", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "authorized",
+      });
+
+      const badges = screen.getAllByText("Confirmed");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Shipped after admin marks as shipped", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "shipped",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Shipped");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Shipped for partially_shipped status", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "partially_shipped",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Shipped");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Delivered when fulfillment_status is delivered", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "delivered",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Delivered");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Delivered when order status is completed", async () => {
+      await renderOrderWithStatuses({
+        status: "completed",
+        fulfillment_status: "fulfilled",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Delivered");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Canceled when order status is canceled", async () => {
+      await renderOrderWithStatuses({
+        status: "canceled",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "not_paid",
+      });
+
+      const badges = screen.getAllByText("Canceled");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Canceled when payment_status is canceled", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "canceled",
+      });
+
+      const badges = screen.getAllByText("Canceled");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Refunded for refunded payment", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "refunded",
+      });
+
+      const badges = screen.getAllByText("Refunded");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Refunded for partially_refunded payment", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "shipped",
+        payment_status: "partially_refunded",
+      });
+
+      const badges = screen.getAllByText("Refunded");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Returned for returned fulfillment", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "returned",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Returned");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+
+    it("shows Returned for partially_returned fulfillment", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "partially_returned",
+        payment_status: "captured",
+      });
+
+      const badges = screen.getAllByText("Returned");
+      expect(badges.length).toBeGreaterThan(0);
+    });
+  });
+
   it("falls back to variant-linked product media when order item product is missing", async () => {
     mockGetCustomer.mockResolvedValue(customer);
     mockSearchParamGet.mockImplementation((key: string) => (key === "order" ? "order_2" : null));

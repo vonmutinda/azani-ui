@@ -72,6 +72,12 @@ type JourneyStep = { label: string; reached: boolean; active: boolean; failed?: 
  * Customer journey (happy path, 4 steps):
  *   Ordered -> Confirmed -> Shipped -> Delivered
  *
+ * Mapping (admin action -> backend fulfillment_status -> UI step):
+ *   Place order           -> not_fulfilled              -> Ordered
+ *   Fulfil items          -> fulfilled/partially_fulfilled -> Confirmed
+ *   Mark as Shipped       -> shipped/partially_shipped  -> Shipped
+ *   Mark as Delivered     -> delivered/partially_delivered -> Delivered
+ *
  * Terminal paths append a failure step at the point the order diverged:
  *   Ordered -> Canceled
  *   Ordered -> Confirmed -> Refunded
@@ -90,7 +96,14 @@ function getOrderJourney(order: MedusaOrder): JourneyStep[] {
 
   const confirmed =
     ["authorized", "partially_authorized", "captured", "partially_captured"].includes(ps) ||
-    !["not_fulfilled"].includes(fs);
+    [
+      "partially_fulfilled",
+      "fulfilled",
+      "partially_shipped",
+      "shipped",
+      "partially_delivered",
+      "delivered",
+    ].includes(fs);
 
   const shipped = ["shipped", "partially_shipped", "delivered", "partially_delivered"].includes(fs);
 
