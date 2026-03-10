@@ -111,10 +111,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   );
 
   return (
-    <article className="group border-border bg-card relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow duration-300 hover:shadow-md">
+    <article className="group border-border/50 bg-card hover:border-border relative flex flex-col overflow-hidden rounded-2xl border transition duration-300">
       {isNew && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase shadow-sm">
+          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase">
             New
           </span>
         </div>
@@ -125,8 +125,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`border-border focus-visible:ring-primary/30 bg-card flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
-            isWishlisted ? "text-primary" : "text-muted hover:bg-background hover:text-foreground"
+          className={`border-border/50 focus-visible:ring-primary/30 bg-card flex h-10 w-10 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+            isWishlisted
+              ? "text-primary"
+              : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -164,14 +166,14 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </Link>
 
         <p
-          className={`text-xs font-medium ${
+          className={`text-sm font-medium ${
             maxedOut
               ? "text-muted"
               : availability.isOutOfStock
                 ? "text-danger"
                 : availability.isLowStock
-                  ? "text-accent-yellow"
-                  : "text-accent-green"
+                  ? "text-accent-yellow-ink"
+                  : "text-success-ink"
           }`}
         >
           {maxedOut ? "Max in cart" : availability.label}
@@ -190,7 +192,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                 justAdded
                   ? "bg-accent-green-bold scale-110"
                   : maxedOut

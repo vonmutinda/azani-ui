@@ -29,7 +29,7 @@ import {
 import { formatPrice, getVariantAvailability, resolveOrderItemImage } from "@/lib/formatters";
 import type { MedusaLineItem, MedusaProduct } from "@/types/medusa";
 
-const FREE_SHIPPING_THRESHOLD = 5_000;
+const FREE_SHIPPING_THRESHOLD = 10_000;
 
 function variantLabel(item: MedusaLineItem): string | null {
   if (
@@ -128,13 +128,13 @@ export default function CartPage() {
         <div className="mb-5 flex items-center gap-3">
           <Link
             href="/products"
-            className="border-border text-muted hover:border-border-hover hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2.5 shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="border-border/50 text-muted hover:border-border hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-foreground text-xl font-bold sm:text-2xl">Shopping Cart</h1>
         </div>
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-secondary h-8 w-8" />
           </div>
@@ -160,7 +160,7 @@ export default function CartPage() {
       <div className="mb-5 flex items-center gap-3">
         <Link
           href="/products"
-          className="border-border text-muted hover:border-border-hover hover:bg-background hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2 shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="border-border/50 text-muted hover:border-border hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -179,7 +179,7 @@ export default function CartPage() {
 
       <div className="grid items-start gap-8 lg:grid-cols-3">
         {/* Items — single receipt-style card */}
-        <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-2xl border shadow-sm lg:col-span-2">
+        <div className="divide-border border-border/50 bg-card divide-y overflow-hidden rounded-2xl border lg:col-span-2">
           <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-xs font-semibold tracking-widest uppercase sm:flex">
             <span>Product</span>
             <div className="flex gap-8 lg:gap-16">
@@ -204,7 +204,7 @@ export default function CartPage() {
 
         {/* Summary — sticky on desktop */}
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+          <div className="border-border/50 bg-card rounded-2xl border p-6">
             <h2 className="text-foreground mb-5 text-sm font-bold tracking-wider uppercase">
               Order Summary
             </h2>
@@ -276,7 +276,7 @@ export default function CartPage() {
                   </div>
                 );
               })()}
-              <div className="border-border border-t pt-3">
+              <div className="border-border/50 border-t pt-3">
                 <div className="text-foreground flex justify-between text-lg font-bold">
                   <span>Total</span>
                   <span>{formatPrice(cart.total ?? 0, currencyCode)}</span>
@@ -294,7 +294,7 @@ export default function CartPage() {
           </div>
 
           {/* Promo Code */}
-          <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+          <div className="border-border/50 bg-card rounded-2xl border p-6">
             <h3 className="text-foreground mb-3 text-sm font-bold">Promo Code</h3>
             {cart.promotions && cart.promotions.length > 0 ? (
               <div className="space-y-2">
@@ -319,7 +319,7 @@ export default function CartPage() {
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder="Enter code"
-                  className="border-border bg-background focus:border-primary focus:ring-primary/15 h-9 flex-1 rounded-lg border px-3 text-sm transition outline-none focus:ring-2"
+                  className="border-border/50 bg-background focus:border-primary focus:ring-primary/15 h-9 flex-1 rounded-lg border px-3 text-sm transition outline-none focus:ring-2"
                 />
                 <button
                   onClick={() => promoMutation.mutate()}
@@ -406,7 +406,7 @@ function CartItem({
   const productHref = item.product_id ? `/products/${item.product_id}` : "#";
 
   return (
-    <div className="hover:bg-background/50 flex gap-3 px-4 py-3 transition">
+    <div className="hover:bg-foreground/[0.04]/50 flex gap-3 px-4 py-3 transition">
       <Link
         href={productHref}
         className="bg-background relative h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
@@ -466,7 +466,7 @@ function CartItem({
         </div>
 
         <div className="mt-1 flex items-center justify-between">
-          <div className="border-border flex items-center rounded-full border">
+          <div className="border-border/50 flex items-center rounded-full border">
             <button
               onClick={() => {
                 const next = Math.max(1, item.quantity - 1);

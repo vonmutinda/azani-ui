@@ -71,14 +71,14 @@ export default function WishlistPage() {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Browse Products
           </Link>
           {!customer && (
             <Link
               href="/account/login"
-              className="border-border text-foreground hover:border-border-hover hover:text-foreground focus-visible:ring-border inline-flex items-center gap-2 rounded-full border bg-white px-6 py-3 text-sm font-semibold shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="border-border/50 text-foreground hover:border-border hover:text-foreground focus-visible:ring-border inline-flex items-center gap-2 rounded-full border bg-white px-6 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Sign In to Sync
             </Link>
@@ -111,7 +111,7 @@ export default function WishlistPage() {
           ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-secondary h-8 w-8" />
           </div>
@@ -123,7 +123,7 @@ export default function WishlistPage() {
           </div>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Browse Products
           </Link>

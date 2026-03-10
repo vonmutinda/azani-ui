@@ -27,42 +27,47 @@ import {
 import { CategoryIcon } from "@/components/category-icon";
 
 const TRUST_SIGNALS = [
-  { icon: Truck, text: "Free delivery over Br5,000" },
+  { icon: Truck, text: "Free delivery over Br10,000" },
   { icon: Shield, text: "Safe & certified products" },
 ];
 
 function MegaMenu({ category, onClose }: { category: KokobCategory; onClose: () => void }) {
   const children = category.children ?? [];
   return (
-    <div className="border-border bg-card absolute top-full left-0 z-50 w-full border-b shadow-lg">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-        {children.map((sub) => (
-          <div key={sub.slug}>
-            <Link
-              href={`/products?category=${sub.slug}`}
-              onClick={onClose}
-              className="text-foreground hover:text-secondary mb-2 flex items-center gap-2 text-sm font-semibold transition"
-            >
-              <CategoryIcon icon={sub.icon} size={16} colored />
-              {sub.name}
-            </Link>
-            {sub.children && sub.children.length > 0 && (
-              <ul className="space-y-0.5">
-                {sub.children.map((child) => (
-                  <li key={child.slug}>
-                    <Link
-                      href={`/products?category=${child.slug}`}
-                      onClick={onClose}
-                      className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-2 py-1.5 text-xs transition"
-                    >
-                      {child.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+    <div className="absolute inset-x-0 top-full z-50 hidden lg:block">
+      <div className="bg-card/98 border-border/40 border-t shadow-xl backdrop-blur-xl">
+        <div className="mx-auto w-full max-w-7xl px-6 py-6 lg:px-8">
+          <p className="text-foreground mb-4 text-base font-semibold">{category.name}</p>
+          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+            {children.map((sub) => (
+              <div key={sub.slug}>
+                <Link
+                  href={`/products?category=${sub.slug}`}
+                  onClick={onClose}
+                  className="text-foreground hover:text-secondary mb-2 flex items-center gap-2 text-sm font-semibold transition"
+                >
+                  <CategoryIcon icon={sub.icon} size={15} colored />
+                  {sub.name}
+                </Link>
+                {sub.children && sub.children.length > 0 && (
+                  <ul className="space-y-0.5">
+                    {sub.children.map((child) => (
+                      <li key={child.slug}>
+                        <Link
+                          href={`/products?category=${child.slug}`}
+                          onClick={onClose}
+                          className="text-muted hover:text-foreground block py-1.5 text-sm transition"
+                        >
+                          {child.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -157,20 +162,18 @@ export function SiteHeader() {
   const TrustIcon = TRUST_SIGNALS[trustIdx].icon;
 
   return (
-    <header className="bg-card sticky top-0 z-50">
-      {/* Announcement / trust bar */}
-      <div className="bg-foreground text-white">
-        <div className="mx-auto flex h-8 max-w-7xl items-center justify-center gap-6 px-4 text-xs font-medium tracking-wide sm:px-6 lg:px-8">
-          {/* Mobile: rotating single signal */}
+    <header className="bg-card/98 supports-[backdrop-filter]:bg-card/92 sticky top-0 z-50 backdrop-blur-xl">
+      {/* Trust bar */}
+      <div className="bg-foreground text-white/80">
+        <div className="mx-auto flex h-7 max-w-7xl items-center justify-center gap-6 px-4 text-[11px] font-medium tracking-wide sm:px-6 sm:text-xs lg:px-8">
           <div className="flex items-center gap-1.5 sm:hidden">
-            <TrustIcon className="h-3 w-3 opacity-70" />
+            <TrustIcon className="h-3 w-3 opacity-60" />
             <span className="transition-opacity duration-300">{TRUST_SIGNALS[trustIdx].text}</span>
           </div>
-          {/* Desktop: show all signals */}
-          <div className="hidden items-center gap-6 sm:flex">
+          <div className="hidden items-center gap-8 sm:flex">
             {TRUST_SIGNALS.map((s) => (
               <div key={s.text} className="flex items-center gap-1.5">
-                <s.icon className="h-3 w-3 opacity-60" />
+                <s.icon className="h-3 w-3 opacity-50" />
                 <span>{s.text}</span>
               </div>
             ))}
@@ -178,9 +181,9 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Main header row: logo | nav | actions */}
-      <div className="border-border border-b">
-        <div className="mx-auto flex h-[84px] w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+      {/* Main header */}
+      <div className="border-border/50 border-b">
+        <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:gap-5 lg:px-8">
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <Image
@@ -188,28 +191,25 @@ export function SiteHeader() {
               alt="Kokob Baby Shop"
               width={288}
               height={96}
-              className="h-20 w-auto"
+              className="h-14 w-auto sm:h-16 lg:h-[68px]"
               priority
             />
           </Link>
 
-          {/* Desktop nav — centered */}
-          <nav className="hide-scrollbar hidden max-w-[calc(100%-360px)] flex-1 items-center justify-center overflow-x-auto lg:flex">
-            <div className="flex items-center whitespace-nowrap">
+          {/* Desktop nav */}
+          <nav className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+            <div className="flex items-center gap-0.5">
               <Link
                 href="/products"
                 aria-label="All Products"
                 title="All Products"
-                className={`relative flex items-center justify-center rounded-full p-2.5 transition ${
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                   isProductsPage && !currentCategorySlug
-                    ? "text-foreground"
-                    : "text-muted hover:text-foreground"
+                    ? "bg-foreground/[0.06] text-foreground"
+                    : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
                 }`}
               >
-                <LayoutGrid className="h-4 w-4" />
-                {isProductsPage && !currentCategorySlug && (
-                  <span className="bg-secondary absolute right-1 bottom-0.5 left-1 h-[2px] rounded-full" />
-                )}
+                <LayoutGrid className="h-[15px] w-[15px]" />
               </Link>
               {topCategories.map((cat) => {
                 const isNavActive = activeMainSlug === cat.slug;
@@ -222,19 +222,16 @@ export function SiteHeader() {
                   >
                     <Link
                       href={`/products?category=${cat.slug}`}
-                      className={`relative flex items-center gap-1 px-2.5 py-2 text-xs font-medium whitespace-nowrap transition ${
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
                         activeMega === cat.slug || isNavActive
-                          ? "text-foreground"
-                          : "text-muted hover:text-foreground"
+                          ? "bg-foreground/[0.06] text-foreground"
+                          : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
                       }`}
                     >
                       {cat.name}
                       <ChevronDown
-                        className={`h-3 w-3 shrink-0 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
+                        className={`h-3 w-3 shrink-0 opacity-50 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
                       />
-                      {isNavActive && (
-                        <span className="bg-secondary absolute right-2.5 bottom-0 left-2.5 h-[2px] rounded-full" />
-                      )}
                     </Link>
                   </div>
                 );
@@ -247,40 +244,40 @@ export function SiteHeader() {
             <button
               onClick={toggleSearch}
               aria-label="Search"
-              className="text-muted hover:text-foreground focus-visible:ring-border relative rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
             >
               {searchOpen ? (
-                <X className="h-[18px] w-[18px]" />
+                <X className="h-[17px] w-[17px]" />
               ) : (
-                <Search className="h-[18px] w-[18px]" />
+                <Search className="h-[17px] w-[17px]" />
               )}
             </button>
             <Link
               href={isLoggedIn ? "/account" : "/account/login"}
               aria-label="Account"
-              className="text-muted hover:text-foreground focus-visible:ring-border relative hidden rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground relative hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
             >
-              <User className="h-[18px] w-[18px]" />
+              <User className="h-[17px] w-[17px]" />
               {isVerified && (
-                <span className="bg-secondary ring-card absolute right-1.5 bottom-1.5 h-2 w-2 rounded-full ring-2" />
+                <span className="bg-secondary ring-card absolute right-1 bottom-1 h-2 w-2 rounded-full ring-2" />
               )}
             </Link>
             <Link
               href="/account/wishlist"
               aria-label="Wishlist"
-              className="text-muted hover:text-foreground focus-visible:ring-border hidden rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex"
+              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
             >
-              <Heart className="h-[18px] w-[18px]" />
+              <Heart className="h-[17px] w-[17px]" />
             </Link>
             <Link
               href="/cart"
               aria-label="Cart"
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 relative ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="bg-foreground hover:bg-foreground/90 relative ml-1 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
-              <ShoppingBag className="h-4 w-4" />
+              <ShoppingBag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="bg-primary text-2xs flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-bold text-white">
+                <span className="bg-primary flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
                   {cartCount}
                 </span>
               )}
@@ -288,9 +285,14 @@ export function SiteHeader() {
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Menu"
-              className="text-muted hover:text-foreground focus-visible:ring-border ml-1 rounded-full p-3 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
+              className={`ml-1 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden ${
+                mobileOpen
+                  ? "bg-foreground text-white"
+                  : "text-foreground hover:bg-foreground/[0.04]"
+              }`}
             >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              <span className="hidden sm:inline">{mobileOpen ? "Close" : "Menu"}</span>
             </button>
           </div>
         </div>
@@ -309,17 +311,17 @@ export function SiteHeader() {
 
       {/* Search overlay */}
       {searchOpen && (
-        <div className="border-border bg-card border-b">
-          <div className="mx-auto max-w-2xl px-4 py-4 sm:px-6">
+        <div className="bg-card/98 border-border/40 border-t backdrop-blur-xl">
+          <div className="mx-auto max-w-2xl px-4 py-3 sm:px-6">
             <form onSubmit={handleSearch} className="relative">
-              <Search className="text-muted absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2" />
+              <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
               <input
                 ref={searchInputRef}
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="What are you looking for?"
-                className="border-border bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/15 h-12 w-full rounded-2xl border pr-4 pl-11 text-sm transition outline-none focus:ring-2"
+                placeholder="Search products..."
+                className="border-border/60 bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/10 h-11 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
               />
             </form>
           </div>
@@ -328,17 +330,16 @@ export function SiteHeader() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <nav className="border-border bg-card border-b lg:hidden">
-          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
-            {/* Mobile search */}
-            <form onSubmit={handleSearch} className="mb-4">
+        <nav className="bg-card/98 border-border/40 border-t backdrop-blur-xl lg:hidden">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
+            <form onSubmit={handleSearch} className="mb-3">
               <div className="relative">
                 <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
-                  className="border-border bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/15 h-11 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
+                  className="border-border/60 bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/10 h-10 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
                 />
               </div>
             </form>
@@ -347,7 +348,7 @@ export function SiteHeader() {
               <Link
                 href="/products"
                 onClick={() => setMobileOpen(false)}
-                className="text-foreground hover:bg-background block rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                className="text-foreground hover:bg-foreground/[0.04] block rounded-lg px-3 py-2.5 text-sm font-semibold transition"
               >
                 All Products
               </Link>
@@ -356,9 +357,9 @@ export function SiteHeader() {
                   <Link
                     href={`/products?category=${cat.slug}`}
                     onClick={() => setMobileOpen(false)}
-                    className="text-foreground hover:bg-background flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                    className="text-foreground hover:bg-foreground/[0.04] flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition"
                   >
-                    <CategoryIcon icon={cat.icon} size={16} colored />
+                    <CategoryIcon icon={cat.icon} size={15} colored />
                     {cat.name}
                   </Link>
                   {cat.children && (
@@ -368,7 +369,7 @@ export function SiteHeader() {
                           key={sub.slug}
                           href={`/products?category=${sub.slug}`}
                           onClick={() => setMobileOpen(false)}
-                          className="text-muted hover:bg-background hover:text-foreground block rounded-lg px-3 py-2.5 text-xs transition"
+                          className="text-muted hover:text-foreground block rounded-lg px-3 py-2 text-sm transition"
                         >
                           {sub.name}
                         </Link>
@@ -379,11 +380,11 @@ export function SiteHeader() {
               ))}
             </div>
 
-            <div className="border-border mt-3 border-t pt-3">
+            <div className="border-border/40 mt-2 border-t pt-2">
               <Link
                 href="/account/wishlist"
                 onClick={() => setMobileOpen(false)}
-                className="text-muted hover:bg-background hover:text-foreground flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition"
+                className="text-muted hover:text-foreground hover:bg-foreground/[0.04] flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition"
               >
                 <Heart className="h-4 w-4" />
                 Wishlist
@@ -391,12 +392,12 @@ export function SiteHeader() {
               <Link
                 href={isLoggedIn ? "/account" : "/account/login"}
                 onClick={() => setMobileOpen(false)}
-                className="text-muted hover:bg-background hover:text-foreground flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition"
+                className="text-muted hover:text-foreground hover:bg-foreground/[0.04] flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition"
               >
                 <User className="h-4 w-4" />
                 Account
                 {isVerified && (
-                  <span className="bg-secondary-light text-secondary text-2xs ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium">
+                  <span className="bg-secondary-light text-secondary ml-auto rounded-full px-2 py-0.5 text-xs font-medium">
                     Verified
                   </span>
                 )}

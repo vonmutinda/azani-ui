@@ -14,7 +14,7 @@ const TOP_CATEGORIES = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-border bg-card mt-10 border-t">
+    <footer className="border-border/50 bg-card mt-10 border-t">
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div className="space-y-4">
           <Link href="/">
@@ -111,7 +111,7 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="border-border border-t">
+      <div className="border-border/50 border-t">
         <div className="text-muted mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-5 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
           <span>&copy; {new Date().getFullYear()} Kokob Baby Shop. All rights reserved.</span>
           <span className="flex items-center gap-1">

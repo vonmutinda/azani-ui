@@ -28,7 +28,7 @@ const ICON_MAP: Record<ToastType, React.ElementType> = {
 };
 
 const ACCENT_MAP: Record<ToastType, string> = {
-  success: "bg-accent-green-light text-accent-green",
+  success: "bg-accent-green-light text-success-ink",
   error: "bg-danger/10 text-danger",
   info: "bg-secondary-light text-secondary",
   cart: "bg-secondary-light text-secondary",
@@ -69,7 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={toast.id}
-              className={`border-border bg-card pointer-events-auto flex max-w-sm items-center gap-3 rounded-2xl border px-4 py-3 shadow-lg transition-all duration-300 ${
+              className={`border-border/50 bg-card pointer-events-auto flex max-w-sm items-center gap-3 rounded-2xl border px-4 py-3 shadow-lg transition-all duration-300 ${
                 toast.exiting
                   ? "translate-x-full opacity-0"
                   : "translate-x-0 animate-[slideInRight_0.3s_ease-out] opacity-100"
@@ -84,7 +84,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => dismiss(toast.id)}
                 aria-label="Dismiss notification"
-                className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border ml-1 shrink-0 rounded-full p-2 transition focus-visible:ring-2 focus-visible:outline-none"
+                className="text-muted hover:bg-foreground/[0.04] hover:text-foreground ml-1 shrink-0 rounded-full p-2 transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

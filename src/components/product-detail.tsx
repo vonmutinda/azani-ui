@@ -116,20 +116,12 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (productQuery.isLoading) {
     return (
-      <div>
-        <button
-          onClick={onBack}
-          className="text-muted hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm transition"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to products
-        </button>
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
-          <div className="space-y-4">
-            <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
-            <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
-            <div className="bg-border/40 h-32 animate-pulse rounded" />
-          </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
+        <div className="space-y-4">
+          <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
+          <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
+          <div className="bg-border/40 h-32 animate-pulse rounded" />
         </div>
       </div>
     );
@@ -137,7 +129,7 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (!product) {
     return (
-      <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm sm:p-16">
+      <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center sm:p-16">
         <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
           <ShoppingBag className="text-primary h-8 w-8" />
         </div>
@@ -149,7 +141,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </div>
         <button
           onClick={onBack}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Products
         </button>
@@ -178,17 +170,10 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   return (
     <div>
-      <button
-        onClick={onBack}
-        className="text-muted hover:text-foreground focus-visible:ring-border mb-6 inline-flex items-center gap-1.5 rounded-full py-2 text-sm transition focus-visible:ring-2 focus-visible:outline-none"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to products
-      </button>
-
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">
-          <div className="border-border bg-background relative aspect-square overflow-hidden rounded-2xl border">
+          <div className="border-border/50 bg-background relative aspect-square overflow-hidden rounded-2xl border">
             {allImages[activeImageIndex] ? (
               <Image
                 src={allImages[activeImageIndex].url}
@@ -213,7 +198,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                   className={`focus-visible:ring-primary/30 bg-card relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                     i === activeImageIndex
                       ? "border-foreground"
-                      : "border-border hover:border-foreground/40"
+                      : "border-border/50 hover:border-foreground/30"
                   }`}
                 >
                   <Image
@@ -230,7 +215,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </div>
 
         {/* Details */}
-        <div className="border-border bg-card space-y-5 rounded-2xl border p-4 shadow-sm sm:p-6">
+        <div className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
@@ -247,7 +232,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               className={`focus-visible:ring-primary/30 bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 isWishlisted
                   ? "border-primary text-primary"
-                  : "border-border text-muted hover:border-foreground/40 hover:text-foreground"
+                  : "border-border/50 text-muted hover:bg-foreground/[0.04] hover:text-foreground"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -264,8 +249,8 @@ export function ProductDetail({ productId, onBack }: Props) {
                 : availability.isOutOfStock
                   ? "text-danger"
                   : availability.isLowStock
-                    ? "text-accent-yellow"
-                    : "text-accent-green"
+                    ? "text-accent-yellow-ink"
+                    : "text-success-ink"
             }`}
           >
             {maxedOut ? "Max quantity in cart" : availability.label}
@@ -288,8 +273,8 @@ export function ProductDetail({ productId, onBack }: Props) {
                     }
                     className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                       effectiveOptions[option.id] === val.value
-                        ? "border-foreground bg-foreground/5 text-foreground"
-                        : "border-border text-foreground hover:border-foreground/40"
+                        ? "border-foreground bg-foreground/[0.06] text-foreground"
+                        : "border-border/50 text-foreground hover:bg-foreground/[0.04]"
                     }`}
                   >
                     {val.value}
@@ -301,7 +286,7 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
-            <div className="border-border bg-card flex items-center rounded-full border shadow-sm">
+            <div className="border-border/50 bg-card flex items-center rounded-full border">
               <button
                 onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
                 className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
@@ -330,7 +315,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                 justAdded ||
                 maxedOut
               }
-              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 justAdded
                   ? "bg-accent-green-bold"
                   : maxedOut

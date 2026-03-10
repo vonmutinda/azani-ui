@@ -24,7 +24,7 @@ import { CategoryIcon } from "@/components/category-icon";
 import { resolveProductImage, getProductPrice } from "@/lib/formatters";
 import { toKokobCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 
-const FREE_SHIPPING_THRESHOLD = 5_000;
+const FREE_SHIPPING_THRESHOLD = 10_000;
 
 const CAROUSEL_INTERVAL = 5000;
 
@@ -82,7 +82,7 @@ function HeroCarousel({
               href={`/products/${p.id}`}
               tabIndex={position === "center" ? 0 : -1}
               aria-hidden={position !== "center"}
-              className={`border-border bg-card absolute overflow-hidden rounded-2xl border shadow-lg transition-all duration-500 ease-out ${positionStyles[position]}`}
+              className={`border-border/50 bg-card absolute overflow-hidden rounded-2xl border transition-all duration-500 ease-out ${positionStyles[position]}`}
               onClick={(e) => {
                 if (position === "left") {
                   e.preventDefault();
@@ -127,7 +127,7 @@ function HeroCarousel({
           <button
             type="button"
             onClick={() => go(active - 1)}
-            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
             aria-label="Previous product"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -139,14 +139,14 @@ function HeroCarousel({
                 type="button"
                 onClick={() => go(i)}
                 aria-label={`Go to product ${i + 1}`}
-                className={`focus-visible:ring-primary/30 h-2 rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:outline-none ${i === active ? "bg-primary w-6" : "bg-border hover:bg-muted-light w-2"}`}
+                className={`focus-visible:ring-primary/30 h-2 rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:outline-none ${i === active ? "bg-foreground w-6" : "bg-foreground/20 hover:bg-foreground/30 w-2"}`}
               />
             ))}
           </div>
           <button
             type="button"
             onClick={() => go(active + 1)}
-            className="border-border text-muted hover:border-primary hover:text-primary focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full border bg-white shadow-sm transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
             aria-label="Next product"
           >
             <ChevronRight className="h-4 w-4" />
@@ -191,10 +191,10 @@ export default function Home() {
     <div>
       {/* ── Hero ── */}
       <section className="bg-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-col-reverse items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:flex-row lg:gap-12 lg:px-8 lg:py-14">
+        <div className="mx-auto flex w-full max-w-7xl flex-col-reverse items-center gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:flex-row lg:gap-10 lg:px-8 lg:py-12">
           {/* Left — copy */}
           <div className="hero-fade-in flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="border-primary/15 text-primary mb-5 inline-flex items-center gap-2 rounded-full border bg-white px-4 py-1.5 text-xs font-semibold shadow-sm">
+            <div className="text-primary bg-primary/[0.06] mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold">
               <Star className="h-3.5 w-3.5" fill="currentColor" />
               Trusted by 10,000+ parents
             </div>
@@ -254,7 +254,7 @@ export default function Home() {
       </section>
 
       {/* ── Shop by Category ── */}
-      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between">
           <div>
             <h2 className="text-foreground text-xl font-bold sm:text-2xl">Shop by Category</h2>
@@ -270,7 +270,7 @@ export default function Home() {
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="group border-border bg-card flex min-w-[110px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl border p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:min-w-[130px] lg:min-w-0"
+              className="group bg-card hover:bg-foreground/[0.03] flex min-w-[110px] flex-shrink-0 flex-col items-center gap-3 rounded-2xl p-5 text-center transition sm:min-w-[130px] lg:min-w-0"
             >
               <div className="bg-background flex h-16 w-16 items-center justify-center rounded-2xl transition group-hover:scale-110">
                 <CategoryIcon icon={cat.icon} size={28} colored />
@@ -283,7 +283,7 @@ export default function Home() {
 
       {/* ── Explore Our Collection (tabbed) ── */}
       <section className="bg-white">
-        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">
@@ -334,9 +334,9 @@ export default function Home() {
             }
             if (query.isError) {
               return (
-                <div className="border-border bg-card rounded-2xl border p-8 text-center">
+                <div className="border-border/50 bg-card rounded-2xl border p-8 text-center">
                   <p className="text-foreground text-sm font-medium">Something went wrong</p>
-                  <p className="text-muted mt-1 text-xs">
+                  <p className="text-muted mt-1 text-sm">
                     We couldn&apos;t load products right now. Please try again later.
                   </p>
                 </div>
@@ -354,15 +354,13 @@ export default function Home() {
       </section>
 
       {/* ── Promotional Banners ── */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="group border-border bg-secondary-light relative overflow-hidden rounded-2xl border p-6 shadow-sm sm:p-8">
+          <div className="group bg-secondary-light relative overflow-hidden rounded-2xl p-6 sm:p-8">
             <Shirt className="text-secondary/[0.08] absolute -right-4 -bottom-4 h-36 w-36 rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6" />
             <div className="bg-secondary/[0.06] absolute top-8 right-8 h-24 w-24 rounded-full" />
             <div className="relative flex flex-col gap-4">
-              <span className="text-secondary text-xs font-bold tracking-wider uppercase">
-                New Collection
-              </span>
+              <span className="text-secondary text-sm font-semibold">New Collection</span>
               <h3 className="text-foreground text-xl font-bold sm:text-2xl">
                 Adorable Baby Clothing
               </h3>
@@ -378,13 +376,11 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="group border-border bg-accent-yellow-light relative overflow-hidden rounded-2xl border p-6 shadow-sm sm:p-8">
+          <div className="group bg-accent-yellow-light relative overflow-hidden rounded-2xl p-6 sm:p-8">
             <UtensilsCrossed className="text-accent-yellow/[0.12] absolute -right-4 -bottom-4 h-36 w-36 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
             <div className="bg-accent-yellow/[0.08] absolute top-6 right-10 h-20 w-20 rounded-full" />
             <div className="relative flex flex-col gap-4">
-              <span className="text-accent-yellow text-xs font-bold tracking-wider uppercase">
-                Must-Haves
-              </span>
+              <span className="text-accent-yellow-ink text-sm font-semibold">Must-Haves</span>
               <h3 className="text-foreground text-xl font-bold sm:text-2xl">Feeding Essentials</h3>
               <p className="text-muted max-w-xs text-sm">
                 Bottles, pumps, weaning supplies and nutritious baby foods all in one place.
@@ -401,8 +397,8 @@ export default function Home() {
       </section>
 
       {/* ── Trust / Features Bar ── */}
-      <section className="border-border border-t">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <section className="border-border/50 border-t">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
           {[
             {
               icon: Truck,
@@ -414,13 +410,13 @@ export default function Home() {
               icon: Zap,
               title: "Same-Day Express",
               desc: "Br500 express delivery",
-              color: "text-accent-yellow",
+              color: "text-accent-yellow-ink",
             },
             {
               icon: ShieldCheck,
               title: "Safe Products",
               desc: "Certified & tested",
-              color: "text-accent-green",
+              color: "text-success-ink",
             },
             {
               icon: Baby,
@@ -433,7 +429,7 @@ export default function Home() {
               <feat.icon className={`h-6 w-6 shrink-0 ${feat.color}`} />
               <div>
                 <p className="text-foreground text-sm font-semibold">{feat.title}</p>
-                <p className="text-muted text-xs">{feat.desc}</p>
+                <p className="text-muted text-sm">{feat.desc}</p>
               </div>
             </div>
           ))}

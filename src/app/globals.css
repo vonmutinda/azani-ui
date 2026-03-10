@@ -4,25 +4,27 @@
   /* Kokob Baby Shop — pastel playful palette */
   --background: #fefcfd;
   --foreground: #342a33;
-  --primary: #ee7ea8;
-  --primary-hover: #df6794;
-  --primary-light: #fff1f7;
-  --secondary: #8ecff6;
-  --secondary-hover: #78bee9;
-  --secondary-light: #eef8ff;
+  --primary: #c24d79;
+  --primary-hover: #aa3f69;
+  --primary-light: #fff1f6;
+  --secondary: #267cb8;
+  --secondary-hover: #1f699f;
+  --secondary-light: #edf7ff;
   --accent-yellow: #f6d973;
+  --accent-yellow-ink: #8f6200;
   --accent-yellow-light: #fff9e5;
   --accent-green: #93d8bb;
   --accent-green-bold: #34c759;
-  --accent-green-light: #effbf4;
-  --muted: #8e8391;
-  --muted-light: #cbbecd;
-  --border: #ede4ea;
-  --border-hover: #ddd4da;
+  --accent-green-light: #e7f8ee;
+  --success: #34c759;
+  --success-ink: #1d7b47;
+  --muted: #6f6571;
+  --muted-light: #a79ba7;
+  --border: #d8ced6;
+  --border-hover: #b8adb7;
   --card: #ffffff;
   --card-raised: #ffffff;
   --danger: #e26b89;
-  --success: #59be88;
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
   --radius-lg: 1rem;
@@ -43,6 +45,7 @@
   --color-secondary-hover: var(--secondary-hover);
   --color-secondary-light: var(--secondary-light);
   --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-ink: var(--accent-yellow-ink);
   --color-accent-yellow-light: var(--accent-yellow-light);
   --color-accent-green: var(--accent-green);
   --color-accent-green-bold: var(--accent-green-bold);
@@ -55,10 +58,11 @@
   --color-card-raised: var(--card-raised);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-success-ink: var(--success-ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-dm-sans);
-  --text-2xs: 0.625rem;
+  --text-2xs: 0.6875rem;
 }
 
 html {
@@ -81,13 +85,22 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
 h1,
-h2,
+h2 {
+  font-family: var(--font-dm-sans), var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
 h3,
 h4 {
-  font-family: var(--font-dm-sans), var(--font-geist-sans), system-ui, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 /* Star rating */

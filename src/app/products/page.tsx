@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
 import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
-import { ShoppingBag } from "lucide-react";
+import { ArrowLeft, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
@@ -85,18 +85,39 @@ function ProductsContent() {
 
   const isLoading = productsQuery.isLoading || (!!categoryHandle && categoryQuery.isLoading);
 
+  const selectedProduct = selectedProductId
+    ? products.find((p) => p.id === selectedProductId)
+    : null;
+
+  const activeFilterCount = Object.values(filters).filter(
+    (v) => v !== undefined && v !== "",
+  ).length;
+
+  const headingText = selectedProductId
+    ? (selectedProduct?.title ?? "Product Details")
+    : (categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {!selectedProductId && (
-        <div className="mb-5">
-          <h1 className="text-foreground text-xl font-bold sm:text-2xl">
-            {categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products")}
-          </h1>
+      <div className="mb-5">
+        <div className="flex items-center gap-2">
+          {selectedProductId && (
+            <button
+              onClick={() => setSelectedProductId(null)}
+              className="text-muted hover:text-foreground -ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+              aria-label="Back to products"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
+          <h1 className="text-foreground text-xl font-bold sm:text-2xl">{headingText}</h1>
+        </div>
+        {!selectedProductId && (
           <p className="text-muted mt-1 text-sm">
             {total} product{total !== 1 ? "s" : ""} found
           </p>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <FilterSidebar
@@ -108,82 +129,118 @@ function ProductsContent() {
           categories={categoriesQuery.data?.product_categories ?? []}
         />
 
-        {selectedProductId ? (
-          <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
+          {activeFilterCount > 0 && !selectedProductId && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {filters.category && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Tag className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">
+                    {categoryQuery.data?.name ?? String(filters.category)}
+                  </span>
+                  <button
+                    onClick={() => updateFilters({ ...filters, category: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label="Remove category filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.q && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Search className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">
+                    &ldquo;{String(filters.q)}&rdquo;
+                  </span>
+                  <button
+                    onClick={() => updateFilters({ ...filters, q: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label="Remove search filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {activeFilterCount > 1 && (
+                <button
+                  onClick={() => {
+                    setSelectedProductId(null);
+                    updateFilters({});
+                  }}
+                  className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
+
+          {selectedProductId ? (
             <ProductDetail
               productId={selectedProductId}
-              onBack={() => {
-                setSelectedProductId(null);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+              onBack={() => setSelectedProductId(null)}
             />
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1">
-            {isLoading ? (
+          ) : isLoading ? (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
+              <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+                <ShoppingBag className="text-secondary h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-foreground text-lg font-semibold">No products found</p>
+                <p className="text-muted mt-1 text-sm">
+                  Try adjusting your filters or search terms.
+                </p>
+              </div>
+              <button
+                onClick={() => updateFilters({})}
+                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onSelect={(id) => setSelectedProductId(id)}
+                  />
                 ))}
               </div>
-            ) : products.length === 0 ? (
-              <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center shadow-sm">
-                <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
-                  <ShoppingBag className="text-secondary h-8 w-8" />
-                </div>
-                <div>
-                  <p className="text-foreground text-lg font-semibold">No products found</p>
-                  <p className="text-muted mt-1 text-sm">
-                    Try adjusting your filters or search terms.
-                  </p>
-                </div>
-                <button
-                  onClick={() => updateFilters({})}
-                  className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onSelect={(id) => {
-                        setSelectedProductId(id);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex justify-center gap-2">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("page", String(p));
+                        router.push(`/products?${params.toString()}`);
                       }}
-                    />
+                      className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                        p === page
+                          ? "bg-foreground text-white"
+                          : "border-border/50 text-muted hover:border-border hover:text-foreground border bg-white"
+                      }`}
+                    >
+                      {p}
+                    </button>
                   ))}
                 </div>
-
-                {totalPages > 1 && (
-                  <div className="mt-8 flex justify-center gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => {
-                          const params = new URLSearchParams(searchParams.toString());
-                          params.set("page", String(p));
-                          router.push(`/products?${params.toString()}`);
-                        }}
-                        className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                          p === page
-                            ? "bg-foreground text-white shadow-sm"
-                            : "border-border text-muted hover:border-border-hover hover:text-foreground border bg-white"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

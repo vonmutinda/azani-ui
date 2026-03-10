@@ -53,90 +53,107 @@ const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
 };
 
 const INPUT_CLASS =
-  "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+  "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
 type JourneyStep = { label: string; reached: boolean; active: boolean; failed?: boolean };
 
 /**
  * Derive a customer-facing order journey from Medusa's three status fields.
  *
- * Medusa v2 statuses observed:
- *   status:             pending | completed | archived | canceled | requires_action
- *   fulfillment_status: not_fulfilled | partially_fulfilled | fulfilled | shipped |
- *                       partially_shipped | delivered | partially_delivered | returned
- *   payment_status:     not_paid | awaiting | authorized | captured |
- *                       partially_refunded | refunded | canceled | requires_action
+ * Medusa v2 backend statuses:
+ *   status:             pending | completed | archived | canceled | requires_action | draft
+ *   fulfillment_status: not_fulfilled | partially_fulfilled | fulfilled |
+ *                       partially_shipped | shipped | partially_delivered | delivered |
+ *                       partially_returned | returned | canceled | requires_action
+ *   payment_status:     not_paid | awaiting | authorized | partially_authorized |
+ *                       captured | partially_captured | partially_refunded | refunded |
+ *                       canceled | requires_action
  *
- * Customer journey (4 steps, matching Amazon/Jumia style):
- *   Confirmed -> Processing -> Shipped -> Delivered
+ * Customer journey (happy path, 4 steps):
+ *   Ordered -> Confirmed -> Shipped -> Delivered
  *
- * Special paths:
- *   Canceled  — collapses to 2 steps: Confirmed -> Canceled
- *   Refunded  — shows Refunded badge on the summary, journey stays at last reached step
+ * Terminal paths append a failure step at the point the order diverged:
+ *   Ordered -> Canceled
+ *   Ordered -> Confirmed -> Refunded
+ *   Ordered -> Confirmed -> Shipped -> Returned
+ *
+ * The summary badge always matches the last step in the journey.
  */
 function getOrderJourney(order: MedusaOrder): JourneyStep[] {
   const s = order.status;
   const fs = order.fulfillment_status;
   const ps = order.payment_status;
 
-  if (s === "canceled" || ps === "canceled") {
-    return [
-      { label: "Confirmed", reached: true, active: false },
-      { label: "Canceled", reached: true, active: true, failed: true },
-    ];
-  }
+  const isCanceled = s === "canceled" || ps === "canceled";
+  const isRefunded = ps === "refunded" || ps === "partially_refunded";
+  const isReturned = fs === "returned" || fs === "partially_returned";
 
-  const confirmed = true;
-
-  const processing =
-    ["authorized", "captured", "partially_refunded"].includes(ps) ||
-    ["partially_fulfilled", "fulfilled"].includes(fs);
+  const confirmed =
+    ["authorized", "partially_authorized", "captured", "partially_captured"].includes(ps) ||
+    !["not_fulfilled"].includes(fs);
 
   const shipped = ["shipped", "partially_shipped", "delivered", "partially_delivered"].includes(fs);
 
   const delivered =
     ["delivered", "partially_delivered"].includes(fs) || s === "completed" || s === "archived";
 
+  if (isCanceled) {
+    const steps: JourneyStep[] = [{ label: "Ordered", reached: true, active: false }];
+    if (confirmed) steps.push({ label: "Confirmed", reached: true, active: false });
+    steps.push({ label: "Canceled", reached: true, active: true, failed: true });
+    return steps;
+  }
+
+  if (isReturned) {
+    const steps: JourneyStep[] = [
+      { label: "Ordered", reached: true, active: false },
+      { label: "Confirmed", reached: true, active: false },
+    ];
+    if (shipped) steps.push({ label: "Shipped", reached: true, active: false });
+    steps.push({ label: "Returned", reached: true, active: true, failed: true });
+    return steps;
+  }
+
+  if (isRefunded) {
+    const steps: JourneyStep[] = [{ label: "Ordered", reached: true, active: false }];
+    if (confirmed) steps.push({ label: "Confirmed", reached: true, active: false });
+    if (shipped) steps.push({ label: "Shipped", reached: true, active: false });
+    if (delivered) steps.push({ label: "Delivered", reached: true, active: false });
+    steps.push({ label: "Refunded", reached: true, active: true, failed: true });
+    return steps;
+  }
+
   return [
-    { label: "Confirmed", reached: confirmed, active: confirmed && !processing },
-    { label: "Processing", reached: processing, active: processing && !shipped },
+    { label: "Ordered", reached: true, active: !confirmed },
+    { label: "Confirmed", reached: confirmed, active: confirmed && !shipped },
     { label: "Shipped", reached: shipped, active: shipped && !delivered },
     { label: "Delivered", reached: delivered, active: delivered },
   ];
 }
 
 function getOrderSummaryLabel(order: MedusaOrder): string {
-  const s = order.status;
-  const fs = order.fulfillment_status;
-  const ps = order.payment_status;
-
-  if (s === "canceled" || ps === "canceled") return "Canceled";
-  if (["refunded"].includes(ps)) return "Refunded";
-  if (s === "completed" || s === "archived") return "Delivered";
-  if (["delivered", "partially_delivered"].includes(fs)) return "Delivered";
-  if (["shipped", "partially_shipped"].includes(fs)) return "Shipped";
-  if (["partially_fulfilled", "fulfilled"].includes(fs)) return "Processing";
-  if (["authorized", "captured"].includes(ps)) return "Confirmed";
-  if (ps === "requires_action" || s === "requires_action") return "Action needed";
-  return "Pending";
+  const steps = getOrderJourney(order);
+  const last = steps[steps.length - 1];
+  if (last.failed) return last.label;
+  const active = steps.findLast((st) => st.reached);
+  return active?.label ?? "Ordered";
 }
 
 function getStatusColor(label: string) {
   switch (label) {
     case "Delivered":
-    case "Completed":
-      return "bg-accent-green-light text-success";
+      return "bg-accent-green-light text-success-ink";
     case "Shipped":
-    case "Processing":
       return "bg-secondary-light text-secondary";
     case "Confirmed":
-    case "Pending":
-      return "bg-accent-yellow-light text-accent-yellow";
+      return "bg-secondary-light text-secondary";
+    case "Ordered":
+      return "bg-accent-yellow-light text-accent-yellow-ink";
     case "Canceled":
       return "bg-danger/10 text-danger";
     case "Refunded":
-      return "bg-foreground/10 text-foreground";
-    case "Action needed":
+      return "bg-danger/10 text-danger";
+    case "Returned":
       return "bg-danger/10 text-danger";
     default:
       return "bg-foreground/10 text-foreground";
@@ -151,11 +168,11 @@ function OrderJourney({ order }: { order: MedusaOrder }) {
         <div key={step.label} className="flex items-center">
           <div className="flex flex-col items-center">
             <div
-              className={`text-2xs flex h-5 w-5 items-center justify-center rounded-full font-bold ${
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
                 step.failed
                   ? "bg-danger text-white"
                   : step.active
-                    ? "bg-accent-green-bold text-white shadow-sm"
+                    ? "bg-accent-green-bold text-white"
                     : step.reached
                       ? "bg-accent-green-bold text-white"
                       : "bg-border text-muted"
@@ -164,7 +181,7 @@ function OrderJourney({ order }: { order: MedusaOrder }) {
               {step.failed ? "✕" : step.reached ? "✓" : i + 1}
             </div>
             <span
-              className={`text-2xs mt-1 w-12 text-center leading-tight ${
+              className={`mt-1 w-16 text-center text-xs leading-tight ${
                 step.failed
                   ? "text-danger font-semibold"
                   : step.active
@@ -298,11 +315,11 @@ export default function AccountPage() {
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="bg-foreground flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white shadow-sm">
+            <div className="bg-foreground flex h-12 w-12 items-center justify-center rounded-full text-base font-bold text-white">
               {initials}
             </div>
             {customer.metadata?.email_verified === true && (
-              <div className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm">
+              <div className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white">
                 <BadgeCheck className="text-secondary h-4 w-4" />
               </div>
             )}
@@ -313,13 +330,13 @@ export default function AccountPage() {
                 {customer.first_name || "Welcome"} {customer.last_name || ""}
               </h1>
               {customer.metadata?.email_verified === true && (
-                <span className="bg-secondary-light text-secondary text-2xs inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold">
+                <span className="bg-secondary-light/80 text-secondary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
                   <BadgeCheck className="h-3 w-3" />
                   Verified
                 </span>
               )}
               {customer.metadata?.auth_provider === "google" && (
-                <span className="text-2xs inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 font-medium text-gray-600 shadow-sm">
+                <span className="border-border/50 text-muted inline-flex items-center gap-1 rounded-full border bg-white px-2.5 py-1 text-xs font-medium">
                   <svg className="h-3 w-3" viewBox="0 0 24 24">
                     <path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
@@ -347,7 +364,7 @@ export default function AccountPage() {
         </div>
         <button
           onClick={handleSignOut}
-          className="border-border text-muted hover:border-danger/20 hover:bg-danger/5 hover:text-danger hidden items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm transition sm:flex"
+          className="border-border/50 text-muted hover:border-danger/20 hover:bg-danger/5 hover:text-danger hidden items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm font-medium transition sm:flex"
         >
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
@@ -372,17 +389,15 @@ export default function AccountPage() {
         {/* Right column -- sticky sidebar */}
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           {/* Quick Stats */}
-          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+          <div className="border-border/50 bg-card overflow-hidden rounded-2xl border">
             <div className="px-5 pt-4 pb-1">
-              <h2 className="text-muted text-xs font-bold tracking-wider uppercase">
-                Account Snapshot
-              </h2>
+              <h2 className="text-muted text-sm font-semibold">Account Snapshot</h2>
             </div>
             <div className="divide-border divide-y">
               <div className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-2.5">
                   <div className="bg-accent-yellow-light flex h-8 w-8 items-center justify-center rounded-lg">
-                    <Package className="text-accent-yellow h-4 w-4" />
+                    <Package className="text-accent-yellow-ink h-4 w-4" />
                   </div>
                   <span className="text-foreground text-sm">Orders</span>
                 </div>
@@ -412,16 +427,14 @@ export default function AccountPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+          <div className="border-border/50 bg-card overflow-hidden rounded-2xl border">
             <div className="px-5 pt-4 pb-1">
-              <h2 className="text-muted text-xs font-bold tracking-wider uppercase">
-                Quick Actions
-              </h2>
+              <h2 className="text-muted text-sm font-semibold">Quick Actions</h2>
             </div>
             <div className="divide-border divide-y">
               <Link
                 href="/products"
-                className="text-foreground hover:bg-background/60 flex items-center justify-between px-5 py-3 text-sm transition"
+                className="text-foreground hover:bg-foreground/[0.04]/60 flex items-center justify-between px-5 py-3 text-sm transition"
               >
                 <div className="flex items-center gap-2.5">
                   <ShoppingBag className="text-secondary h-4 w-4" />
@@ -431,7 +444,7 @@ export default function AccountPage() {
               </Link>
               <Link
                 href="/account/wishlist"
-                className="text-foreground hover:bg-background/60 flex items-center justify-between px-5 py-3 text-sm transition"
+                className="text-foreground hover:bg-foreground/[0.04]/60 flex items-center justify-between px-5 py-3 text-sm transition"
               >
                 <div className="flex items-center gap-2.5">
                   <Heart className="text-danger h-4 w-4" />
@@ -444,7 +457,7 @@ export default function AccountPage() {
                 onClick={() =>
                   addressesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }
-                className="text-foreground hover:bg-background/60 flex w-full items-center justify-between px-5 py-3 text-left text-sm transition"
+                className="text-foreground hover:bg-foreground/[0.04]/60 flex w-full items-center justify-between px-5 py-3 text-left text-sm transition"
               >
                 <div className="flex items-center gap-2.5">
                   <MapPin className="text-secondary h-4 w-4" />
@@ -458,7 +471,7 @@ export default function AccountPage() {
           {/* Mobile sign out */}
           <button
             onClick={handleSignOut}
-            className="border-border bg-card text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition sm:hidden"
+            className="border-border/50 bg-card text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition sm:hidden"
           >
             <LogOut className="h-4 w-4" />
             Sign Out
@@ -542,7 +555,7 @@ function ProfileDetails({
   };
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+    <div className="border-border/50 bg-card overflow-hidden rounded-2xl border">
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
           <User className="text-secondary h-4 w-4" />
@@ -551,7 +564,7 @@ function ProfileDetails({
         {!editing && (
           <button
             onClick={() => setEditing(true)}
-            className="text-muted hover:text-foreground flex items-center gap-1 text-xs font-medium transition"
+            className="text-muted hover:text-foreground flex items-center gap-1 text-sm font-medium transition"
           >
             <Pencil className="h-3 w-3" />
             Edit
@@ -560,10 +573,10 @@ function ProfileDetails({
       </div>
 
       {editing ? (
-        <div className="border-border border-t px-5 py-4">
+        <div className="border-border/50 border-t px-5 py-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1 block text-xs font-medium">First Name</label>
+              <label className="text-muted mb-1 block text-sm font-medium">First Name</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -571,7 +584,7 @@ function ProfileDetails({
               />
             </div>
             <div>
-              <label className="text-muted mb-1 block text-xs font-medium">Last Name</label>
+              <label className="text-muted mb-1 block text-sm font-medium">Last Name</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -580,13 +593,13 @@ function ProfileDetails({
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-muted mb-1 block text-xs font-medium">Email</label>
+            <label className="text-muted mb-1 block text-sm font-medium">Email</label>
             <div className="bg-background/50 text-muted flex h-10 items-center rounded-lg px-3 text-sm">
               {customer.email}
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-muted mb-1 block text-xs font-medium">Phone</label>
+            <label className="text-muted mb-1 block text-sm font-medium">Phone</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -600,13 +613,13 @@ function ProfileDetails({
             <button
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
-              className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50"
+              className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               {mutation.isPending ? "Saving..." : "Save"}
             </button>
             <button
               onClick={handleCancel}
-              className="border-border text-foreground hover:border-border-hover hover:bg-background rounded-full border bg-white px-5 py-2 text-sm font-semibold shadow-sm transition"
+              className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] rounded-full border bg-white px-5 py-2 text-sm font-semibold transition"
             >
               Cancel
             </button>
@@ -723,12 +736,12 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
   const count = addresses?.length ?? 0;
 
   return (
-    <div ref={ref} className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+    <div ref={ref} className="border-border/50 bg-card overflow-hidden rounded-2xl border">
       {/* Collapsible header */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="hover:bg-background/40 flex w-full items-center justify-between px-5 py-3.5 text-left transition"
+        className="hover:bg-foreground/[0.04]/40 flex w-full items-center justify-between px-5 py-3.5 text-left transition"
       >
         <div className="flex items-center gap-2">
           <MapPin className="text-secondary h-4 w-4" />
@@ -743,7 +756,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
       </button>
 
       {expanded && (
-        <div className="border-border border-t">
+        <div className="border-border/50 border-t">
           {count > 0 ? (
             <div className="divide-border divide-y">
               {addresses!.map((addr) =>
@@ -760,7 +773,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                 ) : (
                   <div
                     key={addr.id}
-                    className="hover:bg-background/40 flex items-center gap-3 px-5 py-3 transition"
+                    className="hover:bg-foreground/[0.04]/40 flex items-center gap-3 px-5 py-3 transition"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-foreground text-sm font-medium">
@@ -776,7 +789,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                     <div className="flex shrink-0 gap-1">
                       <button
                         onClick={() => startEdit(addr)}
-                        className="text-muted hover:bg-background hover:text-foreground focus-visible:ring-border flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                        className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Edit address"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -807,7 +820,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
           )}
 
           {showForm && (
-            <div className="border-border border-t px-5 py-4">
+            <div className="border-border/50 border-t px-5 py-4">
               <AddressForm
                 form={form}
                 setForm={setForm}
@@ -819,10 +832,10 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
           )}
 
           {!isFormVisible && (
-            <div className="border-border border-t px-5 py-2.5">
+            <div className="border-border/50 border-t px-5 py-2.5">
               <button
                 onClick={handleAddNew}
-                className="text-secondary hover:text-secondary-hover flex items-center gap-1.5 text-xs font-medium transition"
+                className="text-secondary hover:text-secondary-hover flex items-center gap-1.5 text-sm font-medium transition"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add New Address
@@ -854,7 +867,7 @@ function AddressForm({
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">First Name</label>
+          <label className="text-muted mb-1 block text-sm font-medium">First Name</label>
           <input
             value={form.first_name ?? ""}
             onChange={(e) => update("first_name", e.target.value)}
@@ -862,7 +875,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">Last Name</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Last Name</label>
           <input
             value={form.last_name ?? ""}
             onChange={(e) => update("last_name", e.target.value)}
@@ -870,7 +883,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1 block text-xs font-medium">Address Line 1</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Address Line 1</label>
           <input
             value={form.address_1 ?? ""}
             onChange={(e) => update("address_1", e.target.value)}
@@ -878,7 +891,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1 block text-xs font-medium">Address Line 2</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Address Line 2</label>
           <input
             value={form.address_2 ?? ""}
             onChange={(e) => update("address_2", e.target.value)}
@@ -886,7 +899,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">City</label>
+          <label className="text-muted mb-1 block text-sm font-medium">City</label>
           <input
             value={form.city ?? ""}
             onChange={(e) => update("city", e.target.value)}
@@ -894,7 +907,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">Province</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Province</label>
           <input
             value={form.province ?? ""}
             onChange={(e) => update("province", e.target.value)}
@@ -902,7 +915,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">Postal Code</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Postal Code</label>
           <input
             value={form.postal_code ?? ""}
             onChange={(e) => update("postal_code", e.target.value)}
@@ -910,7 +923,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-xs font-medium">Phone</label>
+          <label className="text-muted mb-1 block text-sm font-medium">Phone</label>
           <input
             value={form.phone ?? ""}
             onChange={(e) => update("phone", e.target.value)}
@@ -922,13 +935,13 @@ function AddressForm({
         <button
           onClick={onSave}
           disabled={saving}
-          className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50"
+          className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
         <button
           onClick={onCancel}
-          className="border-border text-foreground hover:border-border-hover hover:bg-background rounded-full border bg-white px-5 py-2 text-sm font-semibold shadow-sm transition"
+          className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] rounded-full border bg-white px-5 py-2 text-sm font-semibold transition"
         >
           Cancel
         </button>
@@ -968,7 +981,7 @@ function OrderItemAvatars({
         return (
           <div
             key={item.id}
-            className="relative shrink-0 rounded-full border-2 border-white shadow-sm"
+            className="relative shrink-0 rounded-full border-2 border-white"
             style={{
               width: px,
               height: px,
@@ -994,7 +1007,7 @@ function OrderItemAvatars({
       })}
       {overflow > 0 && (
         <div
-          className="bg-foreground/10 text-foreground text-2xs relative flex shrink-0 items-center justify-center rounded-full border-2 border-white font-bold shadow-sm"
+          className="bg-foreground/10 text-foreground text-2xs relative flex shrink-0 items-center justify-center rounded-full border-2 border-white font-bold"
           style={{ width: px, height: px, marginLeft: -8, zIndex: 0 }}
         >
           +{overflow}
@@ -1031,12 +1044,12 @@ function OrdersSection({
 
   if (orders.length === 0) {
     return (
-      <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border/50 bg-card overflow-hidden rounded-2xl border">
         <div className="flex items-center gap-2 px-5 py-3.5">
           <Package className="text-accent-yellow h-4 w-4" />
           <h2 className="text-foreground text-sm font-semibold">Order History</h2>
         </div>
-        <div className="border-border flex flex-col items-center border-t py-10">
+        <div className="border-border/50 flex flex-col items-center border-t py-10">
           <div className="bg-secondary-light mb-3 flex h-14 w-14 items-center justify-center rounded-full">
             <ShoppingBag className="text-secondary h-6 w-6" />
           </div>
@@ -1044,7 +1057,7 @@ function OrdersSection({
           <p className="text-muted mt-0.5 text-sm">When you place an order, it will appear here</p>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition"
           >
             <Baby className="h-4 w-4" />
             Start Shopping
@@ -1055,19 +1068,19 @@ function OrdersSection({
   }
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+    <div className="border-border/50 bg-card overflow-hidden rounded-2xl border">
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2">
           <Package className="text-accent-yellow h-4 w-4" />
           <h2 className="text-foreground text-sm font-semibold">Order History</h2>
         </div>
-        <span className="bg-accent-yellow-light text-foreground rounded-full px-2 py-0.5 text-xs font-semibold">
+        <span className="bg-accent-yellow-light text-accent-yellow-ink rounded-full px-2.5 py-1 text-xs font-semibold">
           {orders.length}
         </span>
       </div>
 
       {/* Column header (desktop) */}
-      <div className="border-border bg-background/60 text-muted hidden items-center border-t px-5 py-2 text-xs font-semibold tracking-wider uppercase sm:flex">
+      <div className="border-border/50 bg-background/60 text-muted hidden items-center border-t px-5 py-2.5 text-sm font-semibold sm:flex">
         <span className="w-40">Order</span>
         <span className="flex-1">Items</span>
         <span className="w-24 text-center">Status</span>
@@ -1076,7 +1089,7 @@ function OrdersSection({
         <span className="ml-2 w-4" />
       </div>
 
-      <div className="divide-border border-border divide-y border-t">
+      <div className="divide-border border-border/50 divide-y border-t">
         {orders.map((order) => {
           const isOpen = expandedId === order.id;
           return (
@@ -1084,12 +1097,12 @@ function OrdersSection({
               <button
                 type="button"
                 onClick={() => setExpandedId(isOpen ? null : order.id)}
-                className="hover:bg-background/50 flex w-full items-center px-5 py-3 text-left transition"
+                className="hover:bg-foreground/[0.04]/50 flex w-full items-center px-5 py-3 text-left transition"
               >
                 {/* Desktop row */}
                 <div className="hidden flex-1 items-center sm:flex">
                   <div className="w-40">
-                    <div className="text-foreground text-xs font-semibold whitespace-nowrap">
+                    <div className="text-foreground text-sm font-semibold whitespace-nowrap">
                       {formatOrderRef(
                         order.display_id,
                         order.created_at,
@@ -1097,7 +1110,7 @@ function OrdersSection({
                         order.metadata?.order_ref as string | undefined,
                       )}
                     </div>
-                    <div className="text-muted mt-0.5 text-xs">
+                    <div className="text-muted mt-0.5 text-sm">
                       {order.items.length} {order.items.length === 1 ? "item" : "items"}
                     </div>
                   </div>
@@ -1119,7 +1132,7 @@ function OrdersSection({
                   <span className="text-foreground w-24 text-right text-sm font-medium">
                     {formatPrice(order.total)}
                   </span>
-                  <span className="text-muted ml-4 w-20 text-right text-xs whitespace-nowrap">
+                  <span className="text-muted ml-4 w-20 text-right text-sm whitespace-nowrap">
                     {new Date(order.created_at).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -1129,7 +1142,7 @@ function OrdersSection({
                 {/* Mobile row */}
                 <div className="flex flex-1 flex-col gap-1.5 sm:hidden">
                   <div className="flex items-center justify-between">
-                    <span className="text-foreground text-xs font-semibold whitespace-nowrap">
+                    <span className="text-foreground text-sm font-semibold whitespace-nowrap">
                       {formatOrderRef(
                         order.display_id,
                         order.created_at,
@@ -1142,7 +1155,7 @@ function OrdersSection({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted text-xs">
+                    <span className="text-muted text-sm">
                       {new Date(order.created_at).toLocaleDateString(undefined, {
                         month: "short",
                         day: "numeric",
@@ -1218,8 +1231,8 @@ function OrderDetail({
   if (!order) return null;
 
   return (
-    <div className="border-border bg-background/40 border-t border-dashed px-5 pt-3 pb-4">
-      <div className="border-border bg-card mb-3 rounded-xl border border-dashed px-3 py-2.5">
+    <div className="border-border/50 bg-background/40 border-t border-dashed px-5 pt-3 pb-4">
+      <div className="border-border/50 bg-card mb-3 rounded-xl border border-dashed px-3 py-2.5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-foreground text-sm font-semibold">
@@ -1241,13 +1254,13 @@ function OrderDetail({
             </p>
           </div>
         </div>
-        <div className="border-border mt-2.5 border-t pt-2.5">
+        <div className="border-border/50 mt-2.5 border-t pt-2.5">
           <OrderJourney order={order} />
         </div>
       </div>
 
       {/* Items */}
-      <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
+      <div className="divide-border border-border/50 bg-card divide-y overflow-hidden rounded-xl border">
         {order.items.map((item) => {
           const pid = item.product_id ?? item.variant?.product?.id ?? "";
           const fallback = detailProductsById.get(pid) ?? productsById.get(pid) ?? null;
@@ -1261,10 +1274,10 @@ function OrderDetail({
                   alt={item.title}
                   width={48}
                   height={48}
-                  className="border-border h-12 w-12 shrink-0 rounded-lg border object-cover"
+                  className="border-border/50 h-12 w-12 shrink-0 rounded-lg border object-cover"
                 />
               ) : (
-                <div className="border-border bg-background flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
+                <div className="border-border/50 bg-background flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
                   <Package className="text-muted h-5 w-5" />
                 </div>
               )}
@@ -1314,7 +1327,7 @@ function OrderDetail({
             <span>{formatPrice(order.tax_total)}</span>
           </div>
         )}
-        <div className="border-border text-foreground flex justify-between border-t pt-1.5 text-sm font-bold">
+        <div className="border-border/50 text-foreground flex justify-between border-t pt-1.5 text-sm font-bold">
           <span>Total</span>
           <span>{formatPrice(order.total)}</span>
         </div>

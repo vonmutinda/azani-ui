@@ -40,12 +40,12 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   if (!token || !email) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
           <div className="bg-danger/10 flex h-16 w-16 items-center justify-center rounded-full">
             <AlertTriangle className="text-danger h-7 w-7" />
           </div>
@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Back to Sign In
           </Link>
@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
   if (mutation.isSuccess) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center shadow-sm">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Sign In
           </Link>
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border bg-card space-y-4 rounded-2xl border p-4 shadow-sm sm:p-6"
+        className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6"
       >
         <p className="text-muted text-sm">
           Enter a new password for{" "}
@@ -137,7 +137,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {mutation.isPending ? "Resetting..." : "Reset Password"}
         </button>

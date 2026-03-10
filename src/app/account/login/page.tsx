@@ -218,7 +218,7 @@ export default function LoginPage() {
   const apiError = loginMutation.error || registerMutation.error;
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm shadow-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   /* ── Post-registration verification notice ── */
   if (view === "registered") {
@@ -227,7 +227,7 @@ export default function LoginPage() {
 
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
           <div className="bg-secondary-light flex h-16 w-16 items-center justify-center rounded-full">
             <Mail className="text-secondary h-7 w-7" />
           </div>
@@ -239,7 +239,7 @@ export default function LoginPage() {
           </p>
           <Link
             href={canContinueToAccount ? "/account" : "/account/login"}
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             {canContinueToAccount ? "Continue to Account" : "Sign In to Continue"}
           </Link>
@@ -257,7 +257,7 @@ export default function LoginPage() {
   if (view === "forgot-sent") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center shadow-sm sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -269,7 +269,7 @@ export default function LoginPage() {
           </p>
           <button
             onClick={() => switchTo("login")}
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition"
+            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Sign In
           </button>
@@ -285,7 +285,7 @@ export default function LoginPage() {
         <h1 className="text-foreground mb-8 text-center text-2xl font-bold">Forgot Password</h1>
         <form
           onSubmit={handleForgotSubmit}
-          className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm"
+          className="border-border/50 bg-card space-y-4 rounded-2xl border p-6"
         >
           <p className="text-muted text-sm">
             Enter the email address associated with your account and we&apos;ll send you a link to
@@ -310,7 +310,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={forgotMutation.isPending || !EMAIL_RE.test(forgotEmail)}
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
             {forgotMutation.isPending ? "Sending..." : "Send Reset Link"}
           </button>
@@ -366,7 +366,7 @@ export default function LoginPage() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={googleLoading || isPending}
-          className="border-border bg-card hover:bg-background focus-visible:ring-border flex w-full items-center justify-center gap-3 rounded-full border px-4 py-3 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className="border-border/50 bg-card hover:bg-foreground/[0.04] focus-visible:ring-border flex w-full items-center justify-center gap-3 rounded-full border px-4 py-3 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
             <path
@@ -398,7 +398,7 @@ export default function LoginPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border bg-card space-y-4 rounded-2xl border p-6 shadow-sm"
+        className="border-border/50 bg-card space-y-4 rounded-2xl border p-6"
       >
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -553,7 +553,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {isPending ? "Please wait..." : isRegister ? "Create Account" : "Sign In"}
         </button>
