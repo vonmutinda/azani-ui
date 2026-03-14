@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import {
   validateGoogleCallback,
   createCustomerFromOAuth,
+  linkGoogleToExistingCustomer,
   refreshAuthToken,
   mergeWishlistAfterAuth,
   updateCustomer,
@@ -51,6 +52,8 @@ function GoogleCallbackContent() {
 
         if (!actorId) {
           const email = userMeta.email;
+          const authIdentityId = decoded.auth_identity_id as string | undefined;
+
           if (!email) {
             setError("Google did not provide an email address.");
             return;
@@ -58,27 +61,37 @@ function GoogleCallbackContent() {
 
           setAuthToken(token);
 
+          let created = false;
           try {
             await createCustomerFromOAuth(token, {
               email,
               first_name: userMeta.given_name || userMeta.name?.split(" ")[0],
               last_name: userMeta.family_name || userMeta.name?.split(" ").slice(1).join(" "),
             });
+            created = true;
           } catch {
-            // Customer with this email may already exist (e.g. signed up via email/password).
-            // That's fine — Medusa will link the Google auth identity to the existing customer
-            // when we refresh the token below.
-          }
-
-          try {
-            await updateCustomer({
-              metadata: { auth_provider: "google", email_verified: true },
-            });
-          } catch {
-            // May fail if customer wasn't linked yet — will retry after token refresh
+            // Customer with this email already exists — link the Google auth identity
+            // to the existing customer instead.
+            if (authIdentityId) {
+              await linkGoogleToExistingCustomer(token, {
+                email,
+                auth_identity_id: authIdentityId,
+              });
+            }
           }
 
           token = await refreshAuthToken(token);
+          setAuthToken(token);
+
+          if (created) {
+            try {
+              await updateCustomer({
+                metadata: { auth_provider: "google", email_verified: true },
+              });
+            } catch {
+              // non-critical
+            }
+          }
         }
 
         setAuthToken(token);

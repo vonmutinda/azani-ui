@@ -425,6 +425,17 @@ export async function createCustomerFromOAuth(
   });
 }
 
+export async function linkGoogleToExistingCustomer(
+  token: string,
+  data: { email: string; auth_identity_id: string },
+) {
+  return medusaRequest<{ customer_id: string; linked: boolean }>("store/customers/link-google", {
+    method: "POST",
+    body: data,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function refreshAuthToken(token: string) {
   const res = await medusaRequest<{ token: string }>("auth/token/refresh", {
     method: "POST",
