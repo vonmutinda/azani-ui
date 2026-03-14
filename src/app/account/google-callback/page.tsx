@@ -58,15 +58,25 @@ function GoogleCallbackContent() {
 
           setAuthToken(token);
 
-          await createCustomerFromOAuth(token, {
-            email,
-            first_name: userMeta.given_name || userMeta.name?.split(" ")[0],
-            last_name: userMeta.family_name || userMeta.name?.split(" ").slice(1).join(" "),
-          });
+          try {
+            await createCustomerFromOAuth(token, {
+              email,
+              first_name: userMeta.given_name || userMeta.name?.split(" ")[0],
+              last_name: userMeta.family_name || userMeta.name?.split(" ").slice(1).join(" "),
+            });
+          } catch {
+            // Customer with this email may already exist (e.g. signed up via email/password).
+            // That's fine — Medusa will link the Google auth identity to the existing customer
+            // when we refresh the token below.
+          }
 
-          await updateCustomer({
-            metadata: { auth_provider: "google", email_verified: true },
-          });
+          try {
+            await updateCustomer({
+              metadata: { auth_provider: "google", email_verified: true },
+            });
+          } catch {
+            // May fail if customer wasn't linked yet — will retry after token refresh
+          }
 
           token = await refreshAuthToken(token);
         }
