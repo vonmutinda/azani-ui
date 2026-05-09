@@ -183,7 +183,7 @@ function ShippingStep({
                       {meta.delivery}
                       {isFreeOption && !qualifiesForFree && (
                         <span className="text-danger ml-1">
-                          (orders over Br{FREE_SHIPPING_THRESHOLD.toLocaleString()})
+                          (orders over KSh{FREE_SHIPPING_THRESHOLD.toLocaleString()})
                         </span>
                       )}
                     </p>
