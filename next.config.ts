@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      // TODO: replace with Azani's MinIO/S3 hostname once provisioned.
       {
         protocol: "https",
         hostname: "minio-production-8a8b.up.railway.app",

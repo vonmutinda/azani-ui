@@ -723,7 +723,7 @@ describe("addCustomerAddress", () => {
       first_name: "John",
       last_name: "Doe",
       address_1: "123 Main St",
-      city: "Addis Ababa",
+      city: "Nairobi",
       country_code: "et",
     };
     mockRequest.mockResolvedValueOnce({ address: { id: "addr_1", ...addressData } });
@@ -745,7 +745,7 @@ describe("updateCustomerAddress", () => {
       first_name: "Jane",
       last_name: "Doe",
       address_1: "456 New St",
-      city: "Addis Ababa",
+      city: "Nairobi",
       country_code: "et",
     };
     mockRequest.mockResolvedValueOnce({ address: { id: "addr_1", ...data } });
@@ -841,6 +841,6 @@ describe("getRegions", () => {
 
     const result = await getRegions();
     expect(result.regions).toHaveLength(1);
-    expect(result.regions[0].name).toBe("Ethiopia");
+    expect(result.regions[0].name).toBe("Kenya");
   });
 });

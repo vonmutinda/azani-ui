@@ -18,13 +18,7 @@ export function SiteFooter() {
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div className="space-y-4">
           <Link href="/">
-            <Image
-              src="/logo.png"
-              alt="Kokob Baby Shop"
-              width={224}
-              height={72}
-              className="h-16 w-auto"
-            />
+            <Image src="/logo.svg" alt="Azani" width={224} height={72} className="h-16 w-auto" />
           </Link>
           <p className="text-muted text-sm leading-relaxed">
             Quality baby products, clothing, toys and essentials. Curated with love for your little
@@ -32,13 +26,13 @@ export function SiteFooter() {
           </p>
           <div className="text-muted space-y-2 text-xs">
             <div className="flex items-center gap-2">
-              <Phone className="text-primary h-3.5 w-3.5" /> +251 911 000 000
+              <Phone className="text-primary h-3.5 w-3.5" /> +254 700 000 000
             </div>
             <div className="flex items-center gap-2">
-              <Mail className="text-secondary h-3.5 w-3.5" /> hello@kokob.shop
+              <Mail className="text-secondary h-3.5 w-3.5" /> hello@azani.shop
             </div>
             <div className="flex items-center gap-2">
-              <MapPin className="text-accent-green h-3.5 w-3.5" /> Addis Ababa, Ethiopia
+              <MapPin className="text-accent-green h-3.5 w-3.5" /> Nairobi, Kenya
             </div>
           </div>
         </div>
@@ -113,7 +107,7 @@ export function SiteFooter() {
 
       <div className="border-border/50 border-t">
         <div className="text-muted mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-5 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
-          <span>&copy; {new Date().getFullYear()} Kokob Baby Shop. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} Azani. All rights reserved.</span>
           <span className="flex items-center gap-1">
             Made with <Heart className="text-primary h-3 w-3" fill="currentColor" /> for little ones
           </span>

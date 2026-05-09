@@ -29,12 +29,12 @@ const WISHLIST_METADATA_KEY = "wishlist_product_ids";
 async function getProductPricingParams() {
   const regionsRes = await getRegions();
   const region =
-    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et")) ??
+    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "ke")) ??
     regionsRes.regions[0];
 
   return {
     fields: PRODUCT_PRICE_FIELDS,
-    ...(region ? { region_id: region.id } : { country_code: "et" }),
+    ...(region ? { region_id: region.id } : { country_code: "ke" }),
   };
 }
 
@@ -188,7 +188,7 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
     searchParams: { limit: 50 },
   });
   const region =
-    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et")) ??
+    regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "ke")) ??
     regionsRes.regions[0];
 
   const res = await medusaRequest<{ cart: MedusaCart }>("store/carts", {

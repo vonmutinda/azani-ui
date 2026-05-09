@@ -15,8 +15,8 @@ import { mockProduct, mockProductMinimal } from "../fixtures";
 
 describe("formatPrice", () => {
   it("formats ETB amounts with Br prefix", () => {
-    expect(formatPrice(1500)).toBe("Br1,500.00");
-    expect(formatPrice(85000)).toBe("Br85,000.00");
+    expect(formatPrice(1500)).toBe("KSh1,500.00");
+    expect(formatPrice(85000)).toBe("KSh85,000.00");
   });
 
   it("returns '--' for undefined", () => {
@@ -37,7 +37,7 @@ describe("formatPrice", () => {
   });
 
   it("handles zero amount", () => {
-    expect(formatPrice(0)).toBe("Br0.00");
+    expect(formatPrice(0)).toBe("KSh0.00");
   });
 });
 
@@ -46,8 +46,8 @@ describe("getProductPrice", () => {
     const price = getProductPrice(mockProduct);
     expect(price).not.toBeNull();
     expect(price!.amount).toBe(85000);
-    expect(price!.currency).toBe("etb");
-    expect(price!.formatted).toBe("Br85,000.00");
+    expect(price!.currency).toBe("kes");
+    expect(price!.formatted).toBe("KSh85,000.00");
   });
 
   it("returns null for product without variants", () => {
@@ -64,21 +64,21 @@ describe("getProductPrice", () => {
           calculated_price: {
             calculated_amount: 1200,
             original_amount: 1500,
-            currency_code: "etb",
+            currency_code: "kes",
           },
         },
       ],
     };
     const price = getProductPrice(product);
     expect(price!.amount).toBe(1200);
-    expect(price!.formatted).toBe("Br1,200.00");
+    expect(price!.formatted).toBe("KSh1,200.00");
   });
 });
 
 describe("getVariantPrice", () => {
   it("returns formatted ETB price for variant", () => {
     const variant = mockProduct.variants![0];
-    expect(getVariantPrice(variant)).toBe("Br85,000.00");
+    expect(getVariantPrice(variant)).toBe("KSh85,000.00");
   });
 
   it("returns '--' for variant with no prices", () => {
@@ -101,12 +101,12 @@ describe("getProductOriginalPrice", () => {
           calculated_price: {
             calculated_amount: 1200,
             original_amount: 1500,
-            currency_code: "etb",
+            currency_code: "kes",
           },
         },
       ],
     };
-    expect(getProductOriginalPrice(product)).toBe("Br1,500.00");
+    expect(getProductOriginalPrice(product)).toBe("KSh1,500.00");
   });
 
   it("returns null when original equals calculated", () => {
@@ -118,7 +118,7 @@ describe("getProductOriginalPrice", () => {
           calculated_price: {
             calculated_amount: 1500,
             original_amount: 1500,
-            currency_code: "etb",
+            currency_code: "kes",
           },
         },
       ],
@@ -275,22 +275,22 @@ describe("getVariantAvailability", () => {
 
 describe("formatOrderRef", () => {
   it("returns stored ref when provided", () => {
-    expect(formatOrderRef(1, undefined, undefined, "KKB-2603-001AB")).toBe("KKB-2603-001AB");
+    expect(formatOrderRef(1, undefined, undefined, "AZN-2603-001AB")).toBe("AZN-2603-001AB");
   });
 
   it("computes ref from display_id and created_at", () => {
     const ref = formatOrderRef(42, "2026-03-15T10:00:00Z", "order_abc123");
-    expect(ref).toBe("KKB-2603-04223");
+    expect(ref).toBe("AZN-2603-04223");
   });
 
   it("pads display_id to 3 digits", () => {
     const ref = formatOrderRef(1, "2026-01-01T00:00:00Z", "order_xy");
-    expect(ref).toBe("KKB-2601-001XY");
+    expect(ref).toBe("AZN-2601-001XY");
   });
 
   it("handles missing orderId", () => {
     const ref = formatOrderRef(5, "2026-06-20T00:00:00Z");
-    expect(ref).toBe("KKB-2606-005");
+    expect(ref).toBe("AZN-2606-005");
   });
 
   it("handles missing createdAt by using current date", () => {
@@ -298,7 +298,7 @@ describe("formatOrderRef", () => {
     const now = new Date();
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, "0");
-    expect(ref).toBe(`KKB-${yy}${mm}-010`);
+    expect(ref).toBe(`AZN-${yy}${mm}-010`);
   });
 });
 

@@ -1,11 +1,11 @@
 import { MedusaProductCategory } from "@/types/medusa";
 
-export type KokobCategory = {
+export type Category = {
   slug: string;
   name: string;
   icon: string;
   description?: string;
-  children?: KokobCategory[];
+  children?: Category[];
 };
 
 /** Icon mapping for known category handles */
@@ -82,7 +82,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   "mom-self-care": "sparkles",
 };
 
-/** Top-level category handles (the 7 main categories in Kokob) */
+/** Top-level category handles (the 7 main categories) */
 export const TOP_LEVEL_HANDLES = [
   "feeding",
   "bath-diapering",
@@ -97,19 +97,22 @@ export function getCategoryIcon(handle: string): string {
   return CATEGORY_ICONS[handle] ?? "baby";
 }
 
-/** Convert Medusa categories to our local KokobCategory shape for navigation */
-export function toKokobCategory(cat: MedusaProductCategory): KokobCategory {
+/** Convert Medusa categories to our local Category shape for navigation */
+export function toCategory(cat: MedusaProductCategory): Category {
   return {
     slug: cat.handle,
     name: cat.name,
     icon: getCategoryIcon(cat.handle),
     description: cat.description,
-    children: cat.category_children?.map(toKokobCategory),
+    children: cat.category_children?.map(toCategory),
   };
 }
 
 /** Flatten categories into a flat list */
-export function flattenCategories(cats: KokobCategory[], parent?: string): { slug: string; name: string; parent?: string }[] {
+export function flattenCategories(
+  cats: Category[],
+  parent?: string,
+): { slug: string; name: string; parent?: string }[] {
   const result: { slug: string; name: string; parent?: string }[] = [];
   for (const cat of cats) {
     result.push({ slug: cat.slug, name: cat.name, parent });
@@ -120,7 +123,7 @@ export function flattenCategories(cats: KokobCategory[], parent?: string): { slu
   return result;
 }
 
-export function findCategory(slug: string, cats: KokobCategory[]): KokobCategory | undefined {
+export function findCategory(slug: string, cats: Category[]): Category | undefined {
   for (const cat of cats) {
     if (cat.slug === slug) return cat;
     if (cat.children) {
@@ -131,7 +134,10 @@ export function findCategory(slug: string, cats: KokobCategory[]): KokobCategory
   return undefined;
 }
 
-export function resolveToMainAndSub(slug: string, topCategories: KokobCategory[]): { main: string; sub: string | undefined } | undefined {
+export function resolveToMainAndSub(
+  slug: string,
+  topCategories: Category[],
+): { main: string; sub: string | undefined } | undefined {
   for (const top of topCategories) {
     if (top.slug === slug) return { main: top.slug, sub: undefined };
     if (top.children && findCategory(slug, top.children)) {

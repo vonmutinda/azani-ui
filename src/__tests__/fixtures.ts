@@ -1,4 +1,10 @@
-import { MedusaProduct, MedusaProductCategory, MedusaCart, MedusaLineItem, MedusaRegion } from "@/types/medusa";
+import {
+  MedusaProduct,
+  MedusaProductCategory,
+  MedusaCart,
+  MedusaLineItem,
+  MedusaRegion,
+} from "@/types/medusa";
 
 export const mockProduct: MedusaProduct = {
   id: "prod_01",
@@ -31,7 +37,7 @@ export const mockProduct: MedusaProduct = {
       options: [{ id: "optval_01", value: "24 Count", option_id: "opt_01" }],
       prices: [
         { id: "price_01", amount: 1500, currency_code: "usd" },
-        { id: "price_02", amount: 85000, currency_code: "etb" },
+        { id: "price_02", amount: 85000, currency_code: "kes" },
       ],
     },
     {
@@ -41,11 +47,13 @@ export const mockProduct: MedusaProduct = {
       options: [{ id: "optval_02", value: "50 Count", option_id: "opt_01" }],
       prices: [
         { id: "price_03", amount: 2800, currency_code: "usd" },
-        { id: "price_04", amount: 160000, currency_code: "etb" },
+        { id: "price_04", amount: 160000, currency_code: "kes" },
       ],
     },
   ],
-  categories: [{ id: "pcat_01", name: "Diapers", handle: "diapers", rank: 0, created_at: "", updated_at: "" }],
+  categories: [
+    { id: "pcat_01", name: "Diapers", handle: "diapers", rank: 0, created_at: "", updated_at: "" },
+  ],
 };
 
 export const mockProductMinimal: MedusaProduct = {
@@ -135,7 +143,7 @@ export const mockLineItem: MedusaLineItem = {
 export const mockCart: MedusaCart = {
   id: "cart_01",
   email: "test@example.com",
-  currency_code: "etb",
+  currency_code: "kes",
   items: [mockLineItem],
   total: 3000,
   subtotal: 3000,
@@ -147,7 +155,7 @@ export const mockCart: MedusaCart = {
 
 export const mockEmptyCart: MedusaCart = {
   id: "cart_02",
-  currency_code: "etb",
+  currency_code: "kes",
   items: [],
   total: 0,
   subtotal: 0,
@@ -159,9 +167,7 @@ export const mockEmptyCart: MedusaCart = {
 
 export const mockRegion: MedusaRegion = {
   id: "reg_01",
-  name: "Ethiopia",
-  currency_code: "etb",
-  countries: [
-    { iso_2: "et", display_name: "Ethiopia" },
-  ],
+  name: "Kenya",
+  currency_code: "kes",
+  countries: [{ iso_2: "ke", display_name: "Kenya" }],
 };

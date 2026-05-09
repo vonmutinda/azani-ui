@@ -49,7 +49,7 @@ const customer = {
   email: "jane@example.com",
   first_name: "Jane",
   last_name: "Doe",
-  phone: "+251911000000",
+  phone: "+254700000000",
   has_account: true,
   metadata: { email_verified: true },
 };
@@ -117,7 +117,7 @@ describe("AccountPage", () => {
         id: "order_1",
         display_id: 101,
         email: customer.email,
-        currency_code: "etb",
+        currency_code: "kes",
         items: [
           {
             id: "item_1",
@@ -161,7 +161,7 @@ describe("AccountPage", () => {
       id: "order_1",
       display_id: 101,
       email: customer.email,
-      currency_code: "etb",
+      currency_code: "kes",
       items: [
         {
           id: "item_1",
@@ -208,7 +208,7 @@ describe("AccountPage", () => {
         id: "order_j",
         display_id: 200,
         email: customer.email,
-        currency_code: "etb",
+        currency_code: "kes",
         items: [
           {
             id: "item_j",
@@ -421,7 +421,7 @@ describe("AccountPage", () => {
         id: "order_2",
         display_id: 102,
         email: customer.email,
-        currency_code: "etb",
+        currency_code: "kes",
         items: [
           {
             id: "item_2",
@@ -461,7 +461,7 @@ describe("AccountPage", () => {
       id: "order_2",
       display_id: 102,
       email: customer.email,
-      currency_code: "etb",
+      currency_code: "kes",
       items: [
         {
           id: "item_2",

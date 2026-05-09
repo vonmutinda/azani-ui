@@ -37,38 +37,35 @@ import {
 import { clearStoredCartId } from "@/lib/http";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
-const FREE_SHIPPING_THRESHOLD = 10_000;
+const FREE_SHIPPING_THRESHOLD = 5_000;
 const OTHER_LOCATION_OPTION = "__other__";
 
 type Step = "address" | "shipping" | "payment" | "review";
 
-const ETHIOPIAN_CITIES = [
-  "Addis Ababa",
-  "Dire Dawa",
-  "Adama (Nazret)",
-  "Hawassa",
-  "Bahir Dar",
-  "Mekelle",
-  "Gondar",
-  "Jimma",
-  "Dessie",
-  "Harar",
+const KENYAN_CITIES = [
+  "Nairobi",
+  "Mombasa",
+  "Kisumu",
+  "Nakuru",
+  "Eldoret",
+  "Thika",
+  "Nyeri",
+  "Kakamega",
+  "Meru",
+  "Machakos",
 ];
 
-const ETHIOPIAN_REGIONS = [
-  "Addis Ababa",
-  "Afar",
-  "Amhara",
-  "Benishangul-Gumuz",
-  "Dire Dawa",
-  "Gambella",
-  "Harari",
-  "Oromia",
-  "SNNPR",
-  "Sidama",
-  "Somali",
-  "South West Ethiopia",
-  "Tigray",
+const KENYAN_REGIONS = [
+  "Nairobi",
+  "Mombasa",
+  "Kisumu",
+  "Nakuru",
+  "Uasin Gishu",
+  "Kiambu",
+  "Nyeri",
+  "Kakamega",
+  "Meru",
+  "Machakos",
 ];
 
 function toCheckoutAddress(address: Partial<MedusaAddress>) {
@@ -76,19 +73,19 @@ function toCheckoutAddress(address: Partial<MedusaAddress>) {
     first_name: address.first_name ?? "",
     last_name: address.last_name ?? "",
     address_1: address.address_1 ?? "",
-    city: address.city ?? "Addis Ababa",
-    province: address.province ?? "Addis Ababa",
-    postal_code: address.postal_code ?? "1000",
-    country_code: address.country_code ?? "et",
-    phone: address.phone ?? "+251",
+    city: address.city ?? "Nairobi",
+    province: address.province ?? "Nairobi",
+    postal_code: address.postal_code ?? "00100",
+    country_code: address.country_code ?? "ke",
+    phone: address.phone ?? "+254",
   };
 }
 
 const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string; note?: string }> =
   {
-    "Free Shipping": { icon: Truck, delivery: "Within 24 hours", note: "Orders over Br10,000" },
-    "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "Br150" },
-    "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "Br500" },
+    "Free Shipping": { icon: Truck, delivery: "Within 24 hours", note: "Orders over KSh5,000" },
+    "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "KSh150" },
+    "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "KSh500" },
   };
 
 function getCheckoutItemProduct(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
@@ -225,16 +222,16 @@ export default function CheckoutPage() {
     first_name: "",
     last_name: "",
     address_1: "",
-    city: "Addis Ababa",
-    province: "Addis Ababa",
-    postal_code: "1000",
-    country_code: "et",
-    phone: "+251",
+    city: "Nairobi",
+    province: "Nairobi",
+    postal_code: "00100",
+    country_code: "ke",
+    phone: "+254",
   });
 
   const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart });
   const cart = cartQuery.data;
-  const currencyCode = "etb";
+  const currencyCode = "kes";
   const checkoutProductIds = useMemo(
     () =>
       Array.from(
@@ -288,7 +285,7 @@ export default function CheckoutPage() {
       first_name: current.first_name || customer.first_name || "",
       last_name: current.last_name || customer.last_name || "",
       phone:
-        current.phone && current.phone !== "+251" ? current.phone : customer.phone || current.phone,
+        current.phone && current.phone !== "+254" ? current.phone : customer.phone || current.phone,
     }));
   }, [customerQuery.data]);
 
@@ -307,11 +304,11 @@ export default function CheckoutPage() {
   const addressMutation = useMutation({
     mutationFn: async () => {
       setErrorMessage(null);
-      if (cart?.region?.currency_code !== "etb") {
+      if (cart?.region?.currency_code !== "kes") {
         const regionsRes = await getRegions();
-        const ethRegion = regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "et"));
-        if (ethRegion) {
-          await updateCart({ region_id: ethRegion.id });
+        const kenRegion = regionsRes.regions.find((r) => r.countries.some((c) => c.iso_2 === "ke"));
+        if (kenRegion) {
+          await updateCart({ region_id: kenRegion.id });
         }
       }
 
@@ -429,7 +426,7 @@ export default function CheckoutPage() {
             <p className="text-foreground text-sm font-medium">Order {placedOrderRef}</p>
           )}
           <p className="text-muted max-w-md text-sm leading-relaxed">
-            Thank you for shopping at Kokob! You&apos;ll receive a confirmation email shortly.
+            Thank you for shopping at Azani! You&apos;ll receive a confirmation email shortly.
           </p>
           <Link
             href="/products"
@@ -468,10 +465,8 @@ export default function CheckoutPage() {
     "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
   const selectClass =
     "h-10 w-full appearance-none rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
-  const selectedCityValue = ETHIOPIAN_CITIES.includes(form.city)
-    ? form.city
-    : OTHER_LOCATION_OPTION;
-  const selectedProvinceValue = ETHIOPIAN_REGIONS.includes(form.province)
+  const selectedCityValue = KENYAN_CITIES.includes(form.city) ? form.city : OTHER_LOCATION_OPTION;
+  const selectedProvinceValue = KENYAN_REGIONS.includes(form.province)
     ? form.province
     : OTHER_LOCATION_OPTION;
 
@@ -710,7 +705,7 @@ export default function CheckoutPage() {
                         <input
                           type="tel"
                           required
-                          placeholder="+251 9XX XXX XXX"
+                          placeholder="+254 7XX XXX XXX"
                           value={form.phone}
                           onChange={(e) => setForm({ ...form, phone: e.target.value })}
                           className={inputClass}
@@ -728,7 +723,7 @@ export default function CheckoutPage() {
                           }
                           className={selectClass}
                         >
-                          {ETHIOPIAN_CITIES.map((c) => (
+                          {KENYAN_CITIES.map((c) => (
                             <option key={c} value={c}>
                               {c}
                             </option>
@@ -760,7 +755,7 @@ export default function CheckoutPage() {
                           }
                           className={selectClass}
                         >
-                          {ETHIOPIAN_REGIONS.map((r) => (
+                          {KENYAN_REGIONS.map((r) => (
                             <option key={r} value={r}>
                               {r}
                             </option>
@@ -803,7 +798,7 @@ export default function CheckoutPage() {
                           Country
                         </label>
                         <div className="border-border/50 bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
-                          Ethiopia (ET)
+                          Kenya (KE)
                         </div>
                       </div>
                     </div>

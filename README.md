@@ -1,41 +1,29 @@
-# Bagisto UI
+# Azani UI
 
-Modern headless storefront built with Next.js App Router that consumes Bagisto Laravel shop APIs.
-
-## Features
-
-- Product listing and search
-- Product details page
-- Cart (add/remove/update quantity)
-- Coupon apply/remove
-- Checkout flow scaffold (address, shipping, payment, place order)
-- Customer login
-- Wishlist page
-- API proxy route to bridge Bagisto session cookies
+Azani Kenya storefront — Next.js App Router consuming the `azani-api` Medusa v2 backend.
+Forked from `micro-ui` `main` and hardcoded for Kenya/KES; no env-driven brand config.
 
 ## Tech Stack
 
-- Next.js
+- Next.js (App Router)
 - React Query
 - TypeScript
 - Tailwind CSS
+- Medusa v2 (storefront API)
 
 ## Prerequisites
 
-- Bagisto backend running locally (default: `http://127.0.0.1:8000`)
+- `azani-api` backend running (default: `http://localhost:9000`)
 - Node.js 20+
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and adjust if needed.
+Copy `.env.example` to `.env.local` and fill in the publishable API key from Medusa Admin
+(Settings → Publishable API Keys).
 
 ```bash
 cp .env.example .env.local
 ```
-
-Variables:
-
-- `BAGISTO_BACKEND_URL` - Base URL of Bagisto backend used by Next.js proxy route.
 
 ## Run
 
@@ -46,14 +34,7 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## API Integration Notes
+## Brand identity
 
-- Frontend calls `/api/bagisto/*` (Next.js route handler).
-- Route handler forwards requests to `${BAGISTO_BACKEND_URL}/api/*`.
-- Bagisto session cookies are persisted as prefixed cookies in Next.js to support customer endpoints.
-
-## Next Steps
-
-- Add dedicated auth/register/logout pages if you expose these backend APIs.
-- Add CMS content blocks from Bagisto.
-- Add complete checkout forms for all Bagisto address/payment permutations.
+Brand strings (currency `KSh`, country `KE`, phone `+254`, store name `Azani`, etc.) are
+hardcoded throughout `src/` rather than env-driven. To rebrand or rename, search-and-replace.

@@ -91,7 +91,7 @@ export default function CartPage() {
 
   const cart = cartQuery.data;
   const items = useMemo(() => cart?.items ?? [], [cart?.items]);
-  const currencyCode = "etb";
+  const currencyCode = "kes";
   const cartProductIds = useMemo(
     () =>
       Array.from(new Set(items.map((item) => item.product_id).filter((id): id is string => !!id))),

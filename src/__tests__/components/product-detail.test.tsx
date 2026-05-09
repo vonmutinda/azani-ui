@@ -40,7 +40,7 @@ describe("ProductDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
     });
-    expect(screen.getByText("Br85,000.00")).toBeInTheDocument();
+    expect(screen.getByText("KSh85,000.00")).toBeInTheDocument();
   });
 
   it("renders product description", async () => {

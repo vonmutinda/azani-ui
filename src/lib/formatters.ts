@@ -3,11 +3,11 @@ import { MedusaLineItem, MedusaProduct, MedusaProductVariant } from "@/types/med
 export function formatPrice(amount: number | undefined | null, _currency?: string): string {
   if (amount === undefined || amount === null || !Number.isFinite(amount)) return "--";
 
-  return `Br${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `KSh${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function getVariantMoneyAmount(variant: MedusaProductVariant) {
-  return variant.prices?.find((price) => price.currency_code === "etb") ?? variant.prices?.[0];
+  return variant.prices?.find((price) => price.currency_code === "kes") ?? variant.prices?.[0];
 }
 
 export function getProductPrice(
@@ -19,7 +19,7 @@ export function getProductPrice(
   if (variant.calculated_price) {
     return {
       amount: variant.calculated_price.calculated_amount,
-      currency: "etb",
+      currency: "kes",
       formatted: formatPrice(variant.calculated_price.calculated_amount),
     };
   }
@@ -150,7 +150,7 @@ export function getVariantAvailability(variant?: MedusaProductVariant | null) {
  * metadata (persisted by the backend subscriber) and falls back to
  * computing one from display_id + created_at + order_id.
  *
- * Format: KKB-YYMM-NNNXX  (e.g. KKB-2603-042A)
+ * Format: AZN-YYMM-NNNXX  (e.g. AZN-2603-042A)
  */
 export function formatOrderRef(
   displayId: number | string,
@@ -171,7 +171,7 @@ export function formatOrderRef(
     suffix = chars.slice(-2);
   }
 
-  return `KKB-${yy}${mm}-${num}${suffix}`;
+  return `AZN-${yy}${mm}-${num}${suffix}`;
 }
 
 export function formatOrderLabel(displayId: number | string): string {

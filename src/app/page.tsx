@@ -22,9 +22,9 @@ import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { resolveProductImage, getProductPrice } from "@/lib/formatters";
-import { toKokobCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
+import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 
-const FREE_SHIPPING_THRESHOLD = 10_000;
+const FREE_SHIPPING_THRESHOLD = 5_000;
 
 const CAROUSEL_INTERVAL = 5000;
 
@@ -178,7 +178,7 @@ export default function Home() {
 
   const topCategories = (categoriesQuery.data?.product_categories ?? [])
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
-    .map(toKokobCategory);
+    .map(toCategory);
 
   const heroProducts = (featuredQuery.data?.products ?? []).slice(0, 8).map((p) => ({
     id: p.id,
@@ -403,13 +403,13 @@ export default function Home() {
             {
               icon: Truck,
               title: "Free Shipping",
-              desc: `On orders over Br${FREE_SHIPPING_THRESHOLD.toLocaleString()}`,
+              desc: `On orders over KSh${FREE_SHIPPING_THRESHOLD.toLocaleString()}`,
               color: "text-secondary",
             },
             {
               icon: Zap,
               title: "Same-Day Express",
-              desc: "Br500 express delivery",
+              desc: "KSh500 express delivery",
               color: "text-accent-yellow-ink",
             },
             {

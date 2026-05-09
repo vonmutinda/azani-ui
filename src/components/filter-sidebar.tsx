@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { MedusaProductCategory } from "@/types/medusa";
-import { toKokobCategory, KokobCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
+import { toCategory, Category, TOP_LEVEL_HANDLES } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
 type Filters = Record<string, string | number | undefined>;
@@ -14,7 +14,7 @@ type Props = {
   categories: MedusaProductCategory[];
 };
 
-function isSlugInTree(slug: string, cat: KokobCategory): boolean {
+function isSlugInTree(slug: string, cat: Category): boolean {
   if (cat.slug === slug) return true;
   if (cat.children) {
     return cat.children.some((child) => isSlugInTree(slug, child));
@@ -28,7 +28,7 @@ function CategoryItem({
   activeSlug,
   onSelect,
 }: {
-  cat: KokobCategory;
+  cat: Category;
   depth: number;
   activeSlug?: string;
   onSelect: (slug: string | undefined) => void;
@@ -108,7 +108,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
 
   const topCategories = categories
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
-    .map(toKokobCategory);
+    .map(toCategory);
 
   const activeFilterCount = Object.values(filters).filter(
     (v) => v !== undefined && v !== "",

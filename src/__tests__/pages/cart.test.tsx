@@ -88,7 +88,7 @@ describe("CartPage", () => {
 
     renderWithProviders(<CartPage />);
     await waitFor(() => {
-      expect(screen.getAllByText("Br3,000.00").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("KSh3,000.00").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

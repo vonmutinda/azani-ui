@@ -18,20 +18,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
-import {
-  KokobCategory,
-  toKokobCategory,
-  TOP_LEVEL_HANDLES,
-  resolveToMainAndSub,
-} from "@/lib/categories";
+import { Category, toCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
 const TRUST_SIGNALS = [
-  { icon: Truck, text: "Free delivery over Br10,000" },
+  { icon: Truck, text: "Free delivery over KSh5,000" },
   { icon: Shield, text: "Safe & certified products" },
 ];
 
-function MegaMenu({ category, onClose }: { category: KokobCategory; onClose: () => void }) {
+function MegaMenu({ category, onClose }: { category: Category; onClose: () => void }) {
   const children = category.children ?? [];
   return (
     <div className="absolute inset-x-0 top-full z-50 hidden lg:block">
@@ -93,9 +88,9 @@ export function SiteHeader() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const topCategories: KokobCategory[] = (categoriesQuery.data?.product_categories ?? [])
+  const topCategories: Category[] = (categoriesQuery.data?.product_categories ?? [])
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
-    .map(toKokobCategory);
+    .map(toCategory);
 
   const activeMainSlug: string | undefined = (() => {
     if (!isProductsPage || !currentCategorySlug) return undefined;
@@ -187,8 +182,8 @@ export function SiteHeader() {
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <Image
-              src="/logo.png"
-              alt="Kokob Baby Shop"
+              src="/logo.svg"
+              alt="Azani"
               width={288}
               height={96}
               className="h-14 w-auto sm:h-16 lg:h-[68px]"

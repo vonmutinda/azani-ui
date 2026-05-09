@@ -30,7 +30,7 @@ describe("ProductCard", () => {
 
   it("renders formatted price", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
-    expect(screen.getByText("Br85,000.00")).toBeInTheDocument();
+    expect(screen.getByText("KSh85,000.00")).toBeInTheDocument();
   });
 
   it("renders product image", () => {
