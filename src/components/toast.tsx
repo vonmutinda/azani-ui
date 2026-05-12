@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:items-end"
-        style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        style={{ bottom: "calc(5rem + max(1rem, env(safe-area-inset-bottom)))" }}
       >
         {toasts.map((toast) => {
           const Icon = ICON_MAP[toast.type];
