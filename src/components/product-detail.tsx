@@ -114,14 +114,27 @@ export function ProductDetail({ productId, onBack }: Props) {
   const maxedOut = availability.canPurchase && availability.maxQuantity > 0 && remainingStock === 0;
   const safeQuantity = Math.min(quantity, Math.max(remainingStock, 1));
 
+  const backLink = (
+    <button
+      type="button"
+      onClick={onBack}
+      className="text-muted hover:text-foreground focus-visible:ring-foreground/30 mb-4 inline-flex items-center gap-1.5 rounded-full text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+    >
+      <ArrowLeft className="h-4 w-4" /> Back to products
+    </button>
+  );
+
   if (productQuery.isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
-        <div className="space-y-4">
-          <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
-          <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
-          <div className="bg-border/40 h-32 animate-pulse rounded" />
+      <div>
+        {backLink}
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
+          <div className="space-y-4">
+            <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
+            <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
+            <div className="bg-border/40 h-32 animate-pulse rounded" />
+          </div>
         </div>
       </div>
     );
@@ -129,22 +142,19 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   if (!product) {
     return (
-      <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center sm:p-16">
-        <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
-          <ShoppingBag className="text-primary h-8 w-8" />
+      <div>
+        {backLink}
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center sm:p-16">
+          <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <ShoppingBag className="text-primary h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-foreground text-lg font-semibold">Product not found</p>
+            <p className="text-muted mt-1 text-sm">
+              This product may have been removed or is no longer available.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-foreground text-lg font-semibold">Product not found</p>
-          <p className="text-muted mt-1 text-sm">
-            This product may have been removed or is no longer available.
-          </p>
-        </div>
-        <button
-          onClick={onBack}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Products
-        </button>
       </div>
     );
   }
@@ -170,6 +180,7 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   return (
     <div>
+      {backLink}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">

@@ -133,6 +133,15 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             </span>
           )}
         </h3>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onFilterChange({})}
+            className="text-muted hover:text-foreground rounded-full text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       <div className="space-y-0.5">
