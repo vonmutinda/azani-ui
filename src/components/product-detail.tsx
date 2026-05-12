@@ -248,7 +248,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             >
-              <Heart className="h-4.5 w-4.5" fill={isWishlisted ? "currentColor" : "none"} />
+              <Heart className="h-[18px] w-[18px]" fill={isWishlisted ? "currentColor" : "none"} />
             </button>
           </div>
 

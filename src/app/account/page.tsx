@@ -53,7 +53,7 @@ const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
 };
 
 const INPUT_CLASS =
-  "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+  "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
 type JourneyStep = { label: string; reached: boolean; active: boolean; failed?: boolean };
 
@@ -339,7 +339,7 @@ export default function AccountPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-foreground text-xl font-bold">
+              <h1 className="text-foreground text-2xl font-bold">
                 {customer.first_name || "Welcome"} {customer.last_name || ""}
               </h1>
               {customer.metadata?.email_verified === true && (
@@ -589,7 +589,7 @@ function ProfileDetails({
         <div className="border-border/50 border-t px-5 py-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1 block text-sm font-medium">First Name</label>
+              <label className="text-muted mb-1.5 block text-sm font-medium">First Name</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -597,7 +597,7 @@ function ProfileDetails({
               />
             </div>
             <div>
-              <label className="text-muted mb-1 block text-sm font-medium">Last Name</label>
+              <label className="text-muted mb-1.5 block text-sm font-medium">Last Name</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -606,13 +606,13 @@ function ProfileDetails({
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-muted mb-1 block text-sm font-medium">Email</label>
+            <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
             <div className="bg-background/50 text-muted flex h-10 items-center rounded-lg px-3 text-sm">
               {customer.email}
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-muted mb-1 block text-sm font-medium">Phone</label>
+            <label className="text-muted mb-1.5 block text-sm font-medium">Phone</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -880,7 +880,7 @@ function AddressForm({
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">First Name</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">First Name</label>
           <input
             value={form.first_name ?? ""}
             onChange={(e) => update("first_name", e.target.value)}
@@ -888,7 +888,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">Last Name</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Last Name</label>
           <input
             value={form.last_name ?? ""}
             onChange={(e) => update("last_name", e.target.value)}
@@ -896,7 +896,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1 block text-sm font-medium">Address Line 1</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Address Line 1</label>
           <input
             value={form.address_1 ?? ""}
             onChange={(e) => update("address_1", e.target.value)}
@@ -904,7 +904,7 @@ function AddressForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-muted mb-1 block text-sm font-medium">Address Line 2</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Address Line 2</label>
           <input
             value={form.address_2 ?? ""}
             onChange={(e) => update("address_2", e.target.value)}
@@ -912,7 +912,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">City</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">City</label>
           <input
             value={form.city ?? ""}
             onChange={(e) => update("city", e.target.value)}
@@ -920,7 +920,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">Province</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Province</label>
           <input
             value={form.province ?? ""}
             onChange={(e) => update("province", e.target.value)}
@@ -928,7 +928,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">Postal Code</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Postal Code</label>
           <input
             value={form.postal_code ?? ""}
             onChange={(e) => update("postal_code", e.target.value)}
@@ -936,7 +936,7 @@ function AddressForm({
           />
         </div>
         <div>
-          <label className="text-muted mb-1 block text-sm font-medium">Phone</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Phone</label>
           <input
             value={form.phone ?? ""}
             onChange={(e) => update("phone", e.target.value)}

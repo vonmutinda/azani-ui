@@ -502,7 +502,8 @@ export default function CheckoutPage() {
       <div className="mb-5 flex items-center gap-3">
         <Link
           href="/cart"
-          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          aria-label="Back to cart"
+          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -1010,7 +1011,7 @@ export default function CheckoutPage() {
                   <button
                     onClick={() => completeMutation.mutate()}
                     disabled={completeMutation.isPending || hasUnavailableItems}
-                    className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
                     {completeMutation.isPending
                       ? "Placing Order..."
