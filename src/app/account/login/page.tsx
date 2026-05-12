@@ -218,7 +218,7 @@ export default function LoginPage() {
   const apiError = loginMutation.error || registerMutation.error;
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   /* ── Post-registration verification notice ── */
   if (view === "registered") {
@@ -292,7 +292,7 @@ export default function LoginPage() {
             reset your password.
           </p>
           <div>
-            <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
+            <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
             <input
               type="email"
               placeholder="you@example.com"
@@ -403,7 +403,7 @@ export default function LoginPage() {
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1.5 block text-xs font-medium">First name</label>
+              <label className="text-muted mb-1.5 block text-sm font-medium">First name</label>
               <input
                 placeholder="First name"
                 value={form.first_name}
@@ -415,7 +415,7 @@ export default function LoginPage() {
               )}
             </div>
             <div>
-              <label className="text-muted mb-1.5 block text-xs font-medium">Last name</label>
+              <label className="text-muted mb-1.5 block text-sm font-medium">Last name</label>
               <input
                 placeholder="Last name"
                 value={form.last_name}
@@ -430,7 +430,7 @@ export default function LoginPage() {
         )}
 
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Email</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
           <input
             type="text"
             placeholder="Email"
@@ -445,7 +445,7 @@ export default function LoginPage() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-muted text-xs font-medium">Password</label>
+            <label className="text-muted text-sm font-medium">Password</label>
             {!isRegister && (
               <button
                 type="button"
@@ -514,7 +514,7 @@ export default function LoginPage() {
         {/* Confirm password -- only during registration */}
         {isRegister && (
           <div>
-            <label className="text-muted mb-1.5 block text-xs font-medium">Confirm Password</label>
+            <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}

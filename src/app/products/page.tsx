@@ -104,13 +104,13 @@ function ProductsContent() {
           {selectedProductId && (
             <button
               onClick={() => setSelectedProductId(null)}
-              className="text-muted hover:text-foreground -ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
               aria-label="Back to products"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <h1 className="text-foreground text-xl font-bold sm:text-2xl">{headingText}</h1>
+          <h1 className="text-foreground text-2xl font-bold">{headingText}</h1>
         </div>
         {!selectedProductId && (
           <p className="text-muted mt-1 text-sm">

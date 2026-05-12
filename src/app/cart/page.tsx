@@ -128,11 +128,12 @@ export default function CartPage() {
         <div className="mb-5 flex items-center gap-3">
           <Link
             href="/products"
-            className="border-border/50 text-muted hover:border-border hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            aria-label="Back to products"
+            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-foreground text-xl font-bold sm:text-2xl">Shopping Cart</h1>
+          <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
         </div>
         <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
@@ -160,11 +161,12 @@ export default function CartPage() {
       <div className="mb-5 flex items-center gap-3">
         <Link
           href="/products"
-          className="border-border/50 text-muted hover:border-border hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border rounded-full border bg-white p-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          aria-label="Back to products"
+          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-foreground text-xl font-bold sm:text-2xl">Shopping Cart</h1>
+        <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
         <span className="bg-foreground/10 text-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">
           {items.length} {items.length === 1 ? "item" : "items"}
         </span>
@@ -205,9 +207,7 @@ export default function CartPage() {
         {/* Summary — sticky on desktop */}
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="border-border/50 bg-card rounded-2xl border p-6">
-            <h2 className="text-foreground mb-5 text-sm font-bold tracking-wider uppercase">
-              Order Summary
-            </h2>
+            <h2 className="text-foreground mb-4 text-base font-semibold">Order Summary</h2>
             <div className="space-y-3 text-sm">
               <div className="text-muted flex justify-between">
                 <span>
@@ -319,7 +319,7 @@ export default function CartPage() {
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder="Enter code"
-                  className="border-border/50 bg-background focus:border-primary focus:ring-primary/15 h-9 flex-1 rounded-lg border px-3 text-sm transition outline-none focus:ring-2"
+                  className="border-border/50 bg-background focus:border-secondary focus:ring-secondary/15 h-10 flex-1 rounded-xl border px-3 text-sm transition outline-none focus:ring-2"
                 />
                 <button
                   onClick={() => promoMutation.mutate()}

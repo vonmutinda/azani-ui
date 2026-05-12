@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border/50 bg-white px-3 text-sm  outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   if (!token || !email) {
     return (
@@ -101,7 +101,7 @@ export default function ResetPasswordPage() {
         </p>
 
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">New Password</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">New Password</label>
           <input
             type="password"
             placeholder="New password"
@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <div>
-          <label className="text-muted mb-1.5 block text-xs font-medium">Confirm Password</label>
+          <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
           <input
             type="password"
             placeholder="Confirm password"

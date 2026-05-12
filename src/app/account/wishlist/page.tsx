@@ -71,14 +71,14 @@ export default function WishlistPage() {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Browse Products
           </Link>
           {!customer && (
             <Link
               href="/account/login"
-              className="border-border/50 text-foreground hover:border-border hover:text-foreground focus-visible:ring-border inline-flex items-center gap-2 rounded-full border bg-white px-6 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="border-border/50 text-foreground hover:border-border hover:text-foreground focus-visible:ring-border inline-flex items-center gap-2 rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Sign In to Sync
             </Link>
