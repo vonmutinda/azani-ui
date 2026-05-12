@@ -691,7 +691,7 @@ export default function CheckoutPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          First Name <span className="text-red-500">*</span>
+                          First Name <span className="text-danger">*</span>
                         </label>
                         <input
                           required
@@ -702,7 +702,7 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Last Name <span className="text-red-500">*</span>
+                          Last Name <span className="text-danger">*</span>
                         </label>
                         <input
                           required
@@ -730,7 +730,7 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Phone <span className="text-red-500">*</span>
+                          Phone <span className="text-danger">*</span>
                         </label>
                         <input
                           type="tel"
@@ -743,7 +743,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="sm:col-span-2">
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Street Address <span className="text-red-500">*</span>
+                          Street Address <span className="text-danger">*</span>
                         </label>
                         <input
                           required
@@ -835,7 +835,7 @@ export default function CheckoutPage() {
                       {paymentMethod === "mpesa_express" && (
                         <div className="mt-3 space-y-1.5">
                           <label className="text-muted block text-xs font-medium">
-                            M-Pesa Phone Number <span className="text-red-500">*</span>
+                            M-Pesa Phone Number <span className="text-danger">*</span>
                           </label>
                           <input
                             type="tel"
