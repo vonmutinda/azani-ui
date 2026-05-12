@@ -10,7 +10,9 @@ import {
   CreditCard,
   MapPin,
   Package,
+  Receipt,
   ShoppingBag,
+  Smartphone,
   Truck,
   Zap,
 } from "lucide-react";
@@ -38,35 +40,13 @@ import { clearStoredCartId } from "@/lib/http";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
 const FREE_SHIPPING_THRESHOLD = 5_000;
-const OTHER_LOCATION_OPTION = "__other__";
 
+// TODO: replace placeholder with Azani's real Lipa na M-Pesa Paybill number
+const MPESA_PAYBILL_NUMBER = "123456";
+const MPESA_BUSINESS_NAME = "Azani";
+
+type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
-
-const KENYAN_CITIES = [
-  "Nairobi",
-  "Mombasa",
-  "Kisumu",
-  "Nakuru",
-  "Eldoret",
-  "Thika",
-  "Nyeri",
-  "Kakamega",
-  "Meru",
-  "Machakos",
-];
-
-const KENYAN_REGIONS = [
-  "Nairobi",
-  "Mombasa",
-  "Kisumu",
-  "Nakuru",
-  "Uasin Gishu",
-  "Kiambu",
-  "Nyeri",
-  "Kakamega",
-  "Meru",
-  "Machakos",
-];
 
 function toCheckoutAddress(address: Partial<MedusaAddress>) {
   return {
@@ -216,6 +196,8 @@ export default function CheckoutPage() {
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [useManualAddress, setUseManualAddress] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa_express");
+  const [mpesaPhone, setMpesaPhone] = useState("");
 
   const [form, setForm] = useState({
     email: "",
@@ -293,6 +275,13 @@ export default function CheckoutPage() {
     if (!savedAddresses.length || selectedSavedAddressId) return;
     setSelectedSavedAddressId(savedAddresses[0].id ?? null);
   }, [savedAddresses, selectedSavedAddressId]);
+
+  // Pre-fill the M-Pesa phone from the cart's shipping address phone
+  useEffect(() => {
+    if (mpesaPhone) return;
+    const phone = cart?.shipping_address?.phone || form.phone;
+    if (phone && phone !== "+254") setMpesaPhone(phone);
+  }, [cart?.shipping_address?.phone, form.phone, mpesaPhone]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const shippingQuery = useQuery({
@@ -362,7 +351,20 @@ export default function CheckoutPage() {
   });
 
   const paymentMutation = useMutation({
-    mutationFn: () => initializePaymentSession(),
+    mutationFn: async () => {
+      // Persist the customer's chosen payment method on the cart so the
+      // backend / ops team can route the order to the right reconciliation
+      // flow (STK callback vs manual Paybill verification).
+      const metadata: Record<string, unknown> = {
+        ...(cart?.metadata ?? {}),
+        payment_method: paymentMethod,
+      };
+      if (paymentMethod === "mpesa_express") {
+        metadata.mpesa_phone = mpesaPhone;
+      }
+      await updateCart({ metadata });
+      return initializePaymentSession();
+    },
     onSuccess: () => {
       setErrorMessage(null);
       queryClient.invalidateQueries({ queryKey: ["cart"] });
@@ -425,8 +427,39 @@ export default function CheckoutPage() {
           {placedOrderRef && (
             <p className="text-foreground text-sm font-medium">Order {placedOrderRef}</p>
           )}
+          {paymentMethod === "mpesa_express" ? (
+            <div className="max-w-md space-y-2">
+              <p className="text-foreground text-sm font-medium">
+                Check your phone for the M-Pesa prompt
+              </p>
+              <p className="text-muted text-sm leading-relaxed">
+                We&apos;ve sent a Lipa na M-Pesa prompt to{" "}
+                <span className="text-foreground font-medium">{mpesaPhone}</span>. Enter your M-Pesa
+                PIN to complete payment. We&apos;ll dispatch once your payment is confirmed.
+              </p>
+            </div>
+          ) : (
+            <div className="border-border/50 bg-background/80 max-w-md space-y-2 rounded-2xl border p-4 text-left text-sm">
+              <p className="text-foreground font-medium">Next: pay via M-Pesa Paybill</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <p className="text-muted">Paybill</p>
+                  <p className="text-foreground font-semibold">{MPESA_PAYBILL_NUMBER}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Account no.</p>
+                  <p className="text-foreground font-semibold">{placedOrderRef ?? "—"}</p>
+                </div>
+              </div>
+              <p className="text-muted text-xs leading-relaxed">
+                Pay from your M-Pesa menu &rarr; Lipa na M-Pesa &rarr; Pay Bill. We&apos;ll dispatch
+                once {MPESA_BUSINESS_NAME} confirms your payment.
+              </p>
+            </div>
+          )}
           <p className="text-muted max-w-md text-sm leading-relaxed">
-            Thank you for shopping at Azani! You&apos;ll receive a confirmation email shortly.
+            Thank you for shopping at {MPESA_BUSINESS_NAME}! You&apos;ll receive a confirmation
+            email shortly.
           </p>
           <Link
             href="/products"
@@ -463,12 +496,6 @@ export default function CheckoutPage() {
 
   const inputClass =
     "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
-  const selectClass =
-    "h-10 w-full appearance-none rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
-  const selectedCityValue = KENYAN_CITIES.includes(form.city) ? form.city : OTHER_LOCATION_OPTION;
-  const selectedProvinceValue = KENYAN_REGIONS.includes(form.province)
-    ? form.province
-    : OTHER_LOCATION_OPTION;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -664,7 +691,7 @@ export default function CheckoutPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          First Name
+                          First Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
@@ -675,7 +702,7 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Last Name
+                          Last Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
@@ -685,7 +712,9 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
+                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                          Email <span className="text-muted/70 font-normal">(optional)</span>
+                        </label>
                         {customerQuery.data ? (
                           <div className="border-border/50 bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
                             {customerQuery.data.email}
@@ -693,7 +722,6 @@ export default function CheckoutPage() {
                         ) : (
                           <input
                             type="email"
-                            required
                             value={form.email}
                             onChange={(e) => setForm({ ...form, email: e.target.value })}
                             className={inputClass}
@@ -701,7 +729,9 @@ export default function CheckoutPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">Phone</label>
+                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                          Phone <span className="text-red-500">*</span>
+                        </label>
                         <input
                           type="tel"
                           required
@@ -711,80 +741,9 @@ export default function CheckoutPage() {
                           className={inputClass}
                         />
                       </div>
-                      <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">City</label>
-                        <select
-                          value={selectedCityValue}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              city: e.target.value === OTHER_LOCATION_OPTION ? "" : e.target.value,
-                            })
-                          }
-                          className={selectClass}
-                        >
-                          {KENYAN_CITIES.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                          <option value={OTHER_LOCATION_OPTION}>Other</option>
-                        </select>
-                        {selectedCityValue === OTHER_LOCATION_OPTION && (
-                          <input
-                            required
-                            value={form.city}
-                            onChange={(e) => setForm({ ...form, city: e.target.value })}
-                            placeholder="Enter your city"
-                            className={`${inputClass} mt-2`}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Region
-                        </label>
-                        <select
-                          value={selectedProvinceValue}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              province:
-                                e.target.value === OTHER_LOCATION_OPTION ? "" : e.target.value,
-                            })
-                          }
-                          className={selectClass}
-                        >
-                          {KENYAN_REGIONS.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                          <option value={OTHER_LOCATION_OPTION}>Other</option>
-                        </select>
-                        {selectedProvinceValue === OTHER_LOCATION_OPTION && (
-                          <input
-                            required
-                            value={form.province}
-                            onChange={(e) => setForm({ ...form, province: e.target.value })}
-                            placeholder="Enter your region"
-                            className={`${inputClass} mt-2`}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Postal Code
-                        </label>
-                        <input
-                          value={form.postal_code}
-                          onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-                          className={inputClass}
-                        />
-                      </div>
                       <div className="sm:col-span-2">
                         <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Street Address / Kebele / House No.
+                          Street Address <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
@@ -792,14 +751,6 @@ export default function CheckoutPage() {
                           onChange={(e) => setForm({ ...form, address_1: e.target.value })}
                           className={inputClass}
                         />
-                      </div>
-                      <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
-                          Country
-                        </label>
-                        <div className="border-border/50 bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
-                          Kenya (KE)
-                        </div>
                       </div>
                     </div>
                   )}
@@ -847,33 +798,145 @@ export default function CheckoutPage() {
               {/* Step: Payment */}
               {step === "payment" && (
                 <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6">
-                  <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
-                  <button
-                    onClick={() => paymentMutation.mutate()}
-                    disabled={paymentMutation.isPending || hasUnavailableItems}
-                    className="border-border/50 hover:border-primary/40 flex w-full items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 text-left text-sm transition disabled:opacity-50"
+                  <div>
+                    <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
+                    <p className="text-muted mt-1 text-sm">
+                      Orders are dispatched after payment is confirmed.
+                    </p>
+                  </div>
+
+                  {/* M-Pesa Express */}
+                  <label
+                    className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                      paymentMethod === "mpesa_express"
+                        ? "border-secondary bg-secondary-light/40"
+                        : "border-border/50 hover:border-border bg-white"
+                    }`}
                   >
-                    <CreditCard className="text-secondary h-5 w-5" />
-                    <div>
-                      <p className="text-foreground font-medium">
-                        Cash on Delivery / Manual Payment
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="mpesa_express"
+                      checked={paymentMethod === "mpesa_express"}
+                      onChange={() => setPaymentMethod("mpesa_express")}
+                      className="accent-foreground mt-1.5"
+                    />
+                    <Smartphone className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-foreground font-medium">M-Pesa Express</p>
+                        <span className="bg-accent-green-light text-success rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
+                          Recommended
+                        </span>
+                      </div>
+                      <p className="text-muted mt-0.5 text-sm">
+                        Get a payment prompt on your phone &mdash; just enter your M-Pesa PIN.
                       </p>
-                      <p className="text-muted text-sm">
-                        {paymentMutation.isPending
-                          ? "Initializing payment..."
-                          : "Pay when you receive your order"}
-                      </p>
+                      {paymentMethod === "mpesa_express" && (
+                        <div className="mt-3 space-y-1.5">
+                          <label className="text-muted block text-xs font-medium">
+                            M-Pesa Phone Number <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="tel"
+                            required
+                            placeholder="+254 7XX XXX XXX"
+                            value={mpesaPhone}
+                            onChange={(e) => setMpesaPhone(e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
                     </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setStep("shipping");
-                      setErrorMessage(null);
-                    }}
-                    className="text-muted hover:text-foreground text-sm font-medium transition"
+                  </label>
+
+                  {/* Manual Paybill */}
+                  <label
+                    className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                      paymentMethod === "mpesa_paybill"
+                        ? "border-secondary bg-secondary-light/40"
+                        : "border-border/50 hover:border-border bg-white"
+                    }`}
                   >
-                    &larr; Back to Shipping
-                  </button>
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="mpesa_paybill"
+                      checked={paymentMethod === "mpesa_paybill"}
+                      onChange={() => setPaymentMethod("mpesa_paybill")}
+                      className="accent-foreground mt-1.5"
+                    />
+                    <Receipt className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-foreground font-medium">Pay via M-Pesa Paybill</p>
+                      <p className="text-muted mt-0.5 text-sm">
+                        Pay manually from your M-Pesa menu using our Paybill number.
+                      </p>
+                      {paymentMethod === "mpesa_paybill" && (
+                        <div className="border-border/50 bg-background/80 mt-3 space-y-3 rounded-xl border p-3 text-sm">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-muted text-xs">Paybill (Business No.)</p>
+                              <p className="text-foreground font-semibold tracking-wide">
+                                {MPESA_PAYBILL_NUMBER}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted text-xs">Account No.</p>
+                              <p className="text-foreground font-semibold tracking-wide">
+                                Your order number
+                              </p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-muted text-xs">Amount</p>
+                              <p className="text-foreground font-semibold">
+                                {formatPrice(cart.total ?? 0, currencyCode)}
+                              </p>
+                            </div>
+                          </div>
+                          <ol className="text-muted list-decimal space-y-1 pl-4 text-xs leading-relaxed">
+                            <li>Open M-Pesa on your phone</li>
+                            <li>Select Lipa na M-Pesa &rarr; Pay Bill</li>
+                            <li>
+                              Enter Business no.{" "}
+                              <span className="text-foreground font-semibold">
+                                {MPESA_PAYBILL_NUMBER}
+                              </span>
+                            </li>
+                            <li>Enter your order number as the Account no.</li>
+                            <li>Enter your M-Pesa PIN and confirm</li>
+                          </ol>
+                          <p className="text-muted text-xs">
+                            You&apos;ll get your order number on the next screen. We dispatch once{" "}
+                            {MPESA_BUSINESS_NAME} confirms your payment.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      onClick={() => paymentMutation.mutate()}
+                      disabled={
+                        paymentMutation.isPending ||
+                        hasUnavailableItems ||
+                        (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
+                      }
+                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    >
+                      {paymentMutation.isPending ? "Saving..." : "Continue to Review"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStep("shipping");
+                        setErrorMessage(null);
+                      }}
+                      className="text-muted hover:text-foreground text-sm font-medium transition"
+                    >
+                      &larr; Back to Shipping
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -913,15 +976,47 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
+                  {/* Payment method summary */}
+                  <div className="border-border/50 bg-background/80 rounded-2xl border p-4 text-sm">
+                    <p className="text-muted mb-1 text-sm font-semibold">Payment</p>
+                    {paymentMethod === "mpesa_express" ? (
+                      <>
+                        <p className="text-foreground flex items-center gap-2">
+                          <Smartphone className="text-secondary h-4 w-4" />
+                          M-Pesa Express to {mpesaPhone || "your phone"}
+                        </p>
+                        <p className="text-muted mt-1 text-xs">
+                          You&apos;ll get an M-Pesa prompt on your phone right after you place the
+                          order. We dispatch once payment is confirmed.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-foreground flex items-center gap-2">
+                          <Receipt className="text-secondary h-4 w-4" />
+                          M-Pesa Paybill {MPESA_PAYBILL_NUMBER}
+                        </p>
+                        <p className="text-muted mt-1 text-xs">
+                          Pay via Paybill using your order number as the Account no. We dispatch
+                          once {MPESA_BUSINESS_NAME} confirms your payment.
+                        </p>
+                      </>
+                    )}
+                  </div>
+
                   <p className="text-muted text-sm">
-                    Review your order details and click below to complete your purchase.
+                    Review your order details and click below to place your order.
                   </p>
                   <button
                     onClick={() => completeMutation.mutate()}
                     disabled={completeMutation.isPending || hasUnavailableItems}
                     className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
-                    {completeMutation.isPending ? "Placing Order..." : "Place Order"}
+                    {completeMutation.isPending
+                      ? "Placing Order..."
+                      : paymentMethod === "mpesa_express"
+                        ? "Place Order & Send M-Pesa Prompt"
+                        : "Place Order"}
                   </button>
                   <button
                     onClick={() => {

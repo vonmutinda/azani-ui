@@ -139,6 +139,7 @@ export type MedusaCart = {
     payment_sessions?: { id: string; provider_id: string; status: string }[];
   } | null;
   promotions?: { code: string }[];
+  metadata?: Record<string, unknown> | null;
   total: number;
   subtotal: number;
   discount_total: number;
