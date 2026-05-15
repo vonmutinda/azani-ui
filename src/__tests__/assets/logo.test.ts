@@ -14,4 +14,17 @@ describe("logo asset", () => {
     expect(markTransform?.[1]).toBe("4");
     expect(wordmarkTransform?.[1]).toBe("-24");
   });
+
+  it("keeps logo image consumers on the SVG aspect ratio", () => {
+    const header = readFileSync(path.join(process.cwd(), "src/components/site-header.tsx"), "utf8");
+    const footer = readFileSync(path.join(process.cwd(), "src/components/site-footer.tsx"), "utf8");
+
+    expect(header).toContain('src="/logo.svg"');
+    expect(header).toContain("width={320}");
+    expect(header).toContain("height={100}");
+
+    expect(footer).toContain('src="/logo.svg"');
+    expect(footer).toContain("width={320}");
+    expect(footer).toContain("height={100}");
+  });
 });

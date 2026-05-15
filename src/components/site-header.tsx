@@ -184,8 +184,8 @@ export function SiteHeader() {
             <Image
               src="/logo.svg"
               alt="Azani"
-              width={288}
-              height={96}
+              width={320}
+              height={100}
               className="h-14 w-auto sm:h-16"
               priority
             />
