@@ -19,7 +19,7 @@ export function SiteFooter() {
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div className="space-y-4">
           <Link href="/">
-            <Image src="/logo.svg" alt="Azani" width={224} height={72} className="h-16 w-auto" />
+            <Image src="/logo.svg" alt="Azani" width={320} height={100} className="h-16 w-auto" />
           </Link>
           <p className="text-muted text-sm leading-relaxed">
             Quality baby products, clothing, toys and essentials. Curated with love for your little

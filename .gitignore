@@ -45,3 +45,6 @@ next-env.d.ts
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 .claude/settings.local.json
+
+# local visual brainstorming
+.superpowers/
