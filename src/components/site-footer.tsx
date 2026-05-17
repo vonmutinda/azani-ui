@@ -33,7 +33,7 @@ export function SiteFooter() {
               <Mail className="text-secondary h-3.5 w-3.5" /> {siteConfig.contact.email}
             </div>
             <div className="flex items-center gap-2">
-              <MapPin className="text-accent-green h-3.5 w-3.5" /> {siteConfig.contact.location}
+              <MapPin className="text-success h-3.5 w-3.5" /> {siteConfig.contact.location}
             </div>
           </div>
           <div>
@@ -46,7 +46,7 @@ export function SiteFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Azani on Instagram"
-                className="bg-primary-light text-primary hover:bg-primary inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:text-white"
+                className="az-icon-button az-focus bg-primary-light text-primary hover:bg-primary inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full hover:text-white"
               >
                 <Instagram className="h-4 w-4" />
               </a>
@@ -55,7 +55,7 @@ export function SiteFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Azani on Facebook"
-                className="bg-secondary-light text-secondary hover:bg-secondary inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:text-white"
+                className="az-icon-button az-focus bg-trust-light text-trust hover:bg-trust inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full hover:text-white"
               >
                 <Facebook className="h-4 w-4" />
               </a>
@@ -64,7 +64,7 @@ export function SiteFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Azani on TikTok"
-                className="bg-foreground/5 text-foreground hover:bg-foreground hover:text-background inline-flex h-9 w-9 items-center justify-center rounded-full transition"
+                className="az-icon-button az-focus bg-foreground/5 text-foreground hover:bg-foreground hover:text-background inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full"
               >
                 <svg
                   viewBox="0 0 24 24"

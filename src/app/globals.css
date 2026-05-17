@@ -1,49 +1,79 @@
 @import "tailwindcss";
 
 :root {
-  /* Azani — pastel playful palette */
-  --background: #fefcfd;
-  --foreground: #342a33;
-  --primary: #c24d79;
-  --primary-hover: #aa3f69;
-  --primary-light: #fff1f6;
-  --secondary: #267cb8;
-  --secondary-hover: #1f699f;
-  --secondary-light: #edf7ff;
-  --accent-yellow: #f6d973;
-  --accent-yellow-ink: #8f6200;
-  --accent-yellow-light: #fff9e5;
-  --accent-green: #93d8bb;
-  --accent-green-bold: #34c759;
-  --accent-green-light: #e7f8ee;
-  --success: #34c759;
-  --success-ink: #1d7b47;
-  --muted: #6f6571;
-  --muted-light: #a79ba7;
-  --border: #d8ced6;
-  --border-hover: #b8adb7;
-  --card: #ffffff;
-  --card-raised: #ffffff;
-  --danger: #e26b89;
-  --radius-sm: 0.5rem;
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.04);
-  --shadow: 0 2px 8px rgba(45, 42, 38, 0.06);
-  --shadow-md: 0 4px 16px rgba(45, 42, 38, 0.08);
-  --shadow-lg: 0 8px 32px rgba(45, 42, 38, 0.1);
+  /* Azani boutique foundation: warm nursery neutrals with rose, teal, sage, and amber accents. */
+  --background: #fbfaf7;
+  --foreground: #33272f;
+  --surface: #ffffff;
+  --surface-soft: #f6f2ed;
+  --surface-tint: #fff7f0;
+  --surface-raised: #ffffff;
+  --product-surface: #fffdf9;
+  --product-media: #f4eee7;
+  --primary: #a83f62;
+  --primary-hover: #8d3453;
+  --primary-light: #fdeaf0;
+  --secondary: #227c7f;
+  --secondary-hover: #19686c;
+  --secondary-light: #e6f4f2;
+  --accent-warm: #d56f3e;
+  --accent-warm-ink: #7c3e20;
+  --accent-warm-light: #fff0e4;
+  --accent-yellow: #e7b748;
+  --accent-yellow-ink: #77520b;
+  --accent-yellow-light: #fff6db;
+  --accent-green: #8fbf9f;
+  --accent-green-bold: #2f8f5b;
+  --accent-green-light: #e8f5ec;
+  --trust: #227c7f;
+  --trust-ink: #15585a;
+  --trust-light: #e6f4f2;
+  --success: #2f8f5b;
+  --success-ink: #1f6d43;
+  --success-light: #e8f5ec;
+  --warning: #c38419;
+  --warning-ink: #77520b;
+  --warning-light: #fff6db;
+  --danger: #be3d4d;
+  --danger-ink: #872734;
+  --danger-light: #fdebed;
+  --promo: #d56f3e;
+  --promo-ink: #7c3e20;
+  --promo-light: #fff0e4;
+  --muted: #6f6268;
+  --muted-light: #9d9297;
+  --border: #ded6cf;
+  --border-hover: #b9aaa2;
+  --focus: #227c7f;
+  --card: var(--surface);
+  --card-raised: var(--surface-raised);
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --shadow-sm: 0 1px 2px rgba(51, 39, 47, 0.04);
+  --shadow: 0 2px 8px rgba(51, 39, 47, 0.06);
+  --shadow-md: 0 4px 16px rgba(51, 39, 47, 0.08);
+  --shadow-lg: 0 10px 28px rgba(51, 39, 47, 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-tint: var(--surface-tint);
+  --color-product-surface: var(--product-surface);
+  --color-product-media: var(--product-media);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-light: var(--primary-light);
   --color-secondary: var(--secondary);
   --color-secondary-hover: var(--secondary-hover);
   --color-secondary-light: var(--secondary-light);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-ink: var(--accent-warm-ink);
+  --color-accent-warm-light: var(--accent-warm-light);
   --color-accent-yellow: var(--accent-yellow);
   --color-accent-yellow-ink: var(--accent-yellow-ink);
   --color-accent-yellow-light: var(--accent-yellow-light);
@@ -57,8 +87,20 @@
   --color-card: var(--card);
   --color-card-raised: var(--card-raised);
   --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-light: var(--danger-light);
   --color-success: var(--success);
   --color-success-ink: var(--success-ink);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-light: var(--warning-light);
+  --color-trust: var(--trust);
+  --color-trust-ink: var(--trust-ink);
+  --color-trust-light: var(--trust-light);
+  --color-promo: var(--promo);
+  --color-promo-ink: var(--promo-ink);
+  --color-promo-light: var(--promo-light);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-dm-sans);
@@ -91,7 +133,7 @@ body {
 h1,
 h2 {
   font-family: var(--font-dm-sans), var(--font-geist-sans), system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 h3,
@@ -101,6 +143,236 @@ h4 {
     system-ui,
     -apple-system,
     sans-serif;
+}
+
+.az-focus {
+  outline: none;
+}
+
+.az-focus:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px color-mix(in srgb, var(--focus) 42%, transparent);
+}
+
+.az-surface {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: var(--radius);
+}
+
+.az-product-card {
+  background: var(--product-surface);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.az-product-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow);
+}
+
+.az-btn {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.az-btn-primary {
+  background: var(--foreground);
+  color: #ffffff;
+}
+
+.az-btn-primary:hover {
+  background: color-mix(in srgb, var(--foreground) 88%, var(--primary));
+}
+
+.az-btn-secondary {
+  background: var(--secondary);
+  color: #ffffff;
+}
+
+.az-btn-secondary:hover {
+  background: var(--secondary-hover);
+}
+
+.az-btn-warm {
+  background: var(--accent-warm);
+  color: #ffffff;
+}
+
+.az-btn-warm:hover {
+  background: color-mix(in srgb, var(--accent-warm) 88%, var(--foreground));
+}
+
+.az-btn-outline {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  color: var(--foreground);
+}
+
+.az-btn-outline:hover {
+  background: var(--surface-soft);
+  border-color: var(--border-hover);
+}
+
+.az-btn-ghost {
+  color: var(--muted);
+}
+
+.az-btn-ghost:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: var(--foreground);
+}
+
+.az-icon-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--muted);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.az-icon-button:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: var(--foreground);
+}
+
+.az-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.az-pill-neutral {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+}
+
+.az-pill-promo {
+  background: var(--promo-light);
+  color: var(--promo-ink);
+}
+
+.az-pill-trust {
+  background: var(--trust-light);
+  color: var(--trust-ink);
+}
+
+.az-status-success {
+  color: var(--success-ink);
+}
+
+.az-status-warning {
+  color: var(--warning-ink);
+}
+
+.az-status-danger {
+  color: var(--danger);
+}
+
+.az-status-muted {
+  color: var(--muted);
+}
+
+.az-form-field {
+  height: 2.5rem;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.az-form-field::placeholder {
+  color: var(--muted-light);
+}
+
+.az-form-field:focus,
+.az-form-field:focus-visible {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 16%, transparent);
+}
+
+.az-empty-state {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.az-skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--border) 55%, transparent),
+    color-mix(in srgb, var(--surface-soft) 85%, white),
+    color-mix(in srgb, var(--border) 55%, transparent)
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius);
+  animation: azSkeleton 1.4s ease-in-out infinite;
+}
+
+.az-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.az-section-kicker {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.az-promo-surface {
+  background: var(--promo-light);
+  border-radius: var(--radius);
+}
+
+.az-trust-surface {
+  background: var(--trust-light);
+  border-radius: var(--radius);
+}
+
+@keyframes azSkeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Star rating */

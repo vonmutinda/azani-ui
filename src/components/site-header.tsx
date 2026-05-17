@@ -191,7 +191,7 @@ export function SiteHeader() {
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden ${
+            className={`az-btn az-focus inline-flex h-9 min-h-9 rounded-full px-3 text-[13px] lg:hidden ${
               mobileOpen ? "bg-foreground text-white" : "text-foreground hover:bg-foreground/[0.04]"
             }`}
           >
@@ -218,7 +218,7 @@ export function SiteHeader() {
                 href="/products"
                 aria-label="All Products"
                 title="All Products"
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                className={`az-icon-button az-focus h-8 min-h-8 w-8 min-w-8 transition ${
                   isProductsPage && !currentCategorySlug
                     ? "bg-foreground/[0.06] text-foreground"
                     : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -237,7 +237,7 @@ export function SiteHeader() {
                   >
                     <Link
                       href={`/products?category=${cat.slug}`}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
+                      className={`az-focus flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
                         activeMega === cat.slug || isNavActive
                           ? "bg-foreground/[0.06] text-foreground"
                           : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -259,7 +259,7 @@ export function SiteHeader() {
             <button
               onClick={toggleSearch}
               aria-label="Search"
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
+              className="az-icon-button az-focus hidden h-9 min-h-9 w-9 min-w-9 lg:inline-flex"
             >
               {searchOpen ? (
                 <X className="h-[17px] w-[17px]" />
@@ -270,7 +270,7 @@ export function SiteHeader() {
             <Link
               href={isLoggedIn ? "/account" : "/account/login"}
               aria-label="Account"
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground relative hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
+              className="az-icon-button az-focus relative hidden h-9 min-h-9 w-9 min-w-9 lg:inline-flex"
             >
               <User className="h-[17px] w-[17px]" />
               {isVerified && (
@@ -280,14 +280,14 @@ export function SiteHeader() {
             <Link
               href="/account/wishlist"
               aria-label="Wishlist"
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
+              className="az-icon-button az-focus hidden h-9 min-h-9 w-9 min-w-9 lg:inline-flex"
             >
               <Heart className="h-[17px] w-[17px]" />
             </Link>
             <Link
               href="/cart"
               aria-label="Cart"
-              className="bg-foreground hover:bg-foreground/90 relative ml-1 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="az-btn az-btn-primary az-focus relative ml-1 inline-flex h-9 min-h-9 rounded-full px-4 text-[13px]"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Cart</span>
@@ -324,7 +324,7 @@ export function SiteHeader() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products..."
-                className="border-border/60 bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/10 h-11 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
+                className="az-form-field h-11 pr-4 pl-10"
               />
             </form>
           </div>
@@ -342,7 +342,7 @@ export function SiteHeader() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
-                  className="border-border/60 bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/10 h-10 w-full rounded-xl border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
+                  className="az-form-field h-10 pr-4 pl-10"
                 />
               </div>
             </form>
@@ -400,7 +400,7 @@ export function SiteHeader() {
                 <User className="h-4 w-4" />
                 Account
                 {isVerified && (
-                  <span className="bg-secondary-light text-secondary ml-auto rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="az-pill az-pill-trust ml-auto px-2 py-0.5 text-xs font-medium">
                     Verified
                   </span>
                 )}

@@ -56,7 +56,7 @@ function CategoryItem({
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Collapse category" : "Expand category"}
-            className="text-muted hover:text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition"
+            className="az-icon-button az-focus h-7 min-h-7 w-7 min-w-7 shrink-0 rounded-md"
           >
             {open ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -69,7 +69,7 @@ function CategoryItem({
         )}
         <button
           onClick={() => onSelect(isActive ? undefined : cat.slug)}
-          className={`flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+          className={`az-focus flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
             isActive
               ? "bg-foreground/[0.06] text-foreground font-semibold"
               : containsActive
@@ -128,7 +128,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Browse
           {activeFilterCount > 0 && (
-            <span className="bg-foreground rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+            <span className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]">
               {activeFilterCount}
             </span>
           )}
@@ -137,7 +137,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
           <button
             type="button"
             onClick={() => onFilterChange({})}
-            className="text-muted hover:text-foreground rounded-full text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="az-focus text-muted hover:text-foreground rounded-full text-xs font-medium transition"
           >
             Clear all
           </button>
@@ -147,7 +147,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
       <div className="space-y-0.5">
         <button
           onClick={() => setFilter("category", undefined)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+          className={`az-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
             !filters.category
               ? "bg-foreground/[0.06] text-foreground font-semibold"
               : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -172,12 +172,12 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="border-border text-foreground hover:bg-foreground/[0.04] flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
+        className="az-btn az-btn-outline az-focus flex rounded-full px-4 py-2.5 lg:hidden"
       >
         <SlidersHorizontal className="h-4 w-4" />
         Filters
         {activeFilterCount > 0 && (
-          <span className="bg-foreground rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]">
             {activeFilterCount}
           </span>
         )}
@@ -193,7 +193,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             <button
               onClick={() => setMobileOpen(false)}
               aria-label="Close filters"
-              className="text-muted hover:text-foreground absolute top-4 right-4 rounded-lg p-2 transition focus-visible:ring-2 focus-visible:outline-none"
+              className="az-icon-button az-focus absolute top-4 right-4 p-2"
             >
               <X className="h-5 w-5" />
             </button>
