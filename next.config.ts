@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildRemoteImagePatterns } from "./src/lib/image-config";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -21,6 +22,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "minio-production-5367.up.railway.app",
       },
+      ...buildRemoteImagePatterns(process.env.NEXT_PUBLIC_IMAGE_HOSTS),
       ...(isDev ? [{ protocol: "http" as const, hostname: "localhost", port: "9002" }] : []),
     ],
   },
