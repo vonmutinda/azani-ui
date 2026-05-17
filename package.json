@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "mock:medusa": "node scripts/mock-medusa-server.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

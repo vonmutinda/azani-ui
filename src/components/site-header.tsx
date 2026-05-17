@@ -15,7 +15,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
 import { Category, toCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
@@ -25,6 +25,10 @@ const TRUST_SIGNALS = [
   { icon: Truck, text: "Free delivery over KSh5,000" },
   { icon: Shield, text: "Safe & certified products" },
 ];
+
+const subscribeToClientSnapshot = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 function MegaMenu({ category, onClose }: { category: Category; onClose: () => void }) {
   const children = category.children ?? [];
@@ -74,6 +78,11 @@ export function SiteHeader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
   const [trustIdx, setTrustIdx] = useState(0);
+  const hasHydrated = useSyncExternalStore(
+    subscribeToClientSnapshot,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -179,6 +188,17 @@ export function SiteHeader() {
       {/* Main header */}
       <div className="border-border/50 border-b">
         <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:gap-5 lg:px-8">
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden ${
+              mobileOpen ? "bg-foreground text-white" : "text-foreground hover:bg-foreground/[0.04]"
+            }`}
+          >
+            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <span className="hidden sm:inline">{mobileOpen ? "Close" : "Menu"}</span>
+          </button>
+
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <Image
@@ -271,24 +291,12 @@ export function SiteHeader() {
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Cart</span>
-              {cartCount > 0 && (
+              {hasHydrated && cartCount > 0 && (
                 <span className="bg-primary flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Menu"
-              className={`ml-1 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden ${
-                mobileOpen
-                  ? "bg-foreground text-white"
-                  : "text-foreground hover:bg-foreground/[0.04]"
-              }`}
-            >
-              {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              <span className="hidden sm:inline">{mobileOpen ? "Close" : "Menu"}</span>
-            </button>
           </div>
         </div>
       </div>
