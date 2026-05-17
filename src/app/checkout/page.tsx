@@ -47,6 +47,10 @@ const MPESA_BUSINESS_NAME = "Azani";
 
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
+type PaymentSession = { id: string; provider_id: string; status: string };
+type CheckoutPaymentResult = { type: "payment_pending" } | { type: "payment_captured" };
+
+const PAID_PAYMENT_STATUSES = new Set(["captured"]);
 
 function toCheckoutAddress(address: Partial<MedusaAddress>) {
   return {
@@ -83,6 +87,10 @@ function getCheckoutItemAvailability(
   const variant =
     product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
   return getVariantAvailability(variant);
+}
+
+function hasCapturedPayment(sessions?: PaymentSession[]) {
+  return sessions?.some((session) => PAID_PAYMENT_STATUSES.has(session.status)) ?? false;
 }
 
 function ShippingStep({
@@ -191,6 +199,7 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("address");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
   const [placedOrderRef, setPlacedOrderRef] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
@@ -211,7 +220,11 @@ export default function CheckoutPage() {
     phone: "+254",
   });
 
-  const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart });
+  const cartQuery = useQuery({
+    queryKey: ["cart"],
+    queryFn: getCart,
+    refetchInterval: paymentPending ? 3_000 : false,
+  });
   const cart = cartQuery.data;
   const currencyCode = "kes";
   const checkoutProductIds = useMemo(
@@ -305,9 +318,10 @@ export default function CheckoutPage() {
         isUsingSavedAddress && selectedSavedAddress
           ? toCheckoutAddress(selectedSavedAddress)
           : toCheckoutAddress(form);
+      const email = customerQuery.data?.email ?? form.email.trim();
 
       return updateCart({
-        email: customerQuery.data?.email || form.email,
+        ...(email ? { email } : {}),
         shipping_address: address,
         billing_address: address,
       });
@@ -362,8 +376,7 @@ export default function CheckoutPage() {
       if (paymentMethod === "mpesa_express") {
         metadata.mpesa_phone = mpesaPhone;
       }
-      await updateCart({ metadata });
-      return initializePaymentSession();
+      return updateCart({ metadata });
     },
     onSuccess: () => {
       setErrorMessage(null);
@@ -375,12 +388,13 @@ export default function CheckoutPage() {
     },
   });
 
-  const completeMutation = useMutation({
+  const finalizeOrderMutation = useMutation({
     mutationFn: () => completeCart(),
     onSuccess: (data) => {
       clearStoredCartId();
+      setPaymentPending(false);
       queryClient.invalidateQueries({ queryKey: ["cart"] });
-      const order = data?.order as
+      const order = data.order as
         | {
             display_id?: number;
             id?: string;
@@ -399,6 +413,52 @@ export default function CheckoutPage() {
     },
   });
 
+  const completeMutation = useMutation({
+    mutationFn: async (): Promise<CheckoutPaymentResult> => {
+      if (paymentMethod === "mpesa_express") {
+        const payment = await initializePaymentSession();
+        if (!hasCapturedPayment(payment.payment_collection.payment_sessions)) {
+          return { type: "payment_pending" };
+        }
+      } else {
+        await initializePaymentSession();
+      }
+
+      return { type: "payment_captured" };
+    },
+    onSuccess: (data) => {
+      if (data.type === "payment_pending") {
+        setPaymentPending(true);
+        setErrorMessage(null);
+        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        return;
+      }
+
+      finalizeOrderMutation.mutate();
+    },
+    onError: (err: Error) => {
+      setErrorMessage(err.message || "Failed to place order.");
+    },
+  });
+
+  useEffect(() => {
+    if (
+      !paymentPending ||
+      orderPlaced ||
+      finalizeOrderMutation.isPending ||
+      !hasCapturedPayment(cart?.payment_collection?.payment_sessions)
+    ) {
+      return;
+    }
+
+    finalizeOrderMutation.mutate();
+  }, [
+    cart?.payment_collection?.payment_sessions,
+    finalizeOrderMutation,
+    orderPlaced,
+    paymentPending,
+  ]);
+
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (hasUnavailableItems) {
@@ -415,6 +475,36 @@ export default function CheckoutPage() {
     { id: "review", label: "Review", icon: Package },
   ];
   const currentIdx = steps.findIndex((s) => s.id === step);
+
+  if (paymentPending) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
+          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <Smartphone className="text-secondary h-9 w-9" />
+          </div>
+          <h1 className="text-foreground text-2xl font-bold">Payment Request Sent</h1>
+          <div className="max-w-md space-y-2">
+            <p className="text-foreground text-sm font-medium">
+              Check your phone for the M-Pesa prompt
+            </p>
+            <p className="text-muted text-sm leading-relaxed">
+              Enter your M-Pesa PIN on{" "}
+              <span className="text-foreground font-medium">{mpesaPhone}</span>. We&apos;ll create
+              your order after M-Pesa confirms the payment.
+            </p>
+          </div>
+          <button
+            onClick={() => cartQuery.refetch()}
+            disabled={cartQuery.isFetching}
+            className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (orderPlaced) {
     return (
@@ -987,8 +1077,8 @@ export default function CheckoutPage() {
                           M-Pesa Express to {mpesaPhone || "your phone"}
                         </p>
                         <p className="text-muted mt-1 text-xs">
-                          You&apos;ll get an M-Pesa prompt on your phone right after you place the
-                          order. We dispatch once payment is confirmed.
+                          We&apos;ll send an M-Pesa prompt to your phone and create the order after
+                          payment is confirmed.
                         </p>
                       </>
                     ) : (
@@ -1005,18 +1095,22 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  <p className="text-muted text-sm">
-                    Review your order details and click below to place your order.
-                  </p>
+                  <p className="text-muted text-sm">Review your details before continuing.</p>
                   <button
                     onClick={() => completeMutation.mutate()}
-                    disabled={completeMutation.isPending || hasUnavailableItems}
+                    disabled={
+                      completeMutation.isPending ||
+                      finalizeOrderMutation.isPending ||
+                      hasUnavailableItems
+                    }
                     className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
-                    {completeMutation.isPending
-                      ? "Placing Order..."
+                    {completeMutation.isPending || finalizeOrderMutation.isPending
+                      ? paymentMethod === "mpesa_express"
+                        ? "Sending Prompt..."
+                        : "Placing Order..."
                       : paymentMethod === "mpesa_express"
-                        ? "Place Order & Send M-Pesa Prompt"
+                        ? "Send M-Pesa Prompt"
                         : "Place Order"}
                   </button>
                   <button
