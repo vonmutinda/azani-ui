@@ -118,7 +118,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     <button
       type="button"
       onClick={onBack}
-      className="text-muted hover:text-foreground focus-visible:ring-foreground/30 mb-4 inline-flex items-center gap-1.5 rounded-full text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="az-focus text-muted hover:text-foreground mb-4 inline-flex items-center gap-1.5 rounded-full text-sm font-medium transition"
     >
       <ArrowLeft className="h-4 w-4" /> Back to products
     </button>
@@ -129,11 +129,11 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div>
         {backLink}
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
+          <div className="az-skeleton aspect-square" />
           <div className="space-y-4">
-            <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
-            <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
-            <div className="bg-border/40 h-32 animate-pulse rounded" />
+            <div className="az-skeleton h-8 w-3/4" />
+            <div className="az-skeleton h-6 w-1/3" />
+            <div className="az-skeleton h-32" />
           </div>
         </div>
       </div>
@@ -144,7 +144,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     return (
       <div>
         {backLink}
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center sm:p-16">
+        <div className="az-empty-state flex flex-col items-center gap-5 p-8 sm:p-16">
           <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-primary h-8 w-8" />
           </div>
@@ -184,7 +184,7 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">
-          <div className="border-border/50 bg-background relative aspect-square overflow-hidden rounded-2xl border">
+          <div className="border-border/50 bg-product-media relative aspect-square overflow-hidden rounded-[var(--radius)] border">
             {allImages[activeImageIndex] ? (
               <Image
                 src={allImages[activeImageIndex].url}
@@ -206,7 +206,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                 <button
                   key={i}
                   onClick={() => setActiveImageIndex(i)}
-                  className={`focus-visible:ring-primary/30 bg-card relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                  className={`az-focus bg-card relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--radius)] border-2 transition ${
                     i === activeImageIndex
                       ? "border-foreground"
                       : "border-border/50 hover:border-foreground/30"
@@ -226,7 +226,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </div>
 
         {/* Details */}
-        <div className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6">
+        <div className="az-surface space-y-5 p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
@@ -240,7 +240,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               type="button"
               onClick={handleWishlistToggle}
               disabled={wishlistMutation.isPending}
-              className={`focus-visible:ring-primary/30 bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`az-icon-button az-focus bg-card flex h-11 min-h-11 w-11 min-w-11 shrink-0 rounded-full border disabled:opacity-50 ${
                 isWishlisted
                   ? "border-primary text-primary"
                   : "border-border/50 text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -256,12 +256,12 @@ export function ProductDetail({ productId, onBack }: Props) {
           <p
             className={`text-sm font-medium ${
               maxedOut
-                ? "text-muted"
+                ? "az-status-muted"
                 : availability.isOutOfStock
-                  ? "text-danger"
+                  ? "az-status-danger"
                   : availability.isLowStock
-                    ? "text-accent-yellow-ink"
-                    : "text-success-ink"
+                    ? "az-status-warning"
+                    : "az-status-success"
             }`}
           >
             {maxedOut ? "Max quantity in cart" : availability.label}
@@ -282,7 +282,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                     onClick={() =>
                       setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
                     }
-                    className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                    className={`az-focus rounded-full border px-4 py-2.5 text-sm font-medium transition ${
                       effectiveOptions[option.id] === val.value
                         ? "border-foreground bg-foreground/[0.06] text-foreground"
                         : "border-border/50 text-foreground hover:bg-foreground/[0.04]"
@@ -300,7 +300,7 @@ export function ProductDetail({ productId, onBack }: Props) {
             <div className="border-border/50 bg-card flex items-center rounded-full border">
               <button
                 onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
+                className="az-focus text-muted hover:text-foreground flex h-11 w-11 items-center justify-center rounded-l-full transition"
                 disabled={!availability.canPurchase || maxedOut}
               >
                 <Minus className="h-3.5 w-3.5" />
@@ -310,7 +310,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               </span>
               <button
                 onClick={() => setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
+                className="az-focus text-muted hover:text-foreground flex h-11 w-11 items-center justify-center rounded-r-full transition"
                 disabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -326,12 +326,12 @@ export function ProductDetail({ productId, onBack }: Props) {
                 justAdded ||
                 maxedOut
               }
-              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`az-focus flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 disabled:opacity-50 ${
                 justAdded
-                  ? "bg-accent-green-bold"
+                  ? "bg-success"
                   : maxedOut
                     ? "bg-muted cursor-default"
-                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30"
+                    : "bg-foreground hover:bg-foreground/85"
               }`}
             >
               {justAdded ? (

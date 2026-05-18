@@ -111,12 +111,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   );
 
   return (
-    <article className="group border-border/50 bg-card hover:border-border relative flex flex-col overflow-hidden rounded-2xl border transition duration-300">
+    <article className="az-product-card group relative flex flex-col overflow-hidden transition duration-300">
       {isNew && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase">
-            New
-          </span>
+          <span className="az-pill az-pill-promo text-2xs tracking-wider uppercase">New</span>
         </div>
       )}
 
@@ -125,10 +123,8 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`border-border/50 focus-visible:ring-primary/30 bg-card flex h-10 w-10 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
-            isWishlisted
-              ? "text-primary"
-              : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+          className={`az-icon-button az-focus border-border/50 bg-card rounded-full border disabled:opacity-50 ${
+            isWishlisted ? "text-primary" : "text-muted"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -138,7 +134,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
       </div>
 
       <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
-        <div className="bg-background relative aspect-square overflow-hidden">
+        <div className="bg-product-media relative aspect-square overflow-hidden">
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -168,12 +164,12 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         <p
           className={`text-sm font-medium ${
             maxedOut
-              ? "text-muted"
+              ? "az-status-muted"
               : availability.isOutOfStock
-                ? "text-danger"
+                ? "az-status-danger"
                 : availability.isLowStock
-                  ? "text-accent-yellow-ink"
-                  : "text-success-ink"
+                  ? "az-status-warning"
+                  : "az-status-success"
           }`}
         >
           {maxedOut ? "Max in cart" : availability.label}
@@ -192,12 +188,12 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+              className={`az-focus flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 ${
                 justAdded
-                  ? "bg-accent-green-bold scale-110"
+                  ? "bg-success scale-110"
                   : maxedOut
                     ? "bg-muted cursor-default opacity-60"
-                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 disabled:opacity-40"
+                    : "bg-foreground hover:bg-foreground/85 disabled:opacity-40"
               }`}
               aria-label={
                 maxedOut

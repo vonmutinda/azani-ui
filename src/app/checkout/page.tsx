@@ -122,11 +122,11 @@ function ShippingStep({
   }, [options]);
 
   return (
-    <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6">
+    <div className="az-surface space-y-4 p-4 sm:p-6">
       <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
 
       {qualifiesForFree && (
-        <div className="border-success/25 bg-accent-green-light text-success-ink flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium">
+        <div className="border-success/25 bg-success-light text-success-ink flex items-center gap-2 rounded-[var(--radius)] border px-4 py-2.5 text-sm font-medium">
           <Check className="h-4 w-4" />
           Your order qualifies for free shipping!
         </div>
@@ -134,9 +134,9 @@ function ShippingStep({
 
       {isLoading ? (
         <div className="space-y-2">
-          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
-          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
-          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+          <div className="az-skeleton h-16" />
+          <div className="az-skeleton h-16" />
+          <div className="az-skeleton h-16" />
         </div>
       ) : sortedOptions.length === 0 ? (
         <p className="text-muted text-sm">
@@ -155,16 +155,16 @@ function ShippingStep({
                 key={option.id}
                 onClick={() => onSelect(option.id)}
                 disabled={disabled}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left text-sm transition ${
+                className={`az-focus flex w-full items-center justify-between rounded-[var(--radius)] border px-4 py-3.5 text-left text-sm transition ${
                   disabled && !isPending
-                    ? "border-border/50 bg-background cursor-not-allowed opacity-50"
+                    ? "border-border/50 bg-surface-soft cursor-not-allowed opacity-50"
                     : selectedShipping === option.id
-                      ? "border-secondary bg-secondary-light"
+                      ? "border-trust bg-trust-light"
                       : "border-border/50 hover:border-foreground/30"
                 } disabled:opacity-50`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="text-secondary h-5 w-5" />
+                  <Icon className="text-trust h-5 w-5" />
                   <div>
                     <p className="text-foreground font-medium">{option.name}</p>
                     <p className="text-muted text-sm">
@@ -177,7 +177,7 @@ function ShippingStep({
                     </p>
                   </div>
                 </div>
-                <span className="text-primary font-semibold">
+                <span className="text-promo font-semibold">
                   {option.amount === 0 ? "Free" : formatPrice(option.amount)}
                 </span>
               </button>
@@ -187,7 +187,7 @@ function ShippingStep({
       )}
       <button
         onClick={onBack}
-        className="text-muted hover:text-foreground text-sm font-medium transition"
+        className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
       >
         &larr; Back to Address
       </button>
@@ -479,9 +479,9 @@ export default function CheckoutPage() {
   if (paymentPending) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
-          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
-            <Smartphone className="text-secondary h-9 w-9" />
+        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+          <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
+            <Smartphone className="text-trust h-9 w-9" />
           </div>
           <h1 className="text-foreground text-2xl font-bold">Payment Request Sent</h1>
           <div className="max-w-md space-y-2">
@@ -497,7 +497,7 @@ export default function CheckoutPage() {
           <button
             onClick={() => cartQuery.refetch()}
             disabled={cartQuery.isFetching}
-            className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
           >
             {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
           </button>
@@ -509,8 +509,8 @@ export default function CheckoutPage() {
   if (orderPlaced) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
-          <div className="bg-accent-green-light flex h-20 w-20 items-center justify-center rounded-full">
+        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+          <div className="bg-success-light flex h-20 w-20 items-center justify-center rounded-full">
             <Check className="text-success h-9 w-9" />
           </div>
           <h1 className="text-foreground text-2xl font-bold">Order Placed!</h1>
@@ -529,7 +529,7 @@ export default function CheckoutPage() {
               </p>
             </div>
           ) : (
-            <div className="border-border/50 bg-background/80 max-w-md space-y-2 rounded-2xl border p-4 text-left text-sm">
+            <div className="border-border/50 bg-surface-soft max-w-md space-y-2 rounded-[var(--radius)] border p-4 text-left text-sm">
               <p className="text-foreground font-medium">Next: pay via M-Pesa Paybill</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
@@ -553,7 +553,7 @@ export default function CheckoutPage() {
           </p>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
+            className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 shadow-md"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -565,7 +565,7 @@ export default function CheckoutPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
+        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
           <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-primary h-8 w-8" />
           </div>
@@ -575,7 +575,7 @@ export default function CheckoutPage() {
           </div>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -584,8 +584,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const inputClass =
-    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+  const inputClass = "az-form-field h-10 px-3";
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -593,7 +592,7 @@ export default function CheckoutPage() {
         <Link
           href="/cart"
           aria-label="Back to cart"
-          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+          className="az-icon-button az-focus -ml-1 flex h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -611,7 +610,7 @@ export default function CheckoutPage() {
                     ? "border-success bg-success text-white"
                     : i === currentIdx
                       ? "border-secondary bg-secondary text-white"
-                      : "border-border/50 text-muted bg-white"
+                      : "border-border/50 text-muted bg-surface"
                 }`}
               >
                 {i < currentIdx ? (
@@ -637,13 +636,13 @@ export default function CheckoutPage() {
 
       {/* Error banner */}
       {errorMessage && (
-        <div className="border-danger/30 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm">
+        <div className="border-danger/30 bg-danger-light text-danger mb-6 rounded-[var(--radius)] border px-4 py-3 text-sm">
           {errorMessage}
         </div>
       )}
 
       {hasUnavailableItems && (
-        <div className="border-danger/20 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm font-medium">
+        <div className="border-danger/20 bg-danger-light text-danger mb-6 rounded-[var(--radius)] border px-4 py-3 text-sm font-medium">
           Some items in your cart are no longer available in the requested quantity. Return to your
           cart to adjust them before checking out.
         </div>
@@ -663,7 +662,7 @@ export default function CheckoutPage() {
                           ? "border-success bg-success text-white"
                           : i === currentIdx
                             ? "border-secondary bg-secondary text-white"
-                            : "border-border/50 text-muted bg-white"
+                            : "border-border/50 text-muted bg-surface"
                       }`}
                     >
                       {i < currentIdx ? (
@@ -699,13 +698,10 @@ export default function CheckoutPage() {
             <div className="space-y-6">
               {/* Step: Address */}
               {step === "address" && (
-                <form
-                  onSubmit={handleAddressSubmit}
-                  className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6"
-                >
+                <form onSubmit={handleAddressSubmit} className="az-surface space-y-5 p-4 sm:p-6">
                   <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
                   {customerQuery.data && (
-                    <div className="border-secondary/15 bg-secondary-light/40 rounded-2xl border p-4">
+                    <div className="border-trust/15 bg-trust-light rounded-[var(--radius)] border p-4">
                       <p className="text-foreground text-sm font-medium">
                         Checking out as {customerQuery.data.email}
                       </p>
@@ -726,9 +722,9 @@ export default function CheckoutPage() {
                               key={address.id}
                               type="button"
                               onClick={() => setSelectedSavedAddressId(address.id ?? null)}
-                              className={`w-full rounded-2xl border p-4 text-left transition ${
+                              className={`az-focus w-full rounded-[var(--radius)] border p-4 text-left transition ${
                                 isSelected
-                                  ? "border-secondary bg-secondary-light/40"
+                                  ? "border-trust bg-trust-light"
                                   : "border-border/50 hover:border-border bg-white"
                               }`}
                             >
@@ -748,9 +744,7 @@ export default function CheckoutPage() {
                                   )}
                                 </div>
                                 {isSelected && (
-                                  <span className="bg-foreground rounded-full px-2.5 py-1 text-xs font-semibold text-white">
-                                    Selected
-                                  </span>
+                                  <span className="az-pill az-pill-neutral py-1">Selected</span>
                                 )}
                               </div>
                             </button>
@@ -761,7 +755,7 @@ export default function CheckoutPage() {
                         <button
                           type="submit"
                           disabled={addressMutation.isPending || hasUnavailableItems}
-                          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                          className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                         >
                           {addressMutation.isPending
                             ? "Saving..."
@@ -770,7 +764,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => setUseManualAddress(true)}
-                          className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                          className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
                         >
                           Use Different Address
                         </button>
@@ -807,7 +801,7 @@ export default function CheckoutPage() {
                           Email <span className="text-muted/70 font-normal">(optional)</span>
                         </label>
                         {customerQuery.data ? (
-                          <div className="border-border/50 bg-background text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
+                          <div className="border-border/50 bg-surface-soft text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
                             {customerQuery.data.email}
                           </div>
                         ) : (
@@ -849,7 +843,7 @@ export default function CheckoutPage() {
                     <button
                       type="submit"
                       disabled={addressMutation.isPending || hasUnavailableItems}
-                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                      className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
                     </button>
@@ -858,7 +852,7 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => setUseManualAddress(false)}
-                      className="text-muted hover:text-foreground ml-4 text-sm font-medium transition"
+                      className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
                     >
                       Use a saved address instead
                     </button>
@@ -888,7 +882,7 @@ export default function CheckoutPage() {
 
               {/* Step: Payment */}
               {step === "payment" && (
-                <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6">
+                <div className="az-surface space-y-4 p-4 sm:p-6">
                   <div>
                     <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
                     <p className="text-muted mt-1 text-sm">
@@ -898,9 +892,9 @@ export default function CheckoutPage() {
 
                   {/* M-Pesa Express */}
                   <label
-                    className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                    className={`az-focus flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 transition ${
                       paymentMethod === "mpesa_express"
-                        ? "border-secondary bg-secondary-light/40"
+                        ? "border-trust bg-trust-light"
                         : "border-border/50 hover:border-border bg-white"
                     }`}
                   >
@@ -912,11 +906,11 @@ export default function CheckoutPage() {
                       onChange={() => setPaymentMethod("mpesa_express")}
                       className="accent-foreground mt-1.5"
                     />
-                    <Smartphone className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
+                    <Smartphone className="text-trust mt-0.5 h-5 w-5 shrink-0" />
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-foreground font-medium">M-Pesa Express</p>
-                        <span className="bg-accent-green-light text-success rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
+                        <span className="az-pill az-pill-trust px-2 py-0.5 text-[11px] tracking-wide uppercase">
                           Recommended
                         </span>
                       </div>
@@ -943,9 +937,9 @@ export default function CheckoutPage() {
 
                   {/* Manual Paybill */}
                   <label
-                    className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
+                    className={`az-focus flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 transition ${
                       paymentMethod === "mpesa_paybill"
-                        ? "border-secondary bg-secondary-light/40"
+                        ? "border-trust bg-trust-light"
                         : "border-border/50 hover:border-border bg-white"
                     }`}
                   >
@@ -957,14 +951,14 @@ export default function CheckoutPage() {
                       onChange={() => setPaymentMethod("mpesa_paybill")}
                       className="accent-foreground mt-1.5"
                     />
-                    <Receipt className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
+                    <Receipt className="text-trust mt-0.5 h-5 w-5 shrink-0" />
                     <div className="flex-1">
                       <p className="text-foreground font-medium">Pay via M-Pesa Paybill</p>
                       <p className="text-muted mt-0.5 text-sm">
                         Pay manually from your M-Pesa menu using our Paybill number.
                       </p>
                       {paymentMethod === "mpesa_paybill" && (
-                        <div className="border-border/50 bg-background/80 mt-3 space-y-3 rounded-xl border p-3 text-sm">
+                        <div className="border-border/50 bg-surface-soft mt-3 space-y-3 rounded-[var(--radius)] border p-3 text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <p className="text-muted text-xs">Paybill (Business No.)</p>
@@ -1014,7 +1008,7 @@ export default function CheckoutPage() {
                         hasUnavailableItems ||
                         (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
                       }
-                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                      className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                     >
                       {paymentMutation.isPending ? "Saving..." : "Continue to Review"}
                     </button>
@@ -1023,7 +1017,7 @@ export default function CheckoutPage() {
                         setStep("shipping");
                         setErrorMessage(null);
                       }}
-                      className="text-muted hover:text-foreground text-sm font-medium transition"
+                      className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
                     >
                       &larr; Back to Shipping
                     </button>
@@ -1033,12 +1027,12 @@ export default function CheckoutPage() {
 
               {/* Step: Review */}
               {step === "review" && (
-                <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6">
+                <div className="az-surface space-y-4 p-4 sm:p-6">
                   <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
 
                   {/* Address summary */}
                   {cart.shipping_address && (
-                    <div className="border-border/50 bg-background/80 rounded-2xl border p-4 text-sm">
+                    <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
                       <p className="text-muted mb-1 text-sm font-semibold">Shipping to</p>
                       <p className="text-foreground">
                         {cart.shipping_address.first_name} {cart.shipping_address.last_name}
@@ -1057,7 +1051,7 @@ export default function CheckoutPage() {
 
                   {/* Shipping method summary */}
                   {cart.shipping_methods && cart.shipping_methods.length > 0 && (
-                    <div className="border-border/50 bg-background/80 rounded-2xl border p-4 text-sm">
+                    <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
                       <p className="text-muted mb-1 text-sm font-semibold">Shipping method</p>
                       {cart.shipping_methods.map((m) => (
                         <p key={m.id} className="text-foreground">
@@ -1068,12 +1062,12 @@ export default function CheckoutPage() {
                   )}
 
                   {/* Payment method summary */}
-                  <div className="border-border/50 bg-background/80 rounded-2xl border p-4 text-sm">
+                  <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
                     <p className="text-muted mb-1 text-sm font-semibold">Payment</p>
                     {paymentMethod === "mpesa_express" ? (
                       <>
                         <p className="text-foreground flex items-center gap-2">
-                          <Smartphone className="text-secondary h-4 w-4" />
+                          <Smartphone className="text-trust h-4 w-4" />
                           M-Pesa Express to {mpesaPhone || "your phone"}
                         </p>
                         <p className="text-muted mt-1 text-xs">
@@ -1084,7 +1078,7 @@ export default function CheckoutPage() {
                     ) : (
                       <>
                         <p className="text-foreground flex items-center gap-2">
-                          <Receipt className="text-secondary h-4 w-4" />
+                          <Receipt className="text-trust h-4 w-4" />
                           M-Pesa Paybill {MPESA_PAYBILL_NUMBER}
                         </p>
                         <p className="text-muted mt-1 text-xs">
@@ -1103,7 +1097,7 @@ export default function CheckoutPage() {
                       finalizeOrderMutation.isPending ||
                       hasUnavailableItems
                     }
-                    className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                   >
                     {completeMutation.isPending || finalizeOrderMutation.isPending
                       ? paymentMethod === "mpesa_express"
@@ -1118,7 +1112,7 @@ export default function CheckoutPage() {
                       setStep("payment");
                       setErrorMessage(null);
                     }}
-                    className="text-muted hover:text-foreground ml-4 text-sm font-medium transition"
+                    className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
                   >
                     &larr; Back to Payment
                   </button>
@@ -1127,7 +1121,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Summary sidebar */}
-            <div className="border-border/50 bg-card rounded-2xl border p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start">
+            <div className="az-surface p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start">
               <h3 className="text-foreground mb-4 text-base font-semibold">
                 Order Summary
                 <span className="text-muted ml-1.5 text-sm font-medium">
@@ -1154,7 +1148,7 @@ export default function CheckoutPage() {
 
                   return (
                     <div key={item.id} className="flex gap-3">
-                      <div className="border-border/50 bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border">
+                      <div className="border-border/50 bg-product-media relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-[var(--radius)] border">
                         {resolvedImage ? (
                           <Image
                             src={resolvedImage}
@@ -1168,7 +1162,7 @@ export default function CheckoutPage() {
                             <Package className="h-5 w-5" />
                           </div>
                         )}
-                        <span className="bg-foreground text-2xs absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full font-bold text-white shadow">
+                        <span className="bg-promo text-2xs absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full font-bold text-white shadow">
                           {item.quantity}
                         </span>
                       </div>
@@ -1181,9 +1175,9 @@ export default function CheckoutPage() {
                         <p
                           className={`mt-1 text-sm font-medium ${
                             availability.isOutOfStock
-                              ? "text-danger"
+                              ? "az-status-danger"
                               : availability.isLowStock
-                                ? "text-accent-yellow-ink"
+                                ? "az-status-warning"
                                 : "text-muted"
                           }`}
                         >

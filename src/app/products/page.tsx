@@ -104,7 +104,7 @@ function ProductsContent() {
           {selectedProductId && (
             <button
               onClick={() => setSelectedProductId(null)}
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+              className="az-icon-button az-focus -ml-1 flex h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full"
               aria-label="Back to products"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -133,14 +133,14 @@ function ProductsContent() {
           {activeFilterCount > 0 && !selectedProductId && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {filters.category && (
-                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                <span className="az-pill border-border/50 bg-card inline-flex border py-1 pr-1.5 pl-3 text-sm">
                   <Tag className="text-muted h-3 w-3" />
                   <span className="text-foreground font-medium">
                     {categoryQuery.data?.name ?? String(filters.category)}
                   </span>
                   <button
                     onClick={() => updateFilters({ ...filters, category: undefined })}
-                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
                     aria-label="Remove category filter"
                   >
                     <X className="h-3 w-3" />
@@ -148,14 +148,14 @@ function ProductsContent() {
                 </span>
               )}
               {filters.q && (
-                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                <span className="az-pill border-border/50 bg-card inline-flex border py-1 pr-1.5 pl-3 text-sm">
                   <Search className="text-muted h-3 w-3" />
                   <span className="text-foreground font-medium">
                     &ldquo;{String(filters.q)}&rdquo;
                   </span>
                   <button
                     onClick={() => updateFilters({ ...filters, q: undefined })}
-                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
                     aria-label="Remove search filter"
                   >
                     <X className="h-3 w-3" />
@@ -184,13 +184,13 @@ function ProductsContent() {
           ) : isLoading ? (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
+                <div key={i} className="az-skeleton aspect-[3/4]" />
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
-              <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
-                <ShoppingBag className="text-secondary h-8 w-8" />
+            <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+              <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
+                <ShoppingBag className="text-trust h-8 w-8" />
               </div>
               <div>
                 <p className="text-foreground text-lg font-semibold">No products found</p>
@@ -200,7 +200,7 @@ function ProductsContent() {
               </div>
               <button
                 onClick={() => updateFilters({})}
-                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
               >
                 Clear Filters
               </button>
@@ -227,7 +227,7 @@ function ProductsContent() {
                         params.set("page", String(p));
                         router.push(`/products?${params.toString()}`);
                       }}
-                      className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                      className={`az-focus flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 ${
                         p === page
                           ? "bg-foreground text-white"
                           : "border-border/50 text-muted hover:border-border hover:text-foreground border bg-white"
