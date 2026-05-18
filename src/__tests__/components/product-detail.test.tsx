@@ -3,23 +3,26 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductDetail } from "@/components/product-detail";
 import { renderWithProviders } from "../test-utils";
-import { mockProduct } from "../fixtures";
+import { mockCart, mockProduct, mockProductMinimal } from "../fixtures";
 
 const mockGetProductById = vi.fn();
 const mockAddToCart = vi.fn();
+const mockGetCart = vi.fn();
 const mockGetWishlistProductIds = vi.fn();
 const mockToggleWishlistProduct = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getProductById: (...args: unknown[]) => mockGetProductById(...args),
   addToCart: (...args: unknown[]) => mockAddToCart(...args),
-  getCart: vi.fn().mockResolvedValue(null),
+  getCart: (...args: unknown[]) => mockGetCart(...args),
   getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
   toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAddToCart.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+  mockGetCart.mockResolvedValue(null);
   mockGetWishlistProductIds.mockResolvedValue([]);
   mockToggleWishlistProduct.mockResolvedValue(["prod_01"]);
 });
@@ -49,8 +52,23 @@ describe("ProductDetail", () => {
     renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Premium diapers for all-night comfort")).toBeInTheDocument();
+      expect(screen.getAllByText("Premium diapers for all-night comfort").length).toBeGreaterThan(
+        0,
+      );
     });
+  });
+
+  it("structures product information into overview and essentials", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("heading", { name: "Essentials" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Care & use" })).toBeInTheDocument();
   });
 
   it("renders product options", async () => {
@@ -100,6 +118,55 @@ describe("ProductDetail", () => {
     });
   });
 
+  it("adds the selected variant and quantity to cart", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("50 Count")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("50 Count"));
+    await user.click(screen.getByLabelText("Increase quantity"));
+    await user.click(screen.getByRole("button", { name: /add to cart/i }));
+
+    expect(mockAddToCart).toHaveBeenCalledWith("variant_02", 2);
+  });
+
+  it("prevents quantity from exceeding remaining stock", async () => {
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      items: [{ ...mockCart.items[0], variant_id: "variant_01", quantity: 1 }],
+    });
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        variants: [
+          {
+            ...mockProduct.variants![0],
+            manage_inventory: true,
+            inventory_quantity: 2,
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Only 2 left")).toBeInTheDocument();
+    });
+
+    const increase = screen.getByLabelText("Increase quantity");
+    expect(increase).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /add to cart/i }));
+    expect(mockAddToCart).toHaveBeenCalledWith("variant_01", 1);
+  });
+
   it("shows product image", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 
@@ -109,6 +176,64 @@ describe("ProductDetail", () => {
       const img = screen.getByAltText("Pampers Baby Dry Diapers");
       expect(img).toBeInTheDocument();
     });
+  });
+
+  it("shows a missing image fallback without rendering a broken product image", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProductMinimal });
+
+    renderWithProviders(<ProductDetail productId="prod_02" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Image coming soon")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByAltText("Baby Wipes")).not.toBeInTheDocument();
+  });
+
+  it("switches the primary image from the thumbnail rail", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        thumbnail: "https://example.com/pampers-primary.jpg",
+        images: [
+          { id: "img_01", url: "https://example.com/pampers-primary.jpg" },
+          { id: "img_02", url: "https://example.com/pampers-side.jpg" },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Pampers Baby Dry Diapers")).toHaveAttribute(
+        "src",
+        "https://example.com/pampers-primary.jpg",
+      );
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Show image 2 of Pampers Baby Dry Diapers" }),
+    );
+
+    expect(screen.getByAltText("Pampers Baby Dry Diapers")).toHaveAttribute(
+      "src",
+      "https://example.com/pampers-side.jpg",
+    );
+  });
+
+  it("renders restrained trust and support sections", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Safe product checks")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Delivery & returns")).toBeInTheDocument();
+    expect(screen.getByText("M-Pesa ready")).toBeInTheDocument();
+    expect(screen.getByText("WhatsApp assistance")).toBeInTheDocument();
   });
 
   it("toggles wishlist from the detail page", async () => {

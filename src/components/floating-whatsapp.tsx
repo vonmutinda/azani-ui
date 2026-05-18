@@ -15,20 +15,20 @@ export function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
+      className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
     >
-      <span className="relative flex h-14 w-14 items-center justify-center">
+      <span className="relative flex h-11 w-11 items-center justify-center sm:h-14 sm:w-14">
         <span
           aria-hidden="true"
-          className="absolute inline-flex h-full w-full rounded-full bg-[#25D366]/40 motion-safe:animate-ping"
+          className="absolute hidden h-full w-full rounded-full bg-[#25D366]/40 motion-safe:animate-ping sm:inline-flex"
         />
         <span
-          className="relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 sm:h-14 sm:w-14"
           style={{ backgroundColor: WA_GREEN }}
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-7 w-7 fill-white"
+            className="h-5 w-5 fill-white sm:h-7 sm:w-7"
             aria-hidden="true"
             focusable="false"
           >

@@ -22,9 +22,13 @@ vi.mock("next/navigation", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: (
-    props: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; priority?: boolean },
+    props: React.ImgHTMLAttributes<HTMLImageElement> & {
+      fill?: boolean;
+      preload?: boolean;
+      priority?: boolean;
+    },
   ) => {
-    const { fill: _fill, priority: _priority, ...rest } = props;
+    const { fill: _fill, preload: _preload, priority: _priority, ...rest } = props;
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img {...rest} />;
   },
