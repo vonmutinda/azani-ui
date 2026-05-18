@@ -197,7 +197,7 @@ const products = [
     description:
       "Compact high chair with wipe-clean tray, adjustable footrest, and sturdy harness.",
     image:
-      "https://images.unsplash.com/photo-1569530593440-eab003a255b8?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1590649880765-91b1956b8276?auto=format&fit=crop&w=900&q=80",
     categoryHandles: ["feeding", "weaning-essentials"],
     price: 8490,
     createdDaysAgo: 42,
