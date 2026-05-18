@@ -109,12 +109,30 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
       ? Date.now() - new Date(product.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
       : false,
   );
+  const hasSalePrice = !!originalPrice;
+  const wishlistLabel = isWishlisted
+    ? `Remove ${product.title} from wishlist`
+    : `Add ${product.title} to wishlist`;
+  const quickAddLabel = maxedOut
+    ? `Maximum ${product.title} quantity already in cart`
+    : availability.canPurchase
+      ? `Quick add ${product.title}`
+      : `${product.title} is out of stock`;
 
   return (
-    <article className="az-product-card group relative flex flex-col overflow-hidden transition duration-300">
-      {isNew && (
-        <div className="absolute top-3 left-3 z-10">
-          <span className="az-pill az-pill-promo text-2xs tracking-wider uppercase">New</span>
+    <article className="az-product-card group relative flex min-w-0 flex-col overflow-hidden transition duration-300">
+      {(isNew || hasSalePrice) && (
+        <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-wrap gap-1.5">
+          {isNew && (
+            <span className="az-pill az-pill-promo text-2xs px-2 py-1 tracking-wider uppercase">
+              New
+            </span>
+          )}
+          {hasSalePrice && (
+            <span className="az-pill az-pill-trust text-2xs px-2 py-1 tracking-wider uppercase">
+              Sale
+            </span>
+          )}
         </div>
       )}
 
@@ -127,14 +145,17 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
             isWishlisted ? "text-primary" : "text-muted"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={wishlistLabel}
         >
           <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
         </button>
       </div>
 
       <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
-        <div className="bg-product-media relative aspect-square overflow-hidden">
+        <div
+          data-testid="product-card-media"
+          className="bg-product-media relative aspect-[4/5] overflow-hidden"
+        >
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -152,17 +173,18 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-1 px-3 pt-2.5 pb-3">
+      <div className="flex min-h-[9rem] flex-1 flex-col gap-2 px-3 pt-2.5 pb-3">
         <Link
           href={productHref}
           onClick={handleClick}
-          className="text-foreground hover:text-secondary line-clamp-2 text-sm leading-snug font-medium transition"
+          data-testid="product-card-title"
+          className="text-foreground hover:text-secondary line-clamp-2 min-h-[2.35rem] text-sm leading-snug font-semibold transition"
         >
           {product.title}
         </Link>
 
         <p
-          className={`text-sm font-medium ${
+          className={`text-xs leading-none font-semibold ${
             maxedOut
               ? "az-status-muted"
               : availability.isOutOfStock
@@ -175,11 +197,15 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
-        <div className="mt-auto flex items-center justify-between">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
+        <div className="mt-auto flex items-end justify-between gap-2">
+          <div className="flex min-w-0 flex-col">
+            <span className="text-foreground text-base leading-tight font-bold">
+              {price?.formatted ?? "--"}
+            </span>
             {originalPrice && (
-              <span className="text-muted text-2xs line-through">{originalPrice}</span>
+              <span className="text-muted text-2xs leading-tight line-through">
+                {originalPrice}
+              </span>
             )}
           </div>
 
@@ -188,25 +214,19 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`az-focus flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 ${
+              className={`az-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
                 justAdded
                   ? "bg-success scale-110"
                   : maxedOut
                     ? "bg-muted cursor-default opacity-60"
                     : "bg-foreground hover:bg-foreground/85 disabled:opacity-40"
               }`}
-              aria-label={
-                maxedOut
-                  ? "Max quantity in cart"
-                  : availability.canPurchase
-                    ? "Add to cart"
-                    : "Out of stock"
-              }
+              aria-label={quickAddLabel}
               title={
                 maxedOut
                   ? "Max quantity in cart"
                   : availability.canPurchase
-                    ? "Add to cart"
+                    ? "Quick add"
                     : "Out of stock"
               }
             >

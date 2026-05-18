@@ -55,7 +55,7 @@ function CategoryItem({
           <button
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            aria-label={open ? "Collapse category" : "Expand category"}
+            aria-label={`${open ? "Collapse" : "Expand"} ${cat.name}`}
             className="az-icon-button az-focus h-7 min-h-7 w-7 min-w-7 shrink-0 rounded-md"
           >
             {open ? (
@@ -69,6 +69,7 @@ function CategoryItem({
         )}
         <button
           onClick={() => onSelect(isActive ? undefined : cat.slug)}
+          aria-current={isActive ? "true" : undefined}
           className={`az-focus flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
             isActive
               ? "bg-foreground/[0.06] text-foreground font-semibold"
@@ -121,12 +122,12 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
     [filters, onFilterChange],
   );
 
-  const content = (
+  const renderContent = (titleId: string) => (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-foreground flex items-center gap-2 text-sm font-semibold">
+        <h3 id={titleId} className="text-foreground flex items-center gap-2 text-sm font-semibold">
           <SlidersHorizontal className="h-3.5 w-3.5" />
-          Browse
+          Filters
           {activeFilterCount > 0 && (
             <span className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]">
               {activeFilterCount}
@@ -170,22 +171,31 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
 
   return (
     <>
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="az-btn az-btn-outline az-focus flex rounded-full px-4 py-2.5 lg:hidden"
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-        Filters
-        {activeFilterCount > 0 && (
-          <span className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]">
-            {activeFilterCount}
-          </span>
-        )}
-      </button>
+      <div className="lg:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open filters"
+          className="az-btn az-btn-outline az-focus flex w-full rounded-full px-4 py-2.5"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="filters-title-mobile"
+          className="fixed inset-0 z-50 flex lg:hidden"
+        >
           <div
+            aria-hidden="true"
             className="bg-foreground/20 absolute inset-0 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
@@ -197,14 +207,14 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             >
               <X className="h-5 w-5" />
             </button>
-            {content}
+            {renderContent("filters-title-mobile")}
           </div>
         </div>
       )}
 
       <aside className="hidden w-[280px] shrink-0 lg:block">
         <div className="hide-scrollbar sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          {content}
+          {renderContent("filters-title-desktop")}
         </div>
       </aside>
     </>
