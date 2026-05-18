@@ -173,6 +173,88 @@ function getStatusColor(label: string) {
   }
 }
 
+function getPaymentStateLabel(status: string): string {
+  switch (status) {
+    case "captured":
+      return "Paid";
+    case "partially_captured":
+      return "Partially paid";
+    case "awaiting":
+      return "Awaiting payment";
+    case "authorized":
+      return "Authorized";
+    case "partially_authorized":
+      return "Partially authorized";
+    case "not_paid":
+      return "Not paid";
+    case "refunded":
+      return "Refunded";
+    case "partially_refunded":
+      return "Partially refunded";
+    case "canceled":
+      return "Canceled";
+    case "requires_action":
+      return "Needs attention";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
+function getFulfillmentStateLabel(status: string): string {
+  switch (status) {
+    case "not_fulfilled":
+      return "Not fulfilled";
+    case "partially_fulfilled":
+      return "Partially fulfilled";
+    case "fulfilled":
+      return "Fulfilled";
+    case "partially_shipped":
+      return "Partially shipped";
+    case "shipped":
+      return "Shipped";
+    case "partially_delivered":
+      return "Partially delivered";
+    case "delivered":
+      return "Delivered";
+    case "partially_returned":
+      return "Partially returned";
+    case "returned":
+      return "Returned";
+    case "canceled":
+      return "Canceled";
+    case "requires_action":
+      return "Needs attention";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
+function getPaymentStateColor(status: string): string {
+  if (["captured", "partially_captured"].includes(status)) {
+    return "bg-accent-green-light text-success-ink";
+  }
+  if (["awaiting", "authorized", "partially_authorized", "requires_action"].includes(status)) {
+    return "bg-accent-yellow-light text-accent-yellow-ink";
+  }
+  if (["refunded", "partially_refunded", "canceled"].includes(status)) {
+    return "bg-danger/10 text-danger";
+  }
+  return "bg-foreground/10 text-foreground";
+}
+
+function getFulfillmentStateColor(status: string): string {
+  if (["delivered", "partially_delivered"].includes(status)) {
+    return "bg-accent-green-light text-success-ink";
+  }
+  if (["fulfilled", "partially_fulfilled", "shipped", "partially_shipped"].includes(status)) {
+    return "bg-secondary-light text-secondary";
+  }
+  if (["returned", "partially_returned", "canceled"].includes(status)) {
+    return "bg-danger/10 text-danger";
+  }
+  return "bg-accent-yellow-light text-accent-yellow-ink";
+}
+
 function OrderJourney({ order }: { order: MedusaOrder }) {
   const steps = getOrderJourney(order);
   return (
@@ -1268,6 +1350,18 @@ function OrderDetail({
           </div>
         </div>
         <div className="border-border/50 mt-2.5 border-t pt-2.5">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getPaymentStateColor(order.payment_status)}`}
+            >
+              Payment: {getPaymentStateLabel(order.payment_status)}
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getFulfillmentStateColor(order.fulfillment_status)}`}
+            >
+              Fulfillment: {getFulfillmentStateLabel(order.fulfillment_status)}
+            </span>
+          </div>
           <OrderJourney order={order} />
         </div>
       </div>

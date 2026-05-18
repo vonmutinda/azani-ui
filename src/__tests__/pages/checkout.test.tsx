@@ -118,7 +118,7 @@ describe("CheckoutPage", () => {
 
     await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalled());
     expect(mockCompleteCart).not.toHaveBeenCalled();
-    expect(await screen.findByText("Payment Request Sent")).toBeInTheDocument();
+    expect(await screen.findByText("Waiting for M-Pesa confirmation")).toBeInTheDocument();
   }, 30_000);
 
   it("does not create an order for M-Pesa Express while payment is still pending", async () => {
@@ -140,7 +140,54 @@ describe("CheckoutPage", () => {
 
     await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalled());
     expect(mockCompleteCart).not.toHaveBeenCalled();
-    expect(await screen.findByText("Payment Request Sent")).toBeInTheDocument();
+    expect(await screen.findByText("Waiting for M-Pesa confirmation")).toBeInTheDocument();
+  }, 30_000);
+
+  it("shows Express pending state as waiting for captured payment", async () => {
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    expect(await screen.findByText("Waiting for M-Pesa confirmation")).toBeInTheDocument();
+    expect(
+      screen.getByText(/order will be created after payment is captured/i),
+    ).toBeInTheDocument();
+    expect(mockCompleteCart).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("keeps Paybill order creation in an awaiting-payment confirmation state", async () => {
+    mockCompleteCart.mockResolvedValue({
+      type: "order",
+      order: { id: "order_1", display_id: 1001, created_at: "2026-05-17T00:00:00.000Z" },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+
+    fireEvent.click(screen.getByLabelText(/Pay via M-Pesa Paybill/i));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    expect(await screen.findByText("Awaiting manual payment")).toBeInTheDocument();
+    expect(screen.getByText("Account no.")).toBeInTheDocument();
+    expect(screen.getByText("AZN-2605-1001R1")).toBeInTheDocument();
+    expect(mockInitializePaymentSession).toHaveBeenCalledTimes(1);
+    expect(mockCompleteCart).toHaveBeenCalledTimes(1);
   }, 30_000);
 
   it("creates the order when a pending M-Pesa Express payment becomes captured", async () => {
@@ -178,8 +225,10 @@ describe("CheckoutPage", () => {
     await screen.findByText("Review & Place Order");
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
-    await screen.findByText("Payment Request Sent");
+    await screen.findByText("Waiting for M-Pesa confirmation");
     await waitFor(() => expect(mockCompleteCart).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
+    expect(await screen.findByText("Order placed")).toBeInTheDocument();
+    expect(screen.getByText(/keep this order number for support/i)).toBeInTheDocument();
+    expect(screen.queryByText(/ready in your account/i)).not.toBeInTheDocument();
   }, 30_000);
 });

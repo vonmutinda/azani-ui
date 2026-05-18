@@ -135,14 +135,14 @@ export default function CartPage() {
           </Link>
           <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
         </div>
-        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
           <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-trust h-8 w-8" />
           </div>
           <div>
             <p className="text-foreground text-lg font-semibold">Your cart is empty</p>
             <p className="text-muted mt-1 text-sm">
-              Looks like you haven&apos;t added any items yet
+              Add essentials to your cart and we&apos;ll keep checkout quick.
             </p>
           </div>
           <Link
@@ -180,9 +180,8 @@ export default function CartPage() {
       )}
 
       <div className="grid items-start gap-8 lg:grid-cols-3">
-        {/* Items — single receipt-style card */}
         <div className="az-surface divide-border divide-y overflow-hidden lg:col-span-2">
-          <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-xs font-semibold tracking-widest uppercase sm:flex">
+          <div className="text-muted bg-surface-soft hidden items-center justify-between px-4 py-2.5 text-xs font-semibold tracking-widest uppercase sm:flex">
             <span>Product</span>
             <div className="flex gap-8 lg:gap-16">
               <span>Qty</span>
@@ -259,17 +258,11 @@ export default function CartPage() {
                     </div>
                     <div className="text-muted flex items-center gap-2 text-xs">
                       <Truck className="h-3 w-3 shrink-0" />
-                      <span>
-                        Add{" "}
-                        <span className="text-foreground font-semibold">
-                          {formatPrice(remaining)}
-                        </span>{" "}
-                        for free shipping
-                      </span>
+                      <span>{formatPrice(remaining)} away from free delivery</span>
                     </div>
                     <div className="bg-border h-1 overflow-hidden rounded-full">
                       <div
-                        className="bg-secondary h-full rounded-full transition-all duration-500"
+                        className="bg-trust h-full rounded-full transition-all duration-500"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -284,7 +277,7 @@ export default function CartPage() {
               </div>
             </div>
 
-            <div className="bg-trust-light text-muted mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
+            <div className="bg-trust-light text-muted mt-4 flex items-center gap-2 rounded-[var(--radius)] px-3 py-2 text-xs">
               <Clock className="text-trust h-3.5 w-3.5 shrink-0" />
               <span>
                 Estimated delivery:{" "}
@@ -306,6 +299,7 @@ export default function CartPage() {
                     <span className="text-success font-medium">{promo.code}</span>
                     <button
                       onClick={() => removePromoMutation.mutate(promo.code)}
+                      aria-label={`Remove promo code ${promo.code}`}
                       className="az-focus text-muted hover:text-danger rounded transition"
                     >
                       <X className="h-4 w-4" />
@@ -406,7 +400,7 @@ function CartItem({
   const productHref = item.product_id ? `/products/${item.product_id}` : "#";
 
   return (
-    <div className="hover:bg-foreground/[0.04]/50 flex gap-3 px-4 py-3 transition">
+    <div className="hover:bg-foreground/[0.04]/50 grid grid-cols-[5rem_1fr] gap-3 px-4 py-3 transition sm:grid-cols-[6rem_1fr_auto] sm:items-center">
       <Link
         href={productHref}
         className="bg-product-media relative h-20 w-20 shrink-0 overflow-hidden rounded-[var(--radius)] transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
@@ -420,11 +414,11 @@ function CartItem({
         )}
       </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-between">
-        <div className="flex items-start justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:min-h-24 sm:justify-center">
+        <div className="flex items-start justify-between gap-2 sm:block">
           <div className="min-w-0">
             <Link href={productHref} className="group">
-              <h3 className="text-foreground group-hover:text-secondary line-clamp-1 text-sm font-medium transition-colors">
+              <h3 className="text-foreground group-hover:text-secondary line-clamp-2 text-sm font-semibold transition-colors">
                 {item.title}
               </h3>
             </Link>
@@ -457,7 +451,7 @@ function CartItem({
               </p>
             )}
           </div>
-          <span className="text-foreground shrink-0 text-sm font-bold">
+          <span className="text-foreground shrink-0 text-sm font-bold sm:hidden">
             {formatPrice(
               item.total || item.subtotal || item.unit_price * item.quantity,
               currencyCode,
@@ -465,9 +459,11 @@ function CartItem({
           </span>
         </div>
 
-        <div className="mt-1 flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 sm:justify-start">
           <div className="border-border/50 flex items-center rounded-full border">
             <button
+              type="button"
+              aria-label={`Decrease quantity for ${item.title}`}
               onClick={() => {
                 const next = Math.max(1, item.quantity - 1);
                 setEditQty(String(next));
@@ -479,6 +475,7 @@ function CartItem({
               <Minus className="h-3.5 w-3.5" />
             </button>
             <input
+              aria-label={`Quantity for ${item.title}`}
               type="text"
               inputMode="numeric"
               value={editQty}
@@ -496,6 +493,8 @@ function CartItem({
               className="az-focus w-8 bg-transparent text-center text-xs font-bold outline-none disabled:opacity-40"
             />
             <button
+              type="button"
+              aria-label={`Increase quantity for ${item.title}`}
               onClick={() => {
                 const next = Math.min(effectiveMaxQuantity, item.quantity + 1);
                 setEditQty(String(next));
@@ -511,6 +510,8 @@ function CartItem({
           </div>
 
           <button
+            type="button"
+            aria-label={`Remove ${item.title}`}
             onClick={() => onRemove(item.id)}
             disabled={isRemoving}
             className="az-icon-button az-focus hover:bg-danger-light hover:text-danger rounded-full p-2.5"
@@ -518,6 +519,16 @@ function CartItem({
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+      </div>
+
+      <div className="hidden text-right sm:block">
+        <p className="text-muted text-xs">Line total</p>
+        <p className="text-foreground text-sm font-bold">
+          {formatPrice(
+            item.total || item.subtotal || item.unit_price * item.quantity,
+            currencyCode,
+          )}
+        </p>
       </div>
     </div>
   );
