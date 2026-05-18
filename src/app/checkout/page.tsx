@@ -793,10 +793,14 @@ export default function CheckoutPage() {
                   {(!isUsingSavedAddress || !selectedSavedAddress) && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                        <label
+                          htmlFor="checkout-first-name"
+                          className="text-muted mb-1.5 block text-sm font-medium"
+                        >
                           First Name <span className="text-danger">*</span>
                         </label>
                         <input
+                          id="checkout-first-name"
                           required
                           value={form.first_name}
                           onChange={(e) => setForm({ ...form, first_name: e.target.value })}
@@ -804,10 +808,14 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                        <label
+                          htmlFor="checkout-last-name"
+                          className="text-muted mb-1.5 block text-sm font-medium"
+                        >
                           Last Name <span className="text-danger">*</span>
                         </label>
                         <input
+                          id="checkout-last-name"
                           required
                           value={form.last_name}
                           onChange={(e) => setForm({ ...form, last_name: e.target.value })}
@@ -815,7 +823,10 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                        <label
+                          htmlFor="checkout-email"
+                          className="text-muted mb-1.5 block text-sm font-medium"
+                        >
                           Email <span className="text-muted/70 font-normal">(optional)</span>
                         </label>
                         {customerQuery.data ? (
@@ -824,6 +835,7 @@ export default function CheckoutPage() {
                           </div>
                         ) : (
                           <input
+                            id="checkout-email"
                             type="email"
                             value={form.email}
                             onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -832,10 +844,14 @@ export default function CheckoutPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                        <label
+                          htmlFor="checkout-phone"
+                          className="text-muted mb-1.5 block text-sm font-medium"
+                        >
                           Phone <span className="text-danger">*</span>
                         </label>
                         <input
+                          id="checkout-phone"
                           type="tel"
                           required
                           placeholder="+254 7XX XXX XXX"
@@ -845,10 +861,14 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-muted mb-1.5 block text-sm font-medium">
+                        <label
+                          htmlFor="checkout-address"
+                          className="text-muted mb-1.5 block text-sm font-medium"
+                        >
                           Street Address <span className="text-danger">*</span>
                         </label>
                         <input
+                          id="checkout-address"
                           required
                           value={form.address_1}
                           onChange={(e) => setForm({ ...form, address_1: e.target.value })}
@@ -937,10 +957,14 @@ export default function CheckoutPage() {
                       </p>
                       {paymentMethod === "mpesa_express" && (
                         <div className="mt-3 space-y-1.5">
-                          <label className="text-muted block text-xs font-medium">
+                          <label
+                            htmlFor="checkout-mpesa-phone"
+                            className="text-muted block text-xs font-medium"
+                          >
                             M-Pesa Phone Number <span className="text-danger">*</span>
                           </label>
                           <input
+                            id="checkout-mpesa-phone"
                             type="tel"
                             required
                             placeholder="+254 7XX XXX XXX"

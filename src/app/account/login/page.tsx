@@ -292,8 +292,11 @@ export default function LoginPage() {
             reset your password.
           </p>
           <div>
-            <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
+            <label htmlFor="forgot-email" className="text-muted mb-1.5 block text-sm font-medium">
+              Email
+            </label>
             <input
+              id="forgot-email"
               type="email"
               placeholder="you@example.com"
               value={forgotEmail}
@@ -403,8 +406,14 @@ export default function LoginPage() {
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1.5 block text-sm font-medium">First name</label>
+              <label
+                htmlFor="account-first-name"
+                className="text-muted mb-1.5 block text-sm font-medium"
+              >
+                First name
+              </label>
               <input
+                id="account-first-name"
                 placeholder="First name"
                 value={form.first_name}
                 onChange={(e) => setForm({ ...form, first_name: e.target.value })}
@@ -415,8 +424,14 @@ export default function LoginPage() {
               )}
             </div>
             <div>
-              <label className="text-muted mb-1.5 block text-sm font-medium">Last name</label>
+              <label
+                htmlFor="account-last-name"
+                className="text-muted mb-1.5 block text-sm font-medium"
+              >
+                Last name
+              </label>
               <input
+                id="account-last-name"
                 placeholder="Last name"
                 value={form.last_name}
                 onChange={(e) => setForm({ ...form, last_name: e.target.value })}
@@ -430,8 +445,11 @@ export default function LoginPage() {
         )}
 
         <div>
-          <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
+          <label htmlFor="account-email" className="text-muted mb-1.5 block text-sm font-medium">
+            Email
+          </label>
           <input
+            id="account-email"
             type="text"
             placeholder="Email"
             value={form.email}
@@ -445,7 +463,9 @@ export default function LoginPage() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-muted text-sm font-medium">Password</label>
+            <label htmlFor="account-password" className="text-muted text-sm font-medium">
+              Password
+            </label>
             {!isRegister && (
               <button
                 type="button"
@@ -461,6 +481,7 @@ export default function LoginPage() {
           </div>
           <div className="relative">
             <input
+              id="account-password"
               type={showPassword ? "text" : "password"}
               placeholder={isRegister ? "Min. 8 characters" : "Password"}
               value={form.password}
@@ -472,6 +493,7 @@ export default function LoginPage() {
               onClick={() => setShowPassword(!showPassword)}
               className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
               tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -514,9 +536,15 @@ export default function LoginPage() {
         {/* Confirm password -- only during registration */}
         {isRegister && (
           <div>
-            <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
+            <label
+              htmlFor="account-confirm-password"
+              className="text-muted mb-1.5 block text-sm font-medium"
+            >
+              Confirm Password
+            </label>
             <div className="relative">
               <input
+                id="account-confirm-password"
                 type={showConfirm ? "text" : "password"}
                 placeholder="Re-enter your password"
                 value={form.confirm_password}
@@ -528,6 +556,7 @@ export default function LoginPage() {
                 onClick={() => setShowConfirm(!showConfirm)}
                 className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
                 tabIndex={-1}
+                aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
