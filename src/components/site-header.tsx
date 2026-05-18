@@ -51,11 +51,24 @@ function getNavigationCategories(categories: Category[]): Category[] {
   });
 }
 
-function MegaMenu({ category, onClose }: { category: Category; onClose: () => void }) {
+function MegaMenu({
+  category,
+  onClose,
+  panelId,
+}: {
+  category: Category;
+  onClose: () => void;
+  panelId: string;
+}) {
   const children = category.children ?? [];
 
   return (
-    <div className="absolute inset-x-0 top-full z-50 hidden lg:block">
+    <div
+      id={panelId}
+      role="group"
+      aria-label={`${category.name} categories`}
+      className="fixed inset-x-0 top-[152px] z-50 hidden lg:block"
+    >
       <div className="bg-card/98 border-border/55 border-t shadow-lg backdrop-blur-xl">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-6 lg:grid-cols-[260px_1fr] lg:px-8">
           <div className="az-trust-surface border-trust/10 border p-4">
@@ -195,6 +208,11 @@ export function SiteHeader() {
     megaTimeout.current = setTimeout(() => setActiveMega(null), 180);
   };
 
+  const handleMegaBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    closeMega();
+  };
+
   const closeMenus = () => {
     setMobileOpen(false);
     setActiveMega(null);
@@ -212,8 +230,6 @@ export function SiteHeader() {
       if (megaTimeout.current) clearTimeout(megaTimeout.current);
     };
   }, []);
-
-  const activeCategory = topCategories.find((c) => c.slug === activeMega);
 
   return (
     <header className="bg-card/98 supports-[backdrop-filter]:bg-card/92 sticky top-0 z-50 backdrop-blur-xl">
@@ -335,6 +351,9 @@ export function SiteHeader() {
             <div className="flex min-w-0 flex-1 items-center justify-between gap-1">
               {topCategories.map((cat) => {
                 const isNavActive = activeMainSlug === cat.slug;
+                const isMegaActive = activeMega === cat.slug;
+                const panelId = `desktop-category-panel-${cat.slug}`;
+
                 return (
                   <div
                     key={cat.slug}
@@ -342,12 +361,15 @@ export function SiteHeader() {
                     onMouseEnter={() => openMega(cat.slug)}
                     onMouseLeave={closeMega}
                     onFocus={() => openMega(cat.slug)}
-                    onBlur={closeMega}
+                    onBlur={handleMegaBlur}
                   >
                     <Link
                       href={`/products?category=${cat.slug}`}
+                      aria-haspopup="true"
+                      aria-expanded={isMegaActive}
+                      aria-controls={panelId}
                       className={`az-focus flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold whitespace-nowrap transition ${
-                        activeMega === cat.slug || isNavActive
+                        isMegaActive || isNavActive
                           ? "bg-primary-light text-primary"
                           : "text-foreground hover:bg-foreground/[0.04] hover:text-primary"
                       }`}
@@ -355,10 +377,13 @@ export function SiteHeader() {
                       {cat.name}
                       <ChevronDown
                         className={`h-3.5 w-3.5 shrink-0 opacity-55 transition-transform ${
-                          activeMega === cat.slug ? "rotate-180" : ""
+                          isMegaActive ? "rotate-180" : ""
                         }`}
                       />
                     </Link>
+                    {isMegaActive && (
+                      <MegaMenu category={cat} onClose={closeMenus} panelId={panelId} />
+                    )}
                   </div>
                 );
               })}
@@ -366,16 +391,6 @@ export function SiteHeader() {
           </nav>
         </div>
       </div>
-
-      {activeCategory && (
-        <div
-          className="relative hidden lg:block"
-          onMouseEnter={() => openMega(activeCategory.slug)}
-          onMouseLeave={closeMega}
-        >
-          <MegaMenu category={activeCategory} onClose={closeMenus} />
-        </div>
-      )}
 
       {searchOpen && (
         <div className="bg-card/98 border-border/40 border-t backdrop-blur-xl">

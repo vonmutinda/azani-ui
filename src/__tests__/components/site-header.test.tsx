@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteHeader } from "@/components/site-header";
@@ -162,5 +163,21 @@ describe("SiteHeader", () => {
     await user.click(screen.getByRole("button", { name: "Close menu" }));
 
     expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).not.toBeInTheDocument();
+  });
+
+  it("lets keyboard users move from a desktop category trigger into its mega menu", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    const bathCategory = await screen.findByRole("link", { name: /Bath & Diapering/ });
+
+    await act(async () => {
+      bathCategory.focus();
+    });
+
+    const shopAllBath = await screen.findByRole("link", { name: "Shop all Bath & Diapering" });
+    await user.tab();
+
+    expect(shopAllBath).toHaveFocus();
   });
 });
