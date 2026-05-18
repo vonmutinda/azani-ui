@@ -72,6 +72,18 @@ describe("CheckoutPage", () => {
     await screen.findByText("Payment Method");
   }
 
+  it("exposes accessible names for checkout address fields", async () => {
+    renderWithProviders(<CheckoutPage />);
+
+    await screen.findByText("Shipping Address");
+
+    expect(screen.getByRole("textbox", { name: /first name/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /last name/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /phone/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /street address/i })).toBeInTheDocument();
+  });
+
   it("lets guests continue without sending an empty optional email", async () => {
     renderWithProviders(<CheckoutPage />);
 

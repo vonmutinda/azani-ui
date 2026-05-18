@@ -63,6 +63,14 @@ describe("LoginPage", () => {
     expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
   });
 
+  it("exposes accessible names for sign-in fields and password visibility", () => {
+    renderWithProviders(<LoginPage />);
+
+    expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /show password/i })).toBeInTheDocument();
+  });
+
   it("signs in and routes to account after successful session rehydration", async () => {
     mockLoginCustomer.mockResolvedValueOnce({ token: "jwt_123" });
 
