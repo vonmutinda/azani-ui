@@ -269,6 +269,17 @@ describe("AccountPage", () => {
       }
     });
 
+    it("shows explicit payment and fulfillment state labels in order detail", async () => {
+      await renderOrderWithStatuses({
+        status: "pending",
+        fulfillment_status: "not_fulfilled",
+        payment_status: "awaiting",
+      });
+
+      expect(screen.getByText("Payment: Awaiting payment")).toBeInTheDocument();
+      expect(screen.getByText("Fulfillment: Not fulfilled")).toBeInTheDocument();
+    });
+
     it("shows Confirmed after admin fulfils items", async () => {
       await renderOrderWithStatuses({
         status: "pending",

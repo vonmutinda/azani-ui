@@ -479,19 +479,20 @@ export default function CheckoutPage() {
   if (paymentPending) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
-          <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
+        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
+          <div className="bg-warning/15 flex h-20 w-20 items-center justify-center rounded-full">
             <Smartphone className="text-trust h-9 w-9" />
           </div>
-          <h1 className="text-foreground text-2xl font-bold">Payment Request Sent</h1>
+          <span className="az-pill bg-warning/15 text-warning-ink">Pending payment</span>
+          <h1 className="text-foreground text-2xl font-bold">Waiting for M-Pesa confirmation</h1>
           <div className="max-w-md space-y-2">
             <p className="text-foreground text-sm font-medium">
               Check your phone for the M-Pesa prompt
             </p>
             <p className="text-muted text-sm leading-relaxed">
               Enter your M-Pesa PIN on{" "}
-              <span className="text-foreground font-medium">{mpesaPhone}</span>. We&apos;ll create
-              your order after M-Pesa confirms the payment.
+              <span className="text-foreground font-medium">{mpesaPhone}</span>. Your order will be
+              created after payment is captured by M-Pesa.
             </p>
           </div>
           <button
@@ -507,25 +508,39 @@ export default function CheckoutPage() {
   }
 
   if (orderPlaced) {
+    const isManualPayment = paymentMethod === "mpesa_paybill";
+
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
-          <div className="bg-success-light flex h-20 w-20 items-center justify-center rounded-full">
-            <Check className="text-success h-9 w-9" />
+        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
+          <div
+            className={`flex h-20 w-20 items-center justify-center rounded-full ${
+              isManualPayment ? "bg-warning/15" : "bg-success-light"
+            }`}
+          >
+            {isManualPayment ? (
+              <Receipt className="text-warning-ink h-9 w-9" />
+            ) : (
+              <Check className="text-success h-9 w-9" />
+            )}
           </div>
-          <h1 className="text-foreground text-2xl font-bold">Order Placed!</h1>
+          <span
+            className={`az-pill ${isManualPayment ? "bg-warning/15 text-warning-ink" : "bg-success-light text-success-ink"}`}
+          >
+            {isManualPayment ? "Awaiting manual payment" : "Paid"}
+          </span>
+          <h1 className="text-foreground text-2xl font-bold">
+            {isManualPayment ? "Order placed, payment pending" : "Order placed"}
+          </h1>
           {placedOrderRef && (
             <p className="text-foreground text-sm font-medium">Order {placedOrderRef}</p>
           )}
           {paymentMethod === "mpesa_express" ? (
             <div className="max-w-md space-y-2">
-              <p className="text-foreground text-sm font-medium">
-                Check your phone for the M-Pesa prompt
-              </p>
+              <p className="text-foreground text-sm font-medium">M-Pesa payment captured</p>
               <p className="text-muted text-sm leading-relaxed">
-                We&apos;ve sent a Lipa na M-Pesa prompt to{" "}
-                <span className="text-foreground font-medium">{mpesaPhone}</span>. Enter your M-Pesa
-                PIN to complete payment. We&apos;ll dispatch once your payment is confirmed.
+                Your payment was confirmed, so your order has been created. We&apos;ll dispatch once
+                the order is prepared.
               </p>
             </div>
           ) : (
@@ -548,8 +563,9 @@ export default function CheckoutPage() {
             </div>
           )}
           <p className="text-muted max-w-md text-sm leading-relaxed">
-            Thank you for shopping at {MPESA_BUSINESS_NAME}! You&apos;ll receive a confirmation
-            email shortly.
+            {isManualPayment
+              ? "Keep this order number as your Paybill reference. We only dispatch after payment is confirmed."
+              : "Thank you for shopping with Azani. Your confirmation is ready in your account."}
           </p>
           <Link
             href="/products"

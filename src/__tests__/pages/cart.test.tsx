@@ -1,21 +1,36 @@
-import { describe, it, expect, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import CartPage from "@/app/cart/page";
 import { renderWithProviders } from "../test-utils";
-import { mockCart, mockEmptyCart } from "../fixtures";
+import { mockCart, mockEmptyCart, mockProduct } from "../fixtures";
 
 const mockGetCart = vi.fn();
+const mockGetProductsByIds = vi.fn();
+const mockUpdateLineItem = vi.fn();
+const mockRemoveLineItem = vi.fn();
+const mockAddPromoCode = vi.fn();
+const mockRemovePromoCode = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: (...args: unknown[]) => mockGetCart(...args),
-  getProductsByIds: vi.fn().mockResolvedValue([]),
-  updateLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
-  removeLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
-  addPromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
-  removePromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
+  getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
+  updateLineItem: (...args: unknown[]) => mockUpdateLineItem(...args),
+  removeLineItem: (...args: unknown[]) => mockRemoveLineItem(...args),
+  addPromoCode: (...args: unknown[]) => mockAddPromoCode(...args),
+  removePromoCode: (...args: unknown[]) => mockRemovePromoCode(...args),
 }));
 
 describe("CartPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCart.mockResolvedValue(mockCart);
+    mockGetProductsByIds.mockResolvedValue([mockProduct]);
+    mockUpdateLineItem.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+    mockRemoveLineItem.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+    mockAddPromoCode.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+    mockRemovePromoCode.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
+  });
+
   it("renders empty cart state when no items", async () => {
     mockGetCart.mockResolvedValueOnce(mockEmptyCart);
 
@@ -90,5 +105,26 @@ describe("CartPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText("KSh3,000.00").length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it("updates cart quantity from accessible increment controls", async () => {
+    mockGetCart.mockResolvedValueOnce(mockCart);
+
+    renderWithProviders(<CartPage />);
+
+    const increase = await screen.findByRole("button", {
+      name: /increase quantity for pampers baby dry diapers/i,
+    });
+    fireEvent.click(increase);
+
+    await waitFor(() => expect(mockUpdateLineItem).toHaveBeenCalledWith("item_01", 3));
+  });
+
+  it("shows specific free delivery progress copy", async () => {
+    mockGetCart.mockResolvedValueOnce(mockCart);
+
+    renderWithProviders(<CartPage />);
+
+    expect(await screen.findByText(/KSh7,000.00 away from free delivery/i)).toBeInTheDocument();
   });
 });
