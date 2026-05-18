@@ -565,7 +565,9 @@ export default function CheckoutPage() {
           <p className="text-muted max-w-md text-sm leading-relaxed">
             {isManualPayment
               ? "Keep this order number as your Paybill reference. We only dispatch after payment is confirmed."
-              : "Thank you for shopping with Azani. Your confirmation is ready in your account."}
+              : customerQuery.data
+                ? "Thank you for shopping with Azani. Your confirmation is ready in your account."
+                : "Keep this order number for support. We will dispatch once the order is prepared."}
           </p>
           <Link
             href="/products"

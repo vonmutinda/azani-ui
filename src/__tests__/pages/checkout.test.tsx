@@ -228,5 +228,7 @@ describe("CheckoutPage", () => {
     await screen.findByText("Waiting for M-Pesa confirmation");
     await waitFor(() => expect(mockCompleteCart).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Order placed")).toBeInTheDocument();
+    expect(screen.getByText(/keep this order number for support/i)).toBeInTheDocument();
+    expect(screen.queryByText(/ready in your account/i)).not.toBeInTheDocument();
   }, 30_000);
 });

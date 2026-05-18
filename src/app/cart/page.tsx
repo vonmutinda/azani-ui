@@ -400,7 +400,7 @@ function CartItem({
   const productHref = item.product_id ? `/products/${item.product_id}` : "#";
 
   return (
-    <div className="hover:bg-foreground/[0.04]/50 grid gap-3 px-4 py-3 transition sm:grid-cols-[6rem_1fr_auto] sm:items-center">
+    <div className="hover:bg-foreground/[0.04]/50 grid grid-cols-[5rem_1fr] gap-3 px-4 py-3 transition sm:grid-cols-[6rem_1fr_auto] sm:items-center">
       <Link
         href={productHref}
         className="bg-product-media relative h-20 w-20 shrink-0 overflow-hidden rounded-[var(--radius)] transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
