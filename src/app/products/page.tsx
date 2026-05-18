@@ -4,14 +4,25 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
 import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
-import { ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
-import { MedusaProductCategory } from "@/types/medusa";
+import { MedusaProduct, MedusaProductCategory } from "@/types/medusa";
 import { getProductPrice } from "@/lib/formatters";
 
 type Filters = Record<string, string | number | undefined>;
+type ProductsResponse = {
+  products: MedusaProduct[];
+  count: number;
+  offset: number;
+  limit: number;
+};
+type ProductRequestParams = Record<string, string | number | boolean | string[] | undefined>;
+
+const PAGE_SIZE = 20;
+const PRICE_SORT_BATCH_SIZE = 100;
+const EMPTY_PRODUCTS: MedusaProduct[] = [];
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured", order: undefined },
@@ -30,6 +41,10 @@ function getSortOrder(sort: SortValue) {
   return SORT_OPTIONS.find((option) => option.value === sort)?.order;
 }
 
+function isPriceSort(sort: SortValue) {
+  return sort === "price_asc" || sort === "price_desc";
+}
+
 function collectCategoryIds(cat: MedusaProductCategory): string[] {
   const ids = [cat.id];
   if (cat.category_children) {
@@ -38,6 +53,35 @@ function collectCategoryIds(cat: MedusaProductCategory): string[] {
     }
   }
   return ids;
+}
+
+async function getProductsForPriceSort(params: ProductRequestParams): Promise<ProductsResponse> {
+  const firstPage = await getProducts({
+    ...params,
+    limit: PRICE_SORT_BATCH_SIZE,
+    offset: 0,
+  });
+  const products = [...firstPage.products];
+
+  for (
+    let nextOffset = PRICE_SORT_BATCH_SIZE;
+    nextOffset < firstPage.count;
+    nextOffset += PRICE_SORT_BATCH_SIZE
+  ) {
+    const page = await getProducts({
+      ...params,
+      limit: PRICE_SORT_BATCH_SIZE,
+      offset: nextOffset,
+    });
+    products.push(...page.products);
+  }
+
+  return {
+    products,
+    count: firstPage.count,
+    offset: 0,
+    limit: products.length,
+  };
 }
 
 function ProductsContent() {
@@ -53,7 +97,7 @@ function ProductsContent() {
   const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
 
   const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = 20;
+  const limit = PAGE_SIZE;
   const offset = (page - 1) * limit;
 
   const categoryHandle = filters.category ? String(filters.category) : undefined;
@@ -65,9 +109,10 @@ function ProductsContent() {
 
   const categoryIds = useMemo(() => {
     if (!categoryHandle) return undefined;
+    if (!categoryQuery.isFetched || categoryQuery.isError) return undefined;
     if (!categoryQuery.data) return [];
     return collectCategoryIds(categoryQuery.data);
-  }, [categoryHandle, categoryQuery.data]);
+  }, [categoryHandle, categoryQuery.data, categoryQuery.isError, categoryQuery.isFetched]);
 
   const productsQuery = useQuery({
     queryKey: ["products", "list", { ...filters, sort, page, categoryIds }],
@@ -76,15 +121,23 @@ function ProductsContent() {
         return Promise.resolve({ products: [], count: 0, offset, limit });
       }
 
+      const productParams: ProductRequestParams = {
+        ...(categoryIds && categoryIds.length > 0 ? { category_id: categoryIds } : {}),
+        ...(filters.q ? { q: String(filters.q) } : {}),
+      };
+
+      if (isPriceSort(sort)) {
+        return getProductsForPriceSort(productParams);
+      }
+
       return getProducts({
         limit,
         offset,
-        ...(categoryIds && categoryIds.length > 0 ? { category_id: categoryIds } : {}),
-        ...(filters.q ? { q: String(filters.q) } : {}),
+        ...productParams,
         ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
       });
     },
-    enabled: !categoryHandle || categoryQuery.isFetched || categoryQuery.isError,
+    enabled: !categoryHandle || (categoryQuery.isFetched && !categoryQuery.isError),
   });
 
   const categoriesQuery = useQuery({
@@ -93,22 +146,24 @@ function ProductsContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const products = productsQuery.data?.products ?? [];
+  const products = productsQuery.data?.products ?? EMPTY_PRODUCTS;
   const sortedProducts = useMemo(() => {
     const copy = [...products];
 
     if (sort === "price_asc") {
-      return copy.sort(
-        (a, b) =>
-          (getProductPrice(a)?.amount ?? Number.MAX_SAFE_INTEGER) -
-          (getProductPrice(b)?.amount ?? Number.MAX_SAFE_INTEGER),
-      );
+      return copy
+        .sort(
+          (a, b) =>
+            (getProductPrice(a)?.amount ?? Number.MAX_SAFE_INTEGER) -
+            (getProductPrice(b)?.amount ?? Number.MAX_SAFE_INTEGER),
+        )
+        .slice(offset, offset + limit);
     }
 
     if (sort === "price_desc") {
-      return copy.sort(
-        (a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0),
-      );
+      return copy
+        .sort((a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0))
+        .slice(offset, offset + limit);
     }
 
     if (sort === "newest") {
@@ -118,7 +173,7 @@ function ProductsContent() {
     }
 
     return products;
-  }, [products, sort]);
+  }, [limit, offset, products, sort]);
   const total = productsQuery.data?.count ?? 0;
   const totalPages = Math.ceil(total / limit);
 
@@ -145,7 +200,13 @@ function ProductsContent() {
     [filters.category, filters.q, router, sort],
   );
 
+  const categoryLookupFailed = !!categoryHandle && categoryQuery.isError;
+  const hasBrowseError = categoryLookupFailed || productsQuery.isError;
   const isLoading = productsQuery.isLoading || (!!categoryHandle && categoryQuery.isLoading);
+  const retryBrowsing = useCallback(() => {
+    if (categoryLookupFailed) void categoryQuery.refetch();
+    if (productsQuery.isError) void productsQuery.refetch();
+  }, [categoryLookupFailed, categoryQuery, productsQuery]);
 
   const selectedProduct = selectedProductId
     ? products.find((p) => p.id === selectedProductId)
@@ -300,7 +361,28 @@ function ProductsContent() {
                 <div key={i} className="az-skeleton aspect-[3/4]" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : hasBrowseError ? (
+            <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+              <div className="bg-danger-light flex h-20 w-20 items-center justify-center rounded-full">
+                <AlertCircle className="text-danger h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-foreground text-lg font-semibold">
+                  We couldn&apos;t load products
+                </p>
+                <p className="text-muted mt-1 text-sm">
+                  Check your connection and try loading this browse view again.
+                </p>
+              </div>
+              <button
+                onClick={retryBrowsing}
+                className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
+                aria-label="Try loading products again"
+              >
+                Try again
+              </button>
+            </div>
+          ) : sortedProducts.length === 0 ? (
             <div className="az-empty-state flex flex-col items-center gap-5 p-10">
               <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
                 <ShoppingBag className="text-trust h-8 w-8" />

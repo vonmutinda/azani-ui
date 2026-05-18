@@ -35,7 +35,10 @@ vi.mock("@/lib/medusa-api", () => ({
 
 describe("ProductsPage", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockGetProducts.mockReset();
+    mockGetCategories.mockReset();
+    mockGetCategoryByHandle.mockReset();
+    navigationMocks.push.mockClear();
     navigationMocks.searchParams = new URLSearchParams();
     mockGetCategoryByHandle.mockResolvedValue(null);
   });
@@ -192,6 +195,75 @@ describe("ProductsPage", () => {
     expect(navigationMocks.push).toHaveBeenCalledWith(
       "/products?category=feeding&q=bottle&sort=price_asc",
     );
+  });
+
+  it("sorts prices across the full filtered result before paginating", async () => {
+    navigationMocks.searchParams = new URLSearchParams("sort=price_asc&page=2");
+    const pricedProduct = (id: string, title: string, amount: number) => ({
+      ...mockProduct,
+      id,
+      title,
+      handle: id,
+      variants: [
+        {
+          ...mockProduct.variants![0],
+          id: `variant_${id}`,
+          prices: [{ id: `price_${id}`, amount, currency_code: "kes" }],
+        },
+      ],
+    });
+    const catalog = [
+      ...Array.from({ length: 20 }, (_, index) =>
+        pricedProduct(
+          `prod_high_${index}`,
+          index === 0 ? "Most Expensive Product" : `High ${index}`,
+          1000 - index,
+        ),
+      ),
+      pricedProduct("prod_low", "Cheapest Hidden Product", 1),
+    ];
+    mockGetProducts.mockImplementation((params: { offset?: number; limit?: number }) => {
+      const offset = params.offset ?? 0;
+      const limit = params.limit ?? 20;
+      return Promise.resolve({
+        products: catalog.slice(offset, offset + limit),
+        count: catalog.length,
+        offset,
+        limit,
+      });
+    });
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Most Expensive Product")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Cheapest Hidden Product")).not.toBeInTheDocument();
+  });
+
+  it("shows an error state instead of empty products when category lookup fails", async () => {
+    navigationMocks.searchParams = new URLSearchParams("category=bath-diapering");
+    mockGetCategoryByHandle.mockRejectedValueOnce(new Error("Category API unavailable"));
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("We couldn't load products")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/no products/i)).not.toBeInTheDocument();
+    expect(mockGetProducts).not.toHaveBeenCalled();
   });
 
   it("clears filters from the empty state recovery action", async () => {
