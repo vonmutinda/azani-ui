@@ -41,9 +41,9 @@ vi.mock("next/link", () => ({
     href: string;
     [key: string]: unknown;
   }) => {
-    const { onClick, className } = props as { onClick?: () => void; className?: string };
+    const { onClick, ...rest } = props as React.AnchorHTMLAttributes<HTMLAnchorElement>;
     return (
-      <a href={href} onClick={onClick} className={className}>
+      <a href={href} onClick={onClick} {...rest}>
         {children}
       </a>
     );

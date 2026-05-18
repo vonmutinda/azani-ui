@@ -93,6 +93,51 @@ export const TOP_LEVEL_HANDLES = [
   "mom-maternity",
 ];
 
+export const TOP_LEVEL_CATEGORY_NAV: Category[] = [
+  {
+    slug: "feeding",
+    name: "Feeding",
+    icon: "utensils",
+    description: "Bottles, weaning, high chairs, and feeding essentials.",
+  },
+  {
+    slug: "bath-diapering",
+    name: "Bath & Diapering",
+    icon: "bath",
+    description: "Diapers, wipes, bath time, and gentle care.",
+  },
+  {
+    slug: "nursery",
+    name: "Nursery",
+    icon: "moon",
+    description: "Sleep, bedding, monitors, and nursery organization.",
+  },
+  {
+    slug: "baby-gear",
+    name: "Baby Gear",
+    icon: "car",
+    description: "Strollers, car seats, carriers, and travel gear.",
+  },
+  {
+    slug: "clothing",
+    name: "Clothing",
+    icon: "shirt",
+    description: "Everyday outfits, sleepwear, shoes, and accessories.",
+  },
+  {
+    slug: "toys-books",
+    name: "Toys & Books",
+    icon: "gamepad",
+    description: "Play, learning, books, teethers, and soft toys.",
+  },
+  {
+    slug: "mom-maternity",
+    name: "Mom & Maternity",
+    icon: "heart-handshake",
+    description: "Nursing, maternity wear, recovery, and self-care.",
+  },
+];
+
 export function getCategoryIcon(handle: string): string {
   return CATEGORY_ICONS[handle] ?? "baby";
 }
