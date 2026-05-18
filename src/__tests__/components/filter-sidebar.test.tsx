@@ -36,7 +36,24 @@ describe("FilterSidebar", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
 
     await user.click(screen.getByText("Bath & Diapering"));
-    expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering" });
+    expect(onFilterChange).toHaveBeenCalledWith({ category: ["bath-diapering"] });
+  });
+
+  it("adds a category without replacing existing selected categories", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: ["bath-diapering"] }}
+        onFilterChange={onFilterChange}
+        categories={mockCategories}
+      />,
+    );
+
+    await user.click(screen.getByText("Feeding"));
+
+    expect(onFilterChange).toHaveBeenCalledWith({ category: ["bath-diapering", "feeding"] });
   });
 
   it("expands a top-level category and selects a child category", async () => {
@@ -48,13 +65,13 @@ describe("FilterSidebar", () => {
     await user.click(screen.getByLabelText("Expand Bath & Diapering"));
     await user.click(screen.getByText("Diapers & Pull-Ups"));
 
-    expect(onFilterChange).toHaveBeenCalledWith({ category: "diapers-pull-ups" });
+    expect(onFilterChange).toHaveBeenCalledWith({ category: ["diapers-pull-ups"] });
   });
 
   it("opens active child categories and marks the active category", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "diapers-pull-ups" }}
+        filters={{ category: ["diapers-pull-ups"] }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -62,31 +79,31 @@ describe("FilterSidebar", () => {
 
     expect(screen.getByText("Diapers & Pull-Ups")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Diapers & Pull-Ups" })).toHaveAttribute(
-      "aria-current",
+      "aria-pressed",
       "true",
     );
   });
 
-  it("calls onFilterChange with undefined when active category is deselected", async () => {
+  it("removes only the deselected category", async () => {
     const user = userEvent.setup();
     const onFilterChange = vi.fn();
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: ["bath-diapering", "feeding"] }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
     );
 
     await user.click(screen.getByText("Bath & Diapering"));
-    expect(onFilterChange).toHaveBeenCalledWith({ category: undefined });
+    expect(onFilterChange).toHaveBeenCalledWith({ category: ["feeding"] });
   });
 
   it("shows filter count badge when filters active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: ["bath-diapering"] }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -98,7 +115,7 @@ describe("FilterSidebar", () => {
   it("shows 'Clear all' button when filters are active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: ["bath-diapering"] }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -113,7 +130,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: ["bath-diapering"] }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
@@ -133,6 +150,7 @@ describe("FilterSidebar", () => {
     const dialog = screen.getByRole("dialog", { name: "Filters" });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText("All Categories")).toBeInTheDocument();
+    expect(dialog.querySelector("[data-filter-drawer-panel]")).toHaveClass("mr-auto");
 
     await user.click(within(dialog).getByRole("button", { name: "Close filters" }));
 
