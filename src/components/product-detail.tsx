@@ -179,6 +179,18 @@ export function ProductDetail({ productId, onBack }: Props) {
   const remainingStock = Math.max(availability.maxQuantity - cartQtyForVariant, 0);
   const maxedOut = availability.canPurchase && availability.maxQuantity > 0 && remainingStock === 0;
   const safeQuantity = Math.min(quantity, Math.max(remainingStock, 1));
+  const hasTrackedInventory =
+    selectedVariant?.manage_inventory === true && selectedVariant.allow_backorder !== true;
+  const purchaseLimitCopy =
+    remainingStock > 0 && availability.canPurchase
+      ? hasTrackedInventory
+        ? `${remainingStock} available for this order${
+            cartQtyForVariant > 0 ? ` after ${cartQtyForVariant} in cart` : ""
+          }`
+        : `Limit ${availability.maxQuantity} per order${
+            cartQtyForVariant > 0 ? ` (${remainingStock} more can be added)` : ""
+          }`
+      : null;
 
   const backLink = (
     <button
@@ -390,12 +402,7 @@ export function ProductDetail({ productId, onBack }: Props) {
             <p className={`text-sm font-semibold ${stockTone}`}>
               {maxedOut ? "Max quantity in cart" : availability.label}
             </p>
-            {remainingStock > 0 && availability.canPurchase && (
-              <p className="text-muted text-xs">
-                {remainingStock} available for this order
-                {cartQtyForVariant > 0 ? ` after ${cartQtyForVariant} in cart` : ""}
-              </p>
-            )}
+            {purchaseLimitCopy && <p className="text-muted text-xs">{purchaseLimitCopy}</p>}
           </div>
 
           <p className="text-muted text-sm leading-relaxed">{overview}</p>

@@ -167,6 +167,29 @@ describe("ProductDetail", () => {
     expect(mockAddToCart).toHaveBeenCalledWith("variant_01", 1);
   });
 
+  it("does not present the per-order cap as stock for unmanaged inventory", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        variants: [
+          {
+            ...mockProduct.variants![0],
+            manage_inventory: false,
+            inventory_quantity: 0,
+          },
+        ],
+      },
+    });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Limit 10 per order")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/available for this order/i)).not.toBeInTheDocument();
+  });
+
   it("shows product image", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 
