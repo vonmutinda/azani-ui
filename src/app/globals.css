@@ -10,16 +10,16 @@
   --surface-raised: #ffffff;
   --product-surface: #fffdf9;
   --product-media: #f4eee7;
-  --primary: #a83f62;
-  --primary-hover: #8d3453;
-  --primary-light: #fdeaf0;
-  --secondary: #227c7f;
-  --secondary-hover: #19686c;
-  --secondary-light: #e6f4f2;
-  --accent-warm: #d56f3e;
+  --primary: #bd4773;
+  --primary-hover: #a83f62;
+  --primary-light: #fff0f5;
+  --secondary: #147f89;
+  --secondary-hover: #0f747d;
+  --secondary-light: #e2f7f8;
+  --accent-warm: #c64f28;
   --accent-warm-ink: #7c3e20;
   --accent-warm-light: #fff0e4;
-  --accent-yellow: #e7b748;
+  --accent-yellow: #ffc845;
   --accent-yellow-ink: #77520b;
   --accent-yellow-light: #fff6db;
   --accent-green: #8fbf9f;
@@ -175,6 +175,8 @@ h4 {
 
 .az-btn {
   display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
   min-height: 2.5rem;
   align-items: center;
   justify-content: center;
@@ -183,6 +185,7 @@ h4 {
   font-size: 0.875rem;
   font-weight: 700;
   line-height: 1;
+  text-align: center;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -191,13 +194,18 @@ h4 {
     transform 160ms ease;
 }
 
+.az-btn > svg,
+.az-icon-button > svg {
+  flex-shrink: 0;
+}
+
 .az-btn-primary {
-  background: var(--foreground);
+  background: var(--primary);
   color: #ffffff;
 }
 
 .az-btn-primary:hover {
-  background: color-mix(in srgb, var(--foreground) 88%, var(--primary));
+  background: var(--primary-hover);
 }
 
 .az-btn-secondary {

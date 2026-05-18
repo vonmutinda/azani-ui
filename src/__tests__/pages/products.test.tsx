@@ -7,7 +7,6 @@ import { mockProduct, mockCategory, mockCategories } from "../fixtures";
 
 const mockGetProducts = vi.fn();
 const mockGetCategories = vi.fn();
-const mockGetCategoryByHandle = vi.fn();
 const navigationMocks = vi.hoisted(() => ({
   push: vi.fn(),
   searchParams: new URLSearchParams(),
@@ -26,7 +25,6 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/medusa-api", () => ({
   getProducts: (...args: unknown[]) => mockGetProducts(...args),
   getCategories: (...args: unknown[]) => mockGetCategories(...args),
-  getCategoryByHandle: (...args: unknown[]) => mockGetCategoryByHandle(...args),
   getCart: vi.fn().mockResolvedValue(null),
   getWishlistProductIds: vi.fn().mockResolvedValue([]),
   toggleWishlistProduct: vi.fn(),
@@ -37,10 +35,8 @@ describe("ProductsPage", () => {
   beforeEach(() => {
     mockGetProducts.mockReset();
     mockGetCategories.mockReset();
-    mockGetCategoryByHandle.mockReset();
     navigationMocks.push.mockClear();
     navigationMocks.searchParams = new URLSearchParams();
-    mockGetCategoryByHandle.mockResolvedValue(null);
   });
 
   it("renders the products heading", async () => {
@@ -121,7 +117,6 @@ describe("ProductsPage", () => {
 
   it("renders a category header with child category navigation", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering");
-    mockGetCategoryByHandle.mockResolvedValueOnce(mockCategory);
     mockGetProducts.mockResolvedValueOnce({
       products: [mockProduct],
       count: 1,
@@ -146,7 +141,6 @@ describe("ProductsPage", () => {
 
   it("passes category descendants and sort order to the products request", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering&sort=newest");
-    mockGetCategoryByHandle.mockResolvedValueOnce(mockCategory);
     mockGetProducts.mockResolvedValueOnce({
       products: [mockProduct],
       count: 1,
@@ -194,6 +188,86 @@ describe("ProductsPage", () => {
 
     expect(navigationMocks.push).toHaveBeenCalledWith(
       "/products?category=feeding&q=bottle&sort=price_asc",
+    );
+  });
+
+  it("preserves multiple selected categories in shareable query state", async () => {
+    const user = userEvent.setup();
+    navigationMocks.searchParams = new URLSearchParams(
+      "category=bath-diapering&category=feeding&q=bottle&page=3",
+    );
+    mockGetProducts.mockResolvedValueOnce({
+      products: [mockProduct],
+      count: 1,
+      offset: 40,
+      limit: 20,
+    });
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await user.selectOptions(await screen.findByLabelText("Sort products"), "price_asc");
+
+    expect(navigationMocks.push).toHaveBeenCalledWith(
+      "/products?category=bath-diapering&category=feeding&q=bottle&sort=price_asc",
+    );
+  });
+
+  it("requests product results for all selected category descendants", async () => {
+    navigationMocks.searchParams = new URLSearchParams("category=bath-diapering&category=feeding");
+    mockGetProducts.mockResolvedValueOnce({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(mockGetProducts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category_id: ["pcat_bath_diapering", "pcat_diapers", "pcat_wipes", "pcat_feeding"],
+        }),
+      );
+    });
+  });
+
+  it("removes one active category chip without clearing unrelated filters", async () => {
+    const user = userEvent.setup();
+    navigationMocks.searchParams = new URLSearchParams(
+      "category=bath-diapering&category=feeding&q=bottle&sort=price_desc",
+    );
+    mockGetProducts.mockResolvedValueOnce({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Remove Feeding filter" }));
+
+    expect(navigationMocks.push).toHaveBeenCalledWith(
+      "/products?category=bath-diapering&q=bottle&sort=price_desc",
     );
   });
 
@@ -249,13 +323,7 @@ describe("ProductsPage", () => {
 
   it("shows an error state instead of empty products when category lookup fails", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering");
-    mockGetCategoryByHandle.mockRejectedValueOnce(new Error("Category API unavailable"));
-    mockGetCategories.mockResolvedValueOnce({
-      product_categories: mockCategories,
-      count: 3,
-      offset: 0,
-      limit: 100,
-    });
+    mockGetCategories.mockRejectedValueOnce(new Error("Category API unavailable"));
 
     renderWithProviders(<ProductsPage />);
 

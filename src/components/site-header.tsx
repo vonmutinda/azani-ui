@@ -146,7 +146,8 @@ export function SiteHeader() {
     getServerSnapshot,
   );
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const desktopSearchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   const pathname = usePathname();
   const headerSearchParams = useSearchParams();
@@ -220,7 +221,18 @@ export function SiteHeader() {
 
   const toggleSearch = useCallback(() => {
     setSearchOpen((prev) => {
-      if (!prev) setTimeout(() => searchInputRef.current?.focus(), 50);
+      if (!prev) {
+        setTimeout(() => {
+          if (
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(min-width: 1024px)").matches
+          ) {
+            desktopSearchInputRef.current?.focus();
+            return;
+          }
+          mobileSearchInputRef.current?.focus();
+        }, 50);
+      }
       return !prev;
     });
   }, []);
@@ -284,11 +296,29 @@ export function SiteHeader() {
             />
           </Link>
 
-          <div className="ml-auto flex items-center gap-1.5 lg:gap-2">
+          <div className="ml-auto flex min-w-0 items-center gap-1.5 lg:gap-2">
+            {searchOpen && (
+              <form
+                role="search"
+                aria-label="Desktop product search"
+                onSubmit={handleSearch}
+                className="relative hidden min-w-0 items-center lg:flex lg:w-64 xl:w-80"
+              >
+                <Search className="text-muted pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
+                <input
+                  ref={desktopSearchInputRef}
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="az-form-field h-10 pr-4 pl-10 text-sm"
+                />
+              </form>
+            )}
             <button
               onClick={toggleSearch}
               aria-label={searchOpen ? "Close search" : "Search"}
-              className="az-icon-button az-focus h-10 min-h-10 w-10 min-w-10"
+              className="az-icon-button az-focus h-10 min-h-10 w-10 min-w-10 shrink-0"
             >
               {searchOpen ? (
                 <X className="h-[18px] w-[18px]" />
@@ -316,7 +346,7 @@ export function SiteHeader() {
             <Link
               href="/cart"
               aria-label="Cart"
-              className="az-btn az-btn-primary az-focus relative inline-flex h-10 min-h-10 w-10 min-w-10 rounded-full px-0 text-[13px] sm:w-auto sm:px-3 lg:px-4"
+              className="az-btn az-btn-primary az-focus relative inline-flex h-10 min-h-10 w-10 min-w-10 shrink-0 rounded-full px-0 text-[13px] sm:w-auto sm:px-3 lg:px-4"
             >
               <ShoppingBag className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
@@ -393,12 +423,20 @@ export function SiteHeader() {
       </div>
 
       {searchOpen && (
-        <div className="bg-card/98 border-border/40 border-t backdrop-blur-xl">
+        <div
+          data-testid="mobile-search-below-header"
+          className="bg-card/98 border-border/40 border-t backdrop-blur-xl lg:hidden"
+        >
           <div className="mx-auto max-w-2xl px-4 py-3 sm:px-6">
-            <form onSubmit={handleSearch} className="relative">
+            <form
+              onSubmit={handleSearch}
+              className="relative"
+              role="search"
+              aria-label="Mobile product search"
+            >
               <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
               <input
-                ref={searchInputRef}
+                ref={mobileSearchInputRef}
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

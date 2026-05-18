@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
-import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
+import { getProducts, getCategories } from "@/lib/medusa-api";
 import { AlertCircle, ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
@@ -11,7 +11,8 @@ import { FilterSidebar } from "@/components/filter-sidebar";
 import { MedusaProduct, MedusaProductCategory } from "@/types/medusa";
 import { getProductPrice } from "@/lib/formatters";
 
-type Filters = Record<string, string | number | undefined>;
+type FilterValue = string | number | string[] | undefined;
+type Filters = Record<string, FilterValue>;
 type ProductsResponse = {
   products: MedusaProduct[];
   count: number;
@@ -55,6 +56,17 @@ function collectCategoryIds(cat: MedusaProductCategory): string[] {
   return ids;
 }
 
+function flattenCategories(categories: MedusaProductCategory[]): MedusaProductCategory[] {
+  return categories.flatMap((category) => [
+    category,
+    ...flattenCategories(category.category_children ?? []),
+  ]);
+}
+
+function uniqueValues(values: string[]): string[] {
+  return Array.from(new Set(values.filter((value) => value.length > 0)));
+}
+
 async function getProductsForPriceSort(params: ProductRequestParams): Promise<ProductsResponse> {
   const firstPage = await getProducts({
     ...params,
@@ -89,8 +101,13 @@ function ProductsContent() {
   const router = useRouter();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
+  const searchParamString = searchParams.toString();
+  const categoryHandles = useMemo(
+    () => uniqueValues(new URLSearchParams(searchParamString).getAll("category")),
+    [searchParamString],
+  );
   const filters: Filters = {
-    category: searchParams.get("category") ?? undefined,
+    category: categoryHandles,
     q: searchParams.get("q") ?? undefined,
   };
   const requestedSort = searchParams.get("sort");
@@ -100,24 +117,46 @@ function ProductsContent() {
   const limit = PAGE_SIZE;
   const offset = (page - 1) * limit;
 
-  const categoryHandle = filters.category ? String(filters.category) : undefined;
-  const categoryQuery = useQuery({
-    queryKey: ["category", categoryHandle],
-    queryFn: () => getCategoryByHandle(categoryHandle!),
-    enabled: !!categoryHandle,
+  const categoriesQuery = useQuery({
+    queryKey: ["categories-sidebar"],
+    queryFn: () => getCategories(),
+    staleTime: 5 * 60 * 1000,
   });
 
+  const categoryLookup = useMemo(() => {
+    return new Map(
+      flattenCategories(categoriesQuery.data?.product_categories ?? []).map((category) => [
+        category.handle,
+        category,
+      ]),
+    );
+  }, [categoriesQuery.data]);
+
+  const selectedCategories = useMemo(
+    () =>
+      categoryHandles
+        .map((handle) => categoryLookup.get(handle))
+        .filter((category): category is MedusaProductCategory => !!category),
+    [categoryHandles, categoryLookup],
+  );
+
   const categoryIds = useMemo(() => {
-    if (!categoryHandle) return undefined;
-    if (!categoryQuery.isFetched || categoryQuery.isError) return undefined;
-    if (!categoryQuery.data) return [];
-    return collectCategoryIds(categoryQuery.data);
-  }, [categoryHandle, categoryQuery.data, categoryQuery.isError, categoryQuery.isFetched]);
+    if (categoryHandles.length === 0) return undefined;
+    if (!categoriesQuery.isFetched || categoriesQuery.isError) return undefined;
+    if (selectedCategories.length === 0) return [];
+
+    return uniqueValues(selectedCategories.flatMap(collectCategoryIds));
+  }, [
+    categoriesQuery.isError,
+    categoriesQuery.isFetched,
+    categoryHandles.length,
+    selectedCategories,
+  ]);
 
   const productsQuery = useQuery({
     queryKey: ["products", "list", { ...filters, sort, page, categoryIds }],
     queryFn: () => {
-      if (categoryHandle && categoryIds && categoryIds.length === 0) {
+      if (categoryHandles.length > 0 && categoryIds && categoryIds.length === 0) {
         return Promise.resolve({ products: [], count: 0, offset, limit });
       }
 
@@ -137,13 +176,8 @@ function ProductsContent() {
         ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
       });
     },
-    enabled: !categoryHandle || (categoryQuery.isFetched && !categoryQuery.isError),
-  });
-
-  const categoriesQuery = useQuery({
-    queryKey: ["categories-sidebar"],
-    queryFn: () => getCategories(),
-    staleTime: 5 * 60 * 1000,
+    enabled:
+      categoryHandles.length === 0 || (categoriesQuery.isFetched && !categoriesQuery.isError),
   });
 
   const products = productsQuery.data?.products ?? EMPTY_PRODUCTS;
@@ -180,52 +214,66 @@ function ProductsContent() {
   const updateQuery = useCallback(
     (newFilters: Filters) => {
       const params = new URLSearchParams();
-      const nextFilters: Filters = {
-        category: filters.category,
-        q: filters.q,
-        sort,
-        ...newFilters,
-      };
+      const shouldClearFilters = Object.keys(newFilters).length === 0;
+      const rawCategories =
+        "category" in newFilters ? newFilters.category : shouldClearFilters ? [] : filters.category;
+      const nextCategories = Array.isArray(rawCategories)
+        ? uniqueValues(rawCategories)
+        : typeof rawCategories === "string"
+          ? [rawCategories]
+          : [];
+      const nextQ = "q" in newFilters ? newFilters.q : shouldClearFilters ? undefined : filters.q;
+      const nextSort = "sort" in newFilters ? newFilters.sort : sort;
 
-      for (const [key, value] of Object.entries(nextFilters)) {
-        if (value !== undefined && value !== "") {
-          params.set(key, String(value));
-        }
+      for (const category of nextCategories) {
+        params.append("category", category);
       }
+      if (nextQ !== undefined && nextQ !== "") params.set("q", String(nextQ));
+      if (nextSort !== undefined && nextSort !== "" && nextSort !== "featured") {
+        params.set("sort", String(nextSort));
+      }
+
       params.delete("page");
-      if (params.get("sort") === "featured") params.delete("sort");
       const query = params.toString();
       router.push(query ? `/products?${query}` : "/products");
     },
     [filters.category, filters.q, router, sort],
   );
 
-  const categoryLookupFailed = !!categoryHandle && categoryQuery.isError;
+  const categoryLookupFailed = categoryHandles.length > 0 && categoriesQuery.isError;
   const hasBrowseError = categoryLookupFailed || productsQuery.isError;
-  const isLoading = productsQuery.isLoading || (!!categoryHandle && categoryQuery.isLoading);
+  const isLoading =
+    productsQuery.isLoading || (categoryHandles.length > 0 && categoriesQuery.isLoading);
   const retryBrowsing = useCallback(() => {
-    if (categoryLookupFailed) void categoryQuery.refetch();
+    if (categoryLookupFailed) void categoriesQuery.refetch();
     if (productsQuery.isError) void productsQuery.refetch();
-  }, [categoryLookupFailed, categoryQuery, productsQuery]);
+  }, [categoryLookupFailed, categoriesQuery, productsQuery]);
 
   const selectedProduct = selectedProductId
     ? products.find((p) => p.id === selectedProductId)
     : null;
 
-  const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== undefined && v !== "",
-  ).length;
+  const activeFilterCount = categoryHandles.length + (filters.q ? 1 : 0);
+  const singleSelectedCategory = selectedCategories.length === 1 ? selectedCategories[0] : null;
 
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
-    : (categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
+    : filters.q
+      ? `Search: "${filters.q}"`
+      : singleSelectedCategory
+        ? singleSelectedCategory.name
+        : selectedCategories.length > 1
+          ? "Selected categories"
+          : "All Products";
   const headerDescription = selectedProductId
     ? undefined
-    : categoryQuery.data?.description ||
+    : singleSelectedCategory?.description ||
       (filters.q
         ? "Search results across Azani products."
-        : "Browse baby essentials, gear, clothing, toys, and care products.");
-  const categoryChildren = categoryQuery.data?.category_children ?? [];
+        : selectedCategories.length > 1
+          ? "Showing products across your selected baby boutique categories."
+          : "Browse baby essentials, gear, clothing, toys, and care products.");
+  const categoryChildren = singleSelectedCategory?.category_children ?? [];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -283,8 +331,10 @@ function ProductsContent() {
                 key={child.id}
                 type="button"
                 aria-label={`Browse ${child.name}`}
-                onClick={() => updateQuery({ category: child.handle })}
-                className="az-focus border-border/60 bg-card text-foreground hover:border-border-hover hover:bg-surface-soft shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
+                onClick={() =>
+                  updateQuery({ category: uniqueValues([...categoryHandles, child.handle]) })
+                }
+                className="az-focus border-secondary/30 bg-secondary-light text-secondary hover:border-secondary hover:bg-primary-light hover:text-primary shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
               >
                 {child.name}
               </button>
@@ -306,24 +356,33 @@ function ProductsContent() {
         <div className="min-w-0 flex-1">
           {activeFilterCount > 0 && !selectedProductId && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              {filters.category && (
-                <span className="az-pill border-border/50 bg-card inline-flex border py-1 pr-1.5 pl-3 text-sm">
-                  <Tag className="text-muted h-3 w-3" />
-                  <span className="text-foreground font-medium">
-                    {categoryQuery.data?.name ?? String(filters.category)}
-                  </span>
-                  <button
-                    onClick={() => updateQuery({ category: undefined })}
-                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
-                    aria-label="Remove category filter"
+              {categoryHandles.map((handle) => {
+                const categoryName = categoryLookup.get(handle)?.name ?? handle;
+
+                return (
+                  <span
+                    key={handle}
+                    className="az-pill border-secondary/25 bg-secondary-light inline-flex border py-1 pr-1.5 pl-3 text-sm"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
+                    <Tag className="text-secondary h-3 w-3" />
+                    <span className="text-foreground font-medium">{categoryName}</span>
+                    <button
+                      onClick={() =>
+                        updateQuery({
+                          category: categoryHandles.filter((category) => category !== handle),
+                        })
+                      }
+                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
+                      aria-label={`Remove ${categoryName} filter`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                );
+              })}
               {filters.q && (
-                <span className="az-pill border-border/50 bg-card inline-flex border py-1 pr-1.5 pl-3 text-sm">
-                  <Search className="text-muted h-3 w-3" />
+                <span className="az-pill border-primary/20 bg-primary-light inline-flex border py-1 pr-1.5 pl-3 text-sm">
+                  <Search className="text-primary h-3 w-3" />
                   <span className="text-foreground font-medium">
                     &ldquo;{String(filters.q)}&rdquo;
                   </span>
@@ -340,9 +399,9 @@ function ProductsContent() {
                 <button
                   onClick={() => {
                     setSelectedProductId(null);
-                    updateQuery({ category: undefined, q: undefined });
+                    updateQuery({ category: [], q: undefined });
                   }}
-                  className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
+                  className="text-secondary hover:text-primary ml-1 text-sm font-medium transition hover:underline"
                 >
                   Clear all
                 </button>

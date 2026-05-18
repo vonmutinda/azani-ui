@@ -1,12 +1,13 @@
 "use client";
 
 import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { MedusaProductCategory } from "@/types/medusa";
 import { toCategory, Category, TOP_LEVEL_HANDLES } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
-type Filters = Record<string, string | number | undefined>;
+type FilterValue = string | number | string[] | undefined;
+type Filters = Record<string, FilterValue>;
 
 type Props = {
   filters: Filters;
@@ -22,20 +23,26 @@ function isSlugInTree(slug: string, cat: Category): boolean {
   return false;
 }
 
+function normalizeCategoryFilter(value: FilterValue): string[] {
+  if (Array.isArray(value)) return value.filter((item) => item.length > 0);
+  if (typeof value === "string" && value.length > 0) return [value];
+  return [];
+}
+
 function CategoryItem({
   cat,
   depth,
-  activeSlug,
+  activeSlugs,
   onSelect,
 }: {
   cat: Category;
   depth: number;
-  activeSlug?: string;
+  activeSlugs: Set<string>;
   onSelect: (slug: string | undefined) => void;
 }) {
-  const isActive = activeSlug === cat.slug;
+  const isActive = activeSlugs.has(cat.slug);
   const hasChildren = cat.children && cat.children.length > 0;
-  const containsActive = activeSlug ? isSlugInTree(activeSlug, cat) : false;
+  const containsActive = Array.from(activeSlugs).some((slug) => isSlugInTree(slug, cat));
 
   const [open, setOpen] = useState(containsActive);
 
@@ -68,14 +75,14 @@ function CategoryItem({
           <span className="w-7 shrink-0" />
         )}
         <button
-          onClick={() => onSelect(isActive ? undefined : cat.slug)}
-          aria-current={isActive ? "true" : undefined}
+          onClick={() => onSelect(cat.slug)}
+          aria-pressed={isActive}
           className={`az-focus flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
             isActive
-              ? "bg-foreground/[0.06] text-foreground font-semibold"
+              ? "bg-primary-light text-primary font-semibold"
               : containsActive
-                ? "text-foreground font-medium"
-                : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                ? "text-secondary font-medium"
+                : "text-muted hover:bg-secondary-light hover:text-foreground"
           }`}
         >
           <CategoryIcon
@@ -94,7 +101,7 @@ function CategoryItem({
               key={child.slug}
               cat={child}
               depth={depth + 1}
-              activeSlug={activeSlug}
+              activeSlugs={activeSlugs}
               onSelect={onSelect}
             />
           ))}
@@ -106,20 +113,41 @@ function CategoryItem({
 
 export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const selectedCategories = useMemo(() => normalizeCategoryFilter(filters.category), [filters]);
+  const selectedCategorySet = useMemo(() => new Set(selectedCategories), [selectedCategories]);
 
   const topCategories = categories
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toCategory);
 
-  const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== undefined && v !== "",
-  ).length;
+  const activeFilterCount =
+    selectedCategories.length +
+    Object.entries(filters).filter(([key, value]) => {
+      if (key === "category") return false;
+      return value !== undefined && value !== "";
+    }).length;
 
   const setFilter = useCallback(
-    (key: string, value: string | number | undefined) => {
+    (key: string, value: FilterValue) => {
       onFilterChange({ ...filters, [key]: value });
     },
     [filters, onFilterChange],
+  );
+
+  const toggleCategory = useCallback(
+    (slug: string | undefined) => {
+      if (!slug) {
+        setFilter("category", undefined);
+        return;
+      }
+
+      const nextCategories = selectedCategorySet.has(slug)
+        ? selectedCategories.filter((category) => category !== slug)
+        : [...selectedCategories, slug];
+
+      setFilter("category", nextCategories.length > 0 ? nextCategories : undefined);
+    },
+    [selectedCategories, selectedCategorySet, setFilter],
   );
 
   const renderContent = (titleId: string) => (
@@ -149,9 +177,9 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         <button
           onClick={() => setFilter("category", undefined)}
           className={`az-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
-            !filters.category
-              ? "bg-foreground/[0.06] text-foreground font-semibold"
-              : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+            selectedCategories.length === 0
+              ? "bg-primary-light text-primary font-semibold"
+              : "text-muted hover:bg-secondary-light hover:text-foreground"
           }`}
         >
           All Categories
@@ -161,8 +189,8 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             key={cat.slug}
             cat={cat}
             depth={0}
-            activeSlug={filters.category ? String(filters.category) : undefined}
-            onSelect={(slug) => setFilter("category", slug)}
+            activeSlugs={selectedCategorySet}
+            onSelect={toggleCategory}
           />
         ))}
       </div>
@@ -199,7 +227,10 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             className="bg-foreground/20 absolute inset-0 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="bg-card relative ml-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl">
+          <div
+            data-filter-drawer-panel
+            className="bg-card relative mr-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl"
+          >
             <button
               onClick={() => setMobileOpen(false)}
               aria-label="Close filters"

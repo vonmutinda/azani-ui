@@ -137,6 +137,19 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: "Cart" })).toHaveAttribute("href", "/cart");
   });
 
+  it("opens desktop search inline with the header actions", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    const desktopSearch = screen.getByRole("search", { name: "Desktop product search" });
+    expect(desktopSearch).toBeInTheDocument();
+    expect(desktopSearch).toHaveClass("hidden");
+    expect(desktopSearch).toHaveClass("lg:flex");
+    expect(screen.queryByTestId("desktop-search-below-header")).not.toBeInTheDocument();
+  });
+
   it("opens and closes the mobile menu with category and commerce actions", async () => {
     const user = userEvent.setup();
     renderHeader();
