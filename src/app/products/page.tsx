@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Chip } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
@@ -363,13 +363,14 @@ function ProductsContent() {
                 const categoryName = categoryLookup.get(handle)?.name ?? handle;
 
                 return (
-                  <Chip
+                  <span
                     key={handle}
-                    className="az-pill border-secondary/25 bg-secondary-light inline-flex border py-1 pr-1.5 pl-3 text-sm"
-                    variant="secondary"
+                    className="az-pill border-secondary/25 bg-secondary-light flex max-w-full min-w-0 items-center gap-1.5 border py-1 pr-1.5 pl-3 text-sm"
                   >
-                    <Tag className="text-secondary h-3 w-3" />
-                    <span className="text-foreground font-medium">{categoryName}</span>
+                    <Tag className="text-secondary h-3 w-3 shrink-0" />
+                    <span className="text-foreground min-w-0 flex-1 truncate font-medium">
+                      {categoryName}
+                    </span>
                     <Button
                       isIconOnly
                       variant="ghost"
@@ -379,21 +380,18 @@ function ProductsContent() {
                           category: categoryHandles.filter((category) => category !== handle),
                         })
                       }
-                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full shadow-none"
+                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
                       aria-label={`Remove ${categoryName} filter`}
                     >
                       <X className="h-3 w-3" />
                     </Button>
-                  </Chip>
+                  </span>
                 );
               })}
               {filters.q && (
-                <Chip
-                  className="az-pill border-primary/20 bg-primary-light inline-flex border py-1 pr-1.5 pl-3 text-sm"
-                  variant="secondary"
-                >
-                  <Search className="text-primary h-3 w-3" />
-                  <span className="text-foreground font-medium">
+                <span className="az-pill border-primary/20 bg-primary-light flex max-w-full min-w-0 items-center gap-1.5 border py-1 pr-1.5 pl-3 text-sm">
+                  <Search className="text-primary h-3 w-3 shrink-0" />
+                  <span className="text-foreground min-w-0 flex-1 truncate font-medium">
                     &ldquo;{String(filters.q)}&rdquo;
                   </span>
                   <Button
@@ -401,12 +399,12 @@ function ProductsContent() {
                     variant="ghost"
                     size="sm"
                     onPress={() => updateQuery({ q: undefined })}
-                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full shadow-none"
+                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
                     aria-label="Remove search filter"
                   >
                     <X className="h-3 w-3" />
                   </Button>
-                </Chip>
+                </span>
               )}
               {activeFilterCount > 1 && (
                 <Button

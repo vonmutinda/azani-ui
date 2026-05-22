@@ -255,6 +255,33 @@ describe("ProductsPage", () => {
     );
   });
 
+  it("keeps active category chip controls visible when labels truncate", async () => {
+    navigationMocks.searchParams = new URLSearchParams("category=feeding");
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    const removeButton = await screen.findByRole("button", { name: "Remove Feeding filter" });
+    const chip = removeButton.closest(".az-pill");
+    const label = screen.getByText("Feeding", { selector: ".truncate" });
+
+    expect(chip).toHaveClass("flex", "max-w-full", "min-w-0");
+    expect(chip).not.toHaveClass("overflow-hidden");
+    expect(label).toHaveClass("flex-1", "truncate");
+    expect(removeButton).toHaveClass("shrink-0");
+  });
+
   it("sorts prices across the full filtered result before paginating", async () => {
     navigationMocks.searchParams = new URLSearchParams("sort=price_asc&page=2");
     const pricedProduct = (id: string, title: string, amount: number) => ({

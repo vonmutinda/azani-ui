@@ -44,6 +44,15 @@ describe("FilterSidebar", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("hides the mobile filter trigger through a responsive wrapper", () => {
+    renderWithProviders(<FilterSidebar {...defaultProps} />);
+
+    const trigger = screen.getByRole("button", { name: "Open filters" });
+
+    expect(trigger.parentElement).toHaveClass("lg:hidden");
+    expect(trigger).not.toHaveClass("lg:hidden");
+  });
+
   it("closes the mobile filter drawer when the desktop breakpoint matches", async () => {
     const user = userEvent.setup();
     const listeners = new Set<(event: MediaQueryListEvent | MediaQueryList) => void>();

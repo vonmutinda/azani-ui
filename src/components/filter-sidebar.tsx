@@ -218,23 +218,25 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
 
   return (
     <>
-      <Button
-        aria-label="Open filters"
-        className="az-btn az-btn-outline az-focus flex w-full rounded-full px-4 py-2.5 lg:hidden"
-        variant="secondary"
-        onPress={() => setMobileOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={mobileOpen}
-        aria-controls="filters-drawer"
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-        Filters
-        {activeFilterCount > 0 && (
-          <Chip className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]" size="sm">
-            {activeFilterCount}
-          </Chip>
-        )}
-      </Button>
+      <div className="lg:hidden">
+        <Button
+          aria-label="Open filters"
+          className="az-btn az-btn-outline az-focus flex w-full rounded-full px-4 py-2.5"
+          variant="secondary"
+          onPress={() => setMobileOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={mobileOpen}
+          aria-controls="filters-drawer"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <Chip className="az-pill az-pill-neutral px-2 py-0.5 text-[10px]" size="sm">
+              {activeFilterCount}
+            </Chip>
+          )}
+        </Button>
+      </div>
 
       <Drawer.Backdrop
         isOpen={mobileOpen}
