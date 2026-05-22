@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 
 :root {
   /* Azani boutique foundation: warm nursery neutrals with rose, teal, sage, and amber accents. */
@@ -47,6 +48,28 @@
   --focus: #227c7f;
   --card: var(--surface);
   --card-raised: var(--surface-raised);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: var(--surface-soft);
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary: var(--surface-tint);
+  --surface-tertiary-foreground: var(--foreground);
+  --overlay: #ffffff;
+  --overlay-foreground: var(--foreground);
+  --default: var(--surface-soft);
+  --default-foreground: var(--foreground);
+  --accent: var(--primary);
+  --accent-foreground: #ffffff;
+  --warning-foreground: var(--warning-ink);
+  --danger-foreground: #ffffff;
+  --separator: var(--border);
+  --link: var(--secondary);
+  --backdrop: rgba(51, 39, 47, 0.42);
+  --field-background: #ffffff;
+  --field-foreground: var(--foreground);
+  --field-placeholder: var(--muted);
+  --field-border: var(--border);
+  --field-border-width: 1px;
+  --field-radius: var(--radius);
   --radius-sm: 0.375rem;
   --radius: 0.5rem;
   --radius-lg: 0.5rem;
@@ -101,6 +124,28 @@
   --color-promo: var(--promo);
   --color-promo-ink: var(--promo-ink);
   --color-promo-light: var(--promo-light);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-secondary-foreground: var(--surface-secondary-foreground);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-tertiary-foreground: var(--surface-tertiary-foreground);
+  --color-overlay: var(--overlay);
+  --color-overlay-foreground: var(--overlay-foreground);
+  --color-default: var(--default);
+  --color-default-foreground: var(--default-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-separator: var(--separator);
+  --color-focus: var(--focus);
+  --color-link: var(--link);
+  --color-backdrop: var(--backdrop);
+  --color-field: var(--field-background);
+  --color-field-foreground: var(--field-foreground);
+  --color-field-placeholder: var(--field-placeholder);
+  --color-field-border: var(--field-border);
+  --radius-field: var(--field-radius);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-dm-sans);
