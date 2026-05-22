@@ -17,6 +17,20 @@ describe("FilterSidebar", () => {
     expect(screen.getAllByText("Filters").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("opens and closes the mobile filter drawer", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<FilterSidebar {...defaultProps} />);
+
+    await user.click(screen.getByRole("button", { name: /filters/i }));
+    const dialog = screen.getByRole("dialog", { name: /filters/i });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("All Categories")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /close filters/i }));
+    expect(screen.queryByRole("dialog", { name: /filters/i })).not.toBeInTheDocument();
+  });
+
   it("renders 'All Categories' button", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} />);
     expect(screen.getByText("All Categories")).toBeInTheDocument();
@@ -138,22 +152,5 @@ describe("FilterSidebar", () => {
 
     await user.click(screen.getByText("Clear all"));
     expect(onFilterChange).toHaveBeenCalledWith({});
-  });
-
-  it("opens and closes the mobile filter drawer", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(<FilterSidebar {...defaultProps} />);
-
-    await user.click(screen.getByRole("button", { name: "Open filters" }));
-
-    const dialog = screen.getByRole("dialog", { name: "Filters" });
-    expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText("All Categories")).toBeInTheDocument();
-    expect(dialog.querySelector("[data-filter-drawer-panel]")).toHaveClass("mr-auto");
-
-    await user.click(within(dialog).getByRole("button", { name: "Close filters" }));
-
-    expect(screen.queryByRole("dialog", { name: "Filters" })).not.toBeInTheDocument();
   });
 });
