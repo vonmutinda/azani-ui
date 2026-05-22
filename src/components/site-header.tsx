@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Button, Input } from "@heroui/react";
 import {
   ChevronDown,
   Heart,
@@ -18,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
+import { AZANI_DEFAULT_LOGO } from "@/lib/brand-assets";
 import {
   Category,
   resolveToMainAndSub,
@@ -270,27 +272,30 @@ export function SiteHeader() {
 
       <div className="border-border/55 border-b">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-[72px] lg:px-8">
-          <button
-            onClick={() => setMobileOpen((open) => !open)}
+          <Button
+            isIconOnly
+            onPress={() => setMobileOpen((open) => !open)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
+            variant="ghost"
             className={`az-focus inline-flex h-10 min-h-10 w-10 min-w-10 items-center justify-center rounded-lg transition lg:hidden ${
               mobileOpen ? "bg-foreground text-white" : "text-foreground hover:bg-foreground/[0.04]"
             }`}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          </Button>
 
           <Link
             href="/"
             className="az-focus absolute left-1/2 shrink-0 -translate-x-1/2 rounded-md lg:static lg:translate-x-0"
           >
             <Image
-              src="/logo.svg"
+              src={AZANI_DEFAULT_LOGO.logo.inline2x}
               alt="Azani"
-              width={320}
-              height={100}
+              width={AZANI_DEFAULT_LOGO.logo.width}
+              height={AZANI_DEFAULT_LOGO.logo.height}
+              sizes="(min-width: 1024px) 161px, (min-width: 640px) 138px, 127px"
               className="h-11 w-auto sm:h-12 lg:h-14"
               priority
             />
@@ -299,25 +304,32 @@ export function SiteHeader() {
           <div className="ml-auto flex min-w-0 items-center gap-1.5 lg:gap-2">
             {searchOpen && (
               <form
+                id="desktop-product-search"
                 role="search"
                 aria-label="Desktop product search"
                 onSubmit={handleSearch}
                 className="relative hidden min-w-0 items-center lg:flex lg:w-64 xl:w-80"
               >
                 <Search className="text-muted pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
-                <input
+                <Input
                   ref={desktopSearchInputRef}
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
+                  aria-label="Search products"
                   className="az-form-field h-10 pr-4 pl-10 text-sm"
+                  variant="secondary"
                 />
               </form>
             )}
-            <button
-              onClick={toggleSearch}
+            <Button
+              isIconOnly
+              onPress={toggleSearch}
               aria-label={searchOpen ? "Close search" : "Search"}
+              aria-expanded={searchOpen}
+              aria-controls="desktop-product-search"
+              variant="ghost"
               className="az-icon-button az-focus h-10 min-h-10 w-10 min-w-10 shrink-0"
             >
               {searchOpen ? (
@@ -325,7 +337,7 @@ export function SiteHeader() {
               ) : (
                 <Search className="h-[18px] w-[18px]" />
               )}
-            </button>
+            </Button>
             <Link
               href={accountHref}
               aria-label="Account"
@@ -435,13 +447,16 @@ export function SiteHeader() {
               aria-label="Mobile product search"
             >
               <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
-              <input
+              <Input
+                id="mobile-product-search"
                 ref={mobileSearchInputRef}
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products..."
+                aria-label="Search products"
                 className="az-form-field h-11 pr-4 pl-10"
+                variant="secondary"
               />
             </form>
           </div>
@@ -458,11 +473,13 @@ export function SiteHeader() {
             <form onSubmit={handleSearch} className="mb-4">
               <div className="relative">
                 <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
-                <input
+                <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
+                  aria-label="Search products"
                   className="az-form-field h-11 pr-4 pl-10"
+                  variant="secondary"
                 />
               </div>
             </form>

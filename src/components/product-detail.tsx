@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Card } from "@heroui/react";
 import {
   ArrowLeft,
   Check,
@@ -193,13 +194,13 @@ export function ProductDetail({ productId, onBack }: Props) {
       : null;
 
   const backLink = (
-    <button
-      type="button"
-      onClick={onBack}
+    <Button
+      onPress={onBack}
+      variant="ghost"
       className="az-focus text-muted hover:text-foreground mb-4 inline-flex items-center gap-1.5 rounded-full text-sm font-medium transition"
     >
       <ArrowLeft className="h-4 w-4" /> Back to products
-    </button>
+    </Button>
   );
 
   if (productQuery.isLoading) {
@@ -337,11 +338,12 @@ export function ProductDetail({ productId, onBack }: Props) {
           {allImages.length > 1 && (
             <div className="hide-scrollbar grid auto-cols-[4.25rem] grid-flow-col gap-2 overflow-x-auto pb-1">
               {allImages.map((img, i) => (
-                <button
+                <Button
                   key={img.url}
-                  type="button"
-                  onClick={() => setActiveImageSelection({ productId: product.id, index: i })}
-                  className={`az-focus bg-product-media relative aspect-square overflow-hidden rounded-[var(--radius)] border-2 transition ${
+                  isIconOnly
+                  variant="ghost"
+                  onPress={() => setActiveImageSelection({ productId: product.id, index: i })}
+                  className={`az-focus bg-product-media relative aspect-square h-auto w-full min-w-0 overflow-hidden rounded-[var(--radius)] border-2 p-0 transition ${
                     i === activeImageIndex
                       ? "border-foreground"
                       : "border-border/50 hover:border-foreground/30"
@@ -363,13 +365,16 @@ export function ProductDetail({ productId, onBack }: Props) {
                       onError={() => handleImageError(img.url)}
                     />
                   )}
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="az-surface space-y-5 p-4 sm:p-6 lg:sticky lg:top-24">
+        <Card
+          className="az-surface space-y-5 p-4 shadow-none sm:p-6 lg:sticky lg:top-24"
+          variant="default"
+        >
           <div className="flex items-start justify-between gap-4">
             <div>
               {(categoryName || brand) && (
@@ -381,20 +386,20 @@ export function ProductDetail({ productId, onBack }: Props) {
                 {product.title}
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={handleWishlistToggle}
-              disabled={wishlistMutation.isPending}
+            <Button
+              isIconOnly
+              onPress={handleWishlistToggle}
+              isDisabled={wishlistMutation.isPending}
+              variant="ghost"
               className={`az-icon-button az-focus bg-card flex h-11 min-h-11 w-11 min-w-11 shrink-0 rounded-full border disabled:opacity-50 ${
                 isWishlisted
                   ? "border-primary text-primary"
                   : "border-border/50 text-muted hover:bg-foreground/[0.04] hover:text-foreground"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart className="h-[18px] w-[18px]" fill={isWishlisted ? "currentColor" : "none"} />
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-1">
@@ -411,61 +416,68 @@ export function ProductDetail({ productId, onBack }: Props) {
             <div key={option.id} className="space-y-2">
               <p className="text-foreground text-sm font-semibold">{option.title}</p>
               <div className="flex flex-wrap gap-2">
-                {option.values.map((val) => (
-                  <button
-                    key={val.id}
-                    type="button"
-                    onClick={() =>
-                      setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
-                    }
-                    className={`az-focus rounded-[var(--radius)] border px-4 py-2.5 text-sm font-semibold transition ${
-                      effectiveOptions[option.id] === val.value
-                        ? "border-foreground bg-foreground/[0.06] text-foreground"
-                        : "border-border/50 text-foreground hover:bg-foreground/[0.04]"
-                    }`}
-                  >
-                    {val.value}
-                  </button>
-                ))}
+                {option.values.map((val) => {
+                  const isSelected = effectiveOptions[option.id] === val.value;
+
+                  return (
+                    <Button
+                      key={val.id}
+                      onPress={() =>
+                        setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
+                      }
+                      variant="ghost"
+                      aria-pressed={isSelected}
+                      className={`az-focus rounded-[var(--radius)] border px-4 py-2.5 text-sm font-semibold transition ${
+                        isSelected
+                          ? "border-foreground bg-foreground/[0.06] text-foreground"
+                          : "border-border/50 text-foreground hover:bg-foreground/[0.04]"
+                      }`}
+                    >
+                      {val.value}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           ))}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="border-border/50 bg-card flex w-max items-center rounded-[var(--radius)] border">
-              <button
-                type="button"
+              <Button
+                isIconOnly
                 aria-label="Decrease quantity"
-                onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
-                className="az-focus text-muted hover:text-foreground flex h-11 w-11 items-center justify-center rounded-l-[var(--radius)] transition"
-                disabled={!availability.canPurchase || maxedOut}
+                onPress={() => setQuantity(Math.max(1, safeQuantity - 1))}
+                className="az-focus text-muted hover:text-foreground flex h-11 w-11 min-w-11 items-center justify-center rounded-l-[var(--radius)] transition"
+                isDisabled={!availability.canPurchase || maxedOut}
+                variant="ghost"
               >
                 <Minus className="h-3.5 w-3.5" />
-              </button>
+              </Button>
               <span className="flex h-11 w-10 items-center justify-center text-sm font-semibold">
                 {safeQuantity}
               </span>
-              <button
-                type="button"
+              <Button
+                isIconOnly
                 aria-label="Increase quantity"
-                onClick={() => setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))}
-                className="az-focus text-muted hover:text-foreground flex h-11 w-11 items-center justify-center rounded-r-[var(--radius)] transition"
-                disabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
+                onPress={() => setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))}
+                className="az-focus text-muted hover:text-foreground flex h-11 w-11 min-w-11 items-center justify-center rounded-r-[var(--radius)] transition"
+                isDisabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
+                variant="ghost"
               >
                 <Plus className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={
+            <Button
+              onPress={handleAddToCart}
+              isDisabled={
                 cartMutation.isPending ||
                 !selectedVariant ||
                 !availability.canPurchase ||
                 justAdded ||
                 maxedOut
               }
+              variant="ghost"
               className={`az-focus flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 text-sm font-bold text-white transition-all duration-300 disabled:opacity-50 ${
                 justAdded
                   ? "bg-success"
@@ -494,7 +506,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                       : "Out of Stock"}
                 </>
               )}
-            </button>
+            </Button>
           </div>
 
           {cartMutation.isError && (
@@ -502,7 +514,7 @@ export function ProductDetail({ productId, onBack }: Props) {
               Failed to add to cart. Please try again.
             </p>
           )}
-        </div>
+        </Card>
       </div>
 
       <section className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">

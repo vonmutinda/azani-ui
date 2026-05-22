@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Button } from "@heroui/react";
 import { Loader2 } from "lucide-react";
 import {
   validateGoogleCallback,
@@ -128,12 +129,13 @@ function GoogleCallbackContent() {
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-8">
           <p className="text-danger text-sm font-medium">{error}</p>
-          <button
-            onClick={() => router.push("/account/login")}
+          <Button
+            onPress={() => router.push("/account/login")}
+            variant="ghost"
             className="bg-foreground hover:bg-foreground/85 inline-flex rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Back to Sign In
-          </button>
+          </Button>
         </div>
       </div>
     );

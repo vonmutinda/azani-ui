@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Input } from "@heroui/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useCallback, useMemo } from "react";
@@ -297,31 +298,36 @@ export default function CartPage() {
                     className="bg-success-light flex items-center justify-between rounded-lg px-3 py-2 text-sm"
                   >
                     <span className="text-success font-medium">{promo.code}</span>
-                    <button
-                      onClick={() => removePromoMutation.mutate(promo.code)}
+                    <Button
+                      isIconOnly
+                      onPress={() => removePromoMutation.mutate(promo.code)}
                       aria-label={`Remove promo code ${promo.code}`}
+                      variant="ghost"
                       className="az-focus text-muted hover:text-danger rounded transition"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex gap-2">
-                <input
+                <Input
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder="Enter code"
+                  aria-label="Promo code"
                   className="az-form-field h-10 flex-1 px-3"
+                  variant="secondary"
                 />
-                <button
-                  onClick={() => promoMutation.mutate()}
-                  disabled={!promoCode || promoMutation.isPending}
+                <Button
+                  onPress={() => promoMutation.mutate()}
+                  isDisabled={!promoCode || promoMutation.isPending}
                   className="az-btn az-btn-primary az-focus min-h-10 rounded-full px-4 disabled:opacity-50"
+                  variant="ghost"
                 >
                   Apply
-                </button>
+                </Button>
               </div>
             )}
             {promoMutation.isError && (
@@ -330,13 +336,14 @@ export default function CartPage() {
           </div>
 
           {hasUnavailableItems ? (
-            <button
+            <Button
               type="button"
-              disabled
+              isDisabled
               className="az-btn az-btn-primary flex rounded-full py-3.5 opacity-50"
+              variant="ghost"
             >
               Resolve Stock Issues First
-            </button>
+            </Button>
           ) : (
             <Link
               href="/checkout"
@@ -461,20 +468,21 @@ function CartItem({
 
         <div className="flex items-center justify-between gap-3 sm:justify-start">
           <div className="border-border/50 flex items-center rounded-full border">
-            <button
-              type="button"
+            <Button
+              isIconOnly
               aria-label={`Decrease quantity for ${item.title}`}
-              onClick={() => {
+              onPress={() => {
                 const next = Math.max(1, item.quantity - 1);
                 setEditQty(String(next));
                 onUpdate(item.id, next);
               }}
-              disabled={isUpdating || availability.isOutOfStock || item.quantity <= 1}
+              isDisabled={isUpdating || availability.isOutOfStock || item.quantity <= 1}
               className="az-focus text-muted hover:text-foreground cursor-pointer px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-30"
+              variant="ghost"
             >
               <Minus className="h-3.5 w-3.5" />
-            </button>
-            <input
+            </Button>
+            <Input
               aria-label={`Quantity for ${item.title}`}
               type="text"
               inputMode="numeric"
@@ -491,33 +499,36 @@ function CartItem({
               }}
               disabled={availability.isOutOfStock}
               className="az-focus w-8 bg-transparent text-center text-xs font-bold outline-none disabled:opacity-40"
+              variant="secondary"
             />
-            <button
-              type="button"
+            <Button
+              isIconOnly
               aria-label={`Increase quantity for ${item.title}`}
-              onClick={() => {
+              onPress={() => {
                 const next = Math.min(effectiveMaxQuantity, item.quantity + 1);
                 setEditQty(String(next));
                 onUpdate(item.id, next);
               }}
-              disabled={
+              isDisabled={
                 isUpdating || availability.isOutOfStock || item.quantity >= effectiveMaxQuantity
               }
               className="az-focus text-muted hover:text-foreground cursor-pointer px-3 py-2 transition disabled:cursor-not-allowed disabled:opacity-30"
+              variant="ghost"
             >
               <Plus className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
 
-          <button
-            type="button"
+          <Button
+            isIconOnly
             aria-label={`Remove ${item.title}`}
-            onClick={() => onRemove(item.id)}
-            disabled={isRemoving}
+            onPress={() => onRemove(item.id)}
+            isDisabled={isRemoving}
             className="az-icon-button az-focus hover:bg-danger-light hover:text-danger rounded-full p-2.5"
+            variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 

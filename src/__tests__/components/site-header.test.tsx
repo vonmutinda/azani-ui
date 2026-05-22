@@ -141,9 +141,19 @@ describe("SiteHeader", () => {
     const user = userEvent.setup();
     renderHeader();
 
-    await user.click(screen.getByRole("button", { name: "Search" }));
+    const searchToggle = screen.getByRole("button", { name: "Search" });
+    expect(searchToggle).toHaveAttribute("aria-expanded", "false");
+    expect(searchToggle).toHaveAttribute("aria-controls", "desktop-product-search");
+
+    await user.click(searchToggle);
+
+    expect(screen.getByRole("button", { name: "Close search" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
 
     const desktopSearch = screen.getByRole("search", { name: "Desktop product search" });
+    expect(desktopSearch).toHaveAttribute("id", "desktop-product-search");
     expect(desktopSearch).toBeInTheDocument();
     expect(desktopSearch).toHaveClass("hidden");
     expect(desktopSearch).toHaveClass("lg:flex");

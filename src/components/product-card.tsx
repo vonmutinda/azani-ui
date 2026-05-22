@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Check, Heart, Plus, ShoppingBag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Card, Chip } from "@heroui/react";
 import { MedusaCart, MedusaProduct } from "@/types/medusa";
 import {
   getProductPrice,
@@ -79,28 +80,11 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
     },
   });
 
-  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!quickAddVariant || !availability.canPurchase) return;
-    if (maxedOut) {
-      showToast("Maximum quantity already in cart", "info");
-      return;
-    }
-    cartMutation.mutate(quickAddVariant.id);
-  };
-
   const handleClick = (e: React.MouseEvent) => {
     if (onSelect) {
       e.preventDefault();
       onSelect(product.id);
     }
-  };
-
-  const handleWishlistToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    wishlistMutation.mutate();
   };
 
   const productHref = `/products/${product.id}`;
@@ -120,35 +104,45 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
       : `${product.title} is out of stock`;
 
   return (
-    <article className="az-product-card group relative flex min-w-0 flex-col overflow-hidden transition duration-300">
+    <Card
+      role="article"
+      className="az-product-card group relative flex min-w-0 flex-col gap-0 overflow-hidden p-0 shadow-none transition duration-300"
+      variant="default"
+    >
       {(isNew || hasSalePrice) && (
         <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-wrap gap-1.5">
           {isNew && (
-            <span className="az-pill az-pill-promo text-2xs px-2 py-1 tracking-wider uppercase">
+            <Chip
+              className="az-pill az-pill-promo text-2xs px-2 py-1 tracking-wider uppercase"
+              size="sm"
+            >
               New
-            </span>
+            </Chip>
           )}
           {hasSalePrice && (
-            <span className="az-pill az-pill-trust text-2xs px-2 py-1 tracking-wider uppercase">
+            <Chip
+              className="az-pill az-pill-trust text-2xs px-2 py-1 tracking-wider uppercase"
+              size="sm"
+            >
               Sale
-            </span>
+            </Chip>
           )}
         </div>
       )}
 
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-100 transition-all duration-200 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={handleWishlistToggle}
-          disabled={wishlistMutation.isPending}
-          className={`az-icon-button az-focus border-border/50 bg-card rounded-full border disabled:opacity-50 ${
+        <Button
+          isDisabled={wishlistMutation.isPending}
+          isIconOnly
+          className={`az-icon-button az-focus border-border/50 bg-card min-w-10 rounded-full border disabled:opacity-50 ${
             isWishlisted ? "text-primary" : "text-muted"
           }`}
-          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={wishlistLabel}
+          variant="ghost"
+          onPress={() => wishlistMutation.mutate()}
         >
           <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
-        </button>
+        </Button>
       </div>
 
       <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
@@ -198,23 +192,22 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </p>
 
         <div className="mt-auto flex items-end justify-between gap-2">
-          <div className="flex min-w-0 flex-col">
-            <span className="text-foreground text-base leading-tight font-bold">
+          <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5">
+            <span className="text-foreground max-w-full truncate text-base leading-tight font-bold">
               {price?.formatted ?? "--"}
             </span>
             {originalPrice && (
-              <span className="text-muted text-2xs leading-tight line-through">
+              <span className="text-muted text-2xs max-w-full truncate leading-tight line-through">
                 {originalPrice}
               </span>
             )}
           </div>
 
           {quickAddVariant && (
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`az-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
+            <Button
+              isDisabled={cartMutation.isPending || !availability.canPurchase || justAdded}
+              isIconOnly
+              className={`az-focus flex h-9 w-9 min-w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
                 justAdded
                   ? "bg-success scale-110"
                   : maxedOut
@@ -222,13 +215,15 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
                     : "bg-foreground hover:bg-foreground/85 disabled:opacity-40"
               }`}
               aria-label={quickAddLabel}
-              title={
-                maxedOut
-                  ? "Max quantity in cart"
-                  : availability.canPurchase
-                    ? "Quick add"
-                    : "Out of stock"
-              }
+              variant="ghost"
+              onPress={() => {
+                if (!quickAddVariant || !availability.canPurchase) return;
+                if (maxedOut) {
+                  showToast("Maximum quantity already in cart", "info");
+                  return;
+                }
+                cartMutation.mutate(quickAddVariant.id);
+              }}
             >
               {justAdded ? (
                 <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
@@ -237,10 +232,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               ) : (
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               )}
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </article>
+    </Card>
   );
 }

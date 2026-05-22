@@ -30,7 +30,9 @@ describe("WishlistPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Save products to your wishlist as a guest, or sign in to keep them synced to your account."),
+        screen.getByText(
+          "Save products to your wishlist as a guest, or sign in to keep them synced to your account.",
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -42,9 +44,7 @@ describe("WishlistPage", () => {
       has_account: true,
     });
     mockGetWishlistProductIds.mockResolvedValue(["prod_01"]);
-    mockGetProductsByIds.mockResolvedValue([
-      { id: "prod_01", title: "Pampers Baby Dry Diapers" },
-    ]);
+    mockGetProductsByIds.mockResolvedValue([{ id: "prod_01", title: "Pampers Baby Dry Diapers" }]);
 
     renderWithProviders(<WishlistPage />);
 

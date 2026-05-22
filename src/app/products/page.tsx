@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Chip } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
@@ -282,13 +283,15 @@ function ProductsContent() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {selectedProductId && (
-                <button
-                  onClick={() => setSelectedProductId(null)}
-                  className="az-icon-button az-focus -ml-1 flex h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full"
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  onPress={() => setSelectedProductId(null)}
+                  className="az-icon-button az-focus -ml-1 h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full shadow-none"
                   aria-label="Back to products"
                 >
                   <ArrowLeft className="h-5 w-5" />
-                </button>
+                </Button>
               )}
               <h1 className="text-foreground text-2xl font-bold">{headingText}</h1>
             </div>
@@ -327,17 +330,17 @@ function ProductsContent() {
         {!selectedProductId && categoryChildren.length > 0 && (
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {categoryChildren.map((child) => (
-              <button
+              <Button
                 key={child.id}
-                type="button"
                 aria-label={`Browse ${child.name}`}
-                onClick={() =>
+                onPress={() =>
                   updateQuery({ category: uniqueValues([...categoryHandles, child.handle]) })
                 }
+                variant="ghost"
                 className="az-focus border-secondary/30 bg-secondary-light text-secondary hover:border-secondary hover:bg-primary-light hover:text-primary shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
               >
                 {child.name}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -360,51 +363,62 @@ function ProductsContent() {
                 const categoryName = categoryLookup.get(handle)?.name ?? handle;
 
                 return (
-                  <span
+                  <Chip
                     key={handle}
                     className="az-pill border-secondary/25 bg-secondary-light inline-flex border py-1 pr-1.5 pl-3 text-sm"
+                    variant="secondary"
                   >
                     <Tag className="text-secondary h-3 w-3" />
                     <span className="text-foreground font-medium">{categoryName}</span>
-                    <button
-                      onClick={() =>
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      size="sm"
+                      onPress={() =>
                         updateQuery({
                           category: categoryHandles.filter((category) => category !== handle),
                         })
                       }
-                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
+                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full shadow-none"
                       aria-label={`Remove ${categoryName} filter`}
                     >
                       <X className="h-3 w-3" />
-                    </button>
-                  </span>
+                    </Button>
+                  </Chip>
                 );
               })}
               {filters.q && (
-                <span className="az-pill border-primary/20 bg-primary-light inline-flex border py-1 pr-1.5 pl-3 text-sm">
+                <Chip
+                  className="az-pill border-primary/20 bg-primary-light inline-flex border py-1 pr-1.5 pl-3 text-sm"
+                  variant="secondary"
+                >
                   <Search className="text-primary h-3 w-3" />
                   <span className="text-foreground font-medium">
                     &ldquo;{String(filters.q)}&rdquo;
                   </span>
-                  <button
-                    onClick={() => updateQuery({ q: undefined })}
-                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full"
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => updateQuery({ q: undefined })}
+                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 rounded-full shadow-none"
                     aria-label="Remove search filter"
                   >
                     <X className="h-3 w-3" />
-                  </button>
-                </span>
+                  </Button>
+                </Chip>
               )}
               {activeFilterCount > 1 && (
-                <button
-                  onClick={() => {
+                <Button
+                  variant="ghost"
+                  onPress={() => {
                     setSelectedProductId(null);
                     updateQuery({ category: [], q: undefined });
                   }}
-                  className="text-secondary hover:text-primary ml-1 text-sm font-medium transition hover:underline"
+                  className="text-secondary hover:text-secondary-hover ml-1 h-auto min-h-0 px-0 py-0 text-sm font-medium shadow-none hover:underline"
                 >
                   Clear all
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -433,13 +447,14 @@ function ProductsContent() {
                   Check your connection and try loading this browse view again.
                 </p>
               </div>
-              <button
-                onClick={retryBrowsing}
+              <Button
+                onPress={retryBrowsing}
+                variant="primary"
                 className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
                 aria-label="Try loading products again"
               >
                 Try again
-              </button>
+              </Button>
             </div>
           ) : sortedProducts.length === 0 ? (
             <div className="az-empty-state flex flex-col items-center gap-5 p-10">
@@ -452,13 +467,14 @@ function ProductsContent() {
                   Try adjusting your filters or search terms.
                 </p>
               </div>
-              <button
-                onClick={() => updateQuery({ category: undefined, q: undefined, sort: undefined })}
+              <Button
+                onPress={() => updateQuery({ category: undefined, q: undefined, sort: undefined })}
+                variant="primary"
                 className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
                 aria-label="Clear filters and browse all products"
               >
                 Clear filters and browse all products
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -475,21 +491,24 @@ function ProductsContent() {
               {totalPages > 1 && (
                 <div className="mt-8 flex justify-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
+                    <Button
                       key={p}
-                      onClick={() => {
+                      onPress={() => {
                         const params = new URLSearchParams(searchParams.toString());
                         params.set("page", String(p));
                         router.push(`/products?${params.toString()}`);
                       }}
-                      className={`az-focus flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 ${
+                      variant={p === page ? "primary" : "outline"}
+                      isIconOnly
+                      aria-current={p === page ? "page" : undefined}
+                      className={`az-focus flex h-10 w-10 min-w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 ${
                         p === page
                           ? "bg-foreground text-white"
                           : "border-border/50 text-muted hover:border-border hover:text-foreground border bg-white"
                       }`}
                     >
                       {p}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}

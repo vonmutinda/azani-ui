@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { Button } from "@heroui/react";
 import { verifyEmail, resendVerificationEmail } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle, Loader2, Mail } from "lucide-react";
@@ -91,14 +92,15 @@ export default function VerifyEmailPage() {
         </p>
 
         {email && !resendSent && (
-          <button
-            onClick={() => resendMutation.mutate()}
-            disabled={resendMutation.isPending}
+          <Button
+            onPress={() => resendMutation.mutate()}
+            isDisabled={resendMutation.isPending}
+            variant="ghost"
             className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
           >
             <Mail className="h-4 w-4" />
             {resendMutation.isPending ? "Sending..." : "Resend Verification Email"}
-          </button>
+          </Button>
         )}
 
         {resendSent && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Input } from "@heroui/react";
 import { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
@@ -151,10 +152,12 @@ function ShippingStep({
             const Icon = meta.icon;
 
             return (
-              <button
+              <Button
                 key={option.id}
-                onClick={() => onSelect(option.id)}
-                disabled={disabled}
+                onPress={() => onSelect(option.id)}
+                isDisabled={disabled}
+                variant="ghost"
+                aria-pressed={selectedShipping === option.id}
                 className={`az-focus flex w-full items-center justify-between rounded-[var(--radius)] border px-4 py-3.5 text-left text-sm transition ${
                   disabled && !isPending
                     ? "border-border/50 bg-surface-soft cursor-not-allowed opacity-50"
@@ -180,17 +183,18 @@ function ShippingStep({
                 <span className="text-promo font-semibold">
                   {option.amount === 0 ? "Free" : formatPrice(option.amount)}
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>
       )}
-      <button
-        onClick={onBack}
+      <Button
+        onPress={onBack}
+        variant="ghost"
         className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
       >
         &larr; Back to Address
-      </button>
+      </Button>
     </div>
   );
 }
@@ -495,13 +499,14 @@ export default function CheckoutPage() {
               created after payment is captured by M-Pesa.
             </p>
           </div>
-          <button
-            onClick={() => cartQuery.refetch()}
-            disabled={cartQuery.isFetching}
+          <Button
+            onPress={() => cartQuery.refetch()}
+            isDisabled={cartQuery.isFetching}
+            variant="ghost"
             className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
           >
             {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -736,10 +741,11 @@ export default function CheckoutPage() {
                         {savedAddresses.map((address) => {
                           const isSelected = address.id === selectedSavedAddress.id;
                           return (
-                            <button
+                            <Button
                               key={address.id}
-                              type="button"
-                              onClick={() => setSelectedSavedAddressId(address.id ?? null)}
+                              onPress={() => setSelectedSavedAddressId(address.id ?? null)}
+                              variant="ghost"
+                              aria-pressed={isSelected}
                               className={`az-focus w-full rounded-[var(--radius)] border p-4 text-left transition ${
                                 isSelected
                                   ? "border-trust bg-trust-light"
@@ -765,27 +771,28 @@ export default function CheckoutPage() {
                                   <span className="az-pill az-pill-neutral py-1">Selected</span>
                                 )}
                               </div>
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>
                       <div className="flex flex-wrap gap-3">
-                        <button
+                        <Button
                           type="submit"
-                          disabled={addressMutation.isPending || hasUnavailableItems}
+                          isDisabled={addressMutation.isPending || hasUnavailableItems}
+                          variant="ghost"
                           className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                         >
                           {addressMutation.isPending
                             ? "Saving..."
                             : "Continue with Selected Address"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUseManualAddress(true)}
+                        </Button>
+                        <Button
+                          onPress={() => setUseManualAddress(true)}
+                          variant="ghost"
                           className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
                         >
                           Use Different Address
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -799,12 +806,13 @@ export default function CheckoutPage() {
                         >
                           First Name <span className="text-danger">*</span>
                         </label>
-                        <input
+                        <Input
                           id="checkout-first-name"
                           required
                           value={form.first_name}
                           onChange={(e) => setForm({ ...form, first_name: e.target.value })}
                           className={inputClass}
+                          variant="secondary"
                         />
                       </div>
                       <div>
@@ -814,12 +822,13 @@ export default function CheckoutPage() {
                         >
                           Last Name <span className="text-danger">*</span>
                         </label>
-                        <input
+                        <Input
                           id="checkout-last-name"
                           required
                           value={form.last_name}
                           onChange={(e) => setForm({ ...form, last_name: e.target.value })}
                           className={inputClass}
+                          variant="secondary"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -834,12 +843,13 @@ export default function CheckoutPage() {
                             {customerQuery.data.email}
                           </div>
                         ) : (
-                          <input
+                          <Input
                             id="checkout-email"
                             type="email"
                             value={form.email}
                             onChange={(e) => setForm({ ...form, email: e.target.value })}
                             className={inputClass}
+                            variant="secondary"
                           />
                         )}
                       </div>
@@ -850,7 +860,7 @@ export default function CheckoutPage() {
                         >
                           Phone <span className="text-danger">*</span>
                         </label>
-                        <input
+                        <Input
                           id="checkout-phone"
                           type="tel"
                           required
@@ -858,6 +868,7 @@ export default function CheckoutPage() {
                           value={form.phone}
                           onChange={(e) => setForm({ ...form, phone: e.target.value })}
                           className={inputClass}
+                          variant="secondary"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -867,33 +878,35 @@ export default function CheckoutPage() {
                         >
                           Street Address <span className="text-danger">*</span>
                         </label>
-                        <input
+                        <Input
                           id="checkout-address"
                           required
                           value={form.address_1}
                           onChange={(e) => setForm({ ...form, address_1: e.target.value })}
                           className={inputClass}
+                          variant="secondary"
                         />
                       </div>
                     </div>
                   )}
                   {(!isUsingSavedAddress || !selectedSavedAddress) && (
-                    <button
+                    <Button
                       type="submit"
-                      disabled={addressMutation.isPending || hasUnavailableItems}
+                      isDisabled={addressMutation.isPending || hasUnavailableItems}
+                      variant="ghost"
                       className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
-                    </button>
+                    </Button>
                   )}
                   {useManualAddress && savedAddresses.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setUseManualAddress(false)}
+                    <Button
+                      onPress={() => setUseManualAddress(false)}
+                      variant="ghost"
                       className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
                     >
                       Use a saved address instead
-                    </button>
+                    </Button>
                   )}
                 </form>
               )}
@@ -963,7 +976,7 @@ export default function CheckoutPage() {
                           >
                             M-Pesa Phone Number <span className="text-danger">*</span>
                           </label>
-                          <input
+                          <Input
                             id="checkout-mpesa-phone"
                             type="tel"
                             required
@@ -971,6 +984,7 @@ export default function CheckoutPage() {
                             value={mpesaPhone}
                             onChange={(e) => setMpesaPhone(e.target.value)}
                             className={inputClass}
+                            variant="secondary"
                           />
                         </div>
                       )}
@@ -1043,26 +1057,28 @@ export default function CheckoutPage() {
                   </label>
 
                   <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <button
-                      onClick={() => paymentMutation.mutate()}
-                      disabled={
+                    <Button
+                      onPress={() => paymentMutation.mutate()}
+                      isDisabled={
                         paymentMutation.isPending ||
                         hasUnavailableItems ||
                         (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
                       }
+                      variant="ghost"
                       className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                     >
                       {paymentMutation.isPending ? "Saving..." : "Continue to Review"}
-                    </button>
-                    <button
-                      onClick={() => {
+                    </Button>
+                    <Button
+                      onPress={() => {
                         setStep("shipping");
                         setErrorMessage(null);
                       }}
+                      variant="ghost"
                       className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
                     >
                       &larr; Back to Shipping
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1132,13 +1148,14 @@ export default function CheckoutPage() {
                   </div>
 
                   <p className="text-muted text-sm">Review your details before continuing.</p>
-                  <button
-                    onClick={() => completeMutation.mutate()}
-                    disabled={
+                  <Button
+                    onPress={() => completeMutation.mutate()}
+                    isDisabled={
                       completeMutation.isPending ||
                       finalizeOrderMutation.isPending ||
                       hasUnavailableItems
                     }
+                    variant="ghost"
                     className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
                   >
                     {completeMutation.isPending || finalizeOrderMutation.isPending
@@ -1148,16 +1165,17 @@ export default function CheckoutPage() {
                       : paymentMethod === "mpesa_express"
                         ? "Send M-Pesa Prompt"
                         : "Place Order"}
-                  </button>
-                  <button
-                    onClick={() => {
+                  </Button>
+                  <Button
+                    onPress={() => {
                       setStep("payment");
                       setErrorMessage(null);
                     }}
+                    variant="ghost"
                     className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
                   >
                     &larr; Back to Payment
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

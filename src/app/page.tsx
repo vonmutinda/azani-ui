@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@heroui/react";
 import { useState, useEffect, useCallback } from "react";
 import {
   ArrowRight,
@@ -63,7 +64,7 @@ function HeroCarousel({
 
   const positionStyles = {
     left: "left-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[52%]",
+    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[62%] sm:w-[52%]",
     right: "right-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
   };
 
@@ -113,7 +114,9 @@ function HeroCarousel({
                     {p.title}
                   </p>
                   {p.price && (
-                    <p className="text-lg font-bold text-white drop-shadow-sm">{p.price}</p>
+                    <p className="truncate text-base font-bold text-white drop-shadow-sm sm:text-lg">
+                      {p.price}
+                    </p>
                   )}
                 </div>
               )}
@@ -124,33 +127,36 @@ function HeroCarousel({
 
       {count > 1 && (
         <div className="mt-4 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => go(active - 1)}
+          <Button
+            isIconOnly
+            variant="ghost"
+            onPress={() => go(active - 1)}
             className="az-icon-button az-focus flex h-10 min-h-10 w-10 min-w-10 rounded-full"
             aria-label="Previous product"
           >
             <ChevronLeft className="h-4 w-4" />
-          </button>
+          </Button>
           <div className="flex gap-1.5">
             {products.map((_, i) => (
-              <button
+              <Button
                 key={i}
-                type="button"
-                onClick={() => go(i)}
+                isIconOnly
+                variant="ghost"
+                onPress={() => go(i)}
                 aria-label={`Go to product ${i + 1}`}
-                className={`az-focus h-2 rounded-full transition-all duration-300 ${i === active ? "bg-foreground w-6" : "bg-foreground/20 hover:bg-foreground/30 w-2"}`}
+                className={`az-focus h-2 min-h-0 min-w-0 rounded-full p-0 transition-all duration-300 ${i === active ? "bg-foreground w-6" : "bg-foreground/20 hover:bg-foreground/30 w-2"}`}
               />
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => go(active + 1)}
+          <Button
+            isIconOnly
+            variant="ghost"
+            onPress={() => go(active + 1)}
             className="az-icon-button az-focus flex h-10 min-h-10 w-10 min-w-10 rounded-full"
             aria-label="Next product"
           >
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -296,11 +302,19 @@ export default function Home() {
                     ["new", "New Arrivals"],
                   ] as const
                 ).map(([key, label]) => (
-                  <button
+                  <Button
                     key={key}
-                    role="tab"
-                    aria-selected={productTab === key}
-                    onClick={() => setProductTab(key)}
+                    onPress={() => setProductTab(key)}
+                    variant="ghost"
+                    render={(buttonProps) => (
+                      <button
+                        {...buttonProps}
+                        id={`home-${key}-tab`}
+                        role="tab"
+                        aria-selected={productTab === key}
+                        aria-controls={`home-${key}-panel`}
+                      />
+                    )}
                     className={`az-focus relative rounded-full px-4 py-1.5 text-sm font-medium transition ${
                       productTab === key
                         ? "bg-foreground text-white"
@@ -308,7 +322,7 @@ export default function Home() {
                     }`}
                   >
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -317,39 +331,45 @@ export default function Home() {
             </Link>
           </div>
 
-          {(() => {
-            const query = productTab === "featured" ? featuredQuery : newQuery;
-            if (query.isLoading) {
+          <div
+            id={`home-${productTab}-panel`}
+            role="tabpanel"
+            aria-labelledby={`home-${productTab}-tab`}
+          >
+            {(() => {
+              const query = productTab === "featured" ? featuredQuery : newQuery;
+              if (query.isLoading) {
+                return (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="space-y-3">
+                        <div className="az-skeleton aspect-square" />
+                        <div className="az-skeleton h-4 w-3/4" />
+                        <div className="az-skeleton h-4 w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              if (query.isError) {
+                return (
+                  <div className="az-empty-state p-8">
+                    <p className="text-foreground text-sm font-medium">Something went wrong</p>
+                    <p className="text-muted mt-1 text-sm">
+                      We couldn&apos;t load products right now. Please try again later.
+                    </p>
+                  </div>
+                );
+              }
               return (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="space-y-3">
-                      <div className="az-skeleton aspect-square" />
-                      <div className="az-skeleton h-4 w-3/4" />
-                      <div className="az-skeleton h-4 w-1/2" />
-                    </div>
+                  {query.data?.products?.map((product) => (
+                    <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
               );
-            }
-            if (query.isError) {
-              return (
-                <div className="az-empty-state p-8">
-                  <p className="text-foreground text-sm font-medium">Something went wrong</p>
-                  <p className="text-muted mt-1 text-sm">
-                    We couldn&apos;t load products right now. Please try again later.
-                  </p>
-                </div>
-              );
-            }
-            return (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {query.data?.products?.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            );
-          })()}
+            })()}
+          </div>
         </div>
       </section>
 
