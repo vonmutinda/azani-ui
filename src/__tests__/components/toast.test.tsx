@@ -39,6 +39,7 @@ describe("ToastProvider", () => {
 
     await user.click(screen.getByText("Show Toast"));
     expect(screen.getByText("Item added!")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /notification/i })).toHaveClass("azani-toast-region");
   });
 
   it("shows a cart toast without changing the showToast API", async () => {

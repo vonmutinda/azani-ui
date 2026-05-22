@@ -35,10 +35,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       <Toast.Provider
-        className="z-[100]"
+        className="azani-toast-region z-[100]"
         maxVisibleToasts={4}
         placement="bottom end"
-        style={{ bottom: "calc(5rem + max(1rem, env(safe-area-inset-bottom)))" }}
         width="min(28rem, calc(100vw - 2rem))"
       />
     </ToastContext.Provider>
