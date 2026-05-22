@@ -283,13 +283,15 @@ function ProductsContent() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {selectedProductId && (
-                <button
-                  onClick={() => setSelectedProductId(null)}
-                  className="az-icon-button az-focus -ml-1 flex h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full"
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  onPress={() => setSelectedProductId(null)}
+                  className="az-icon-button az-focus -ml-1 h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full shadow-none"
                   aria-label="Back to products"
                 >
                   <ArrowLeft className="h-5 w-5" />
-                </button>
+                </Button>
               )}
               <h1 className="text-foreground text-2xl font-bold">{headingText}</h1>
             </div>
