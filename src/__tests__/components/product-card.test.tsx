@@ -164,7 +164,7 @@ describe("ProductCard", () => {
 
   it("does not show add-to-cart when no variant", () => {
     renderWithProviders(<ProductCard product={mockProductMinimal} />);
-    expect(screen.queryByTitle("Add to cart")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/quick add/i)).not.toBeInTheDocument();
   });
 
   it("links to product detail page", () => {
@@ -242,5 +242,17 @@ describe("ProductCard", () => {
 
     expect(mockAddToCart).not.toHaveBeenCalled();
     expect(screen.getByText("Max in cart")).toBeInTheDocument();
+  });
+
+  it("does not call onSelect when card action buttons are pressed", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+
+    renderWithProviders(<ProductCard product={mockProduct} onSelect={onSelect} />);
+
+    await user.click(screen.getByLabelText("Add Pampers Baby Dry Diapers to wishlist"));
+    await user.click(screen.getByLabelText("Quick add Pampers Baby Dry Diapers"));
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

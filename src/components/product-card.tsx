@@ -106,7 +106,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   return (
     <Card
       role="article"
-      className="az-product-card group relative flex min-w-0 flex-col overflow-hidden p-0 transition duration-300"
+      className="az-product-card group relative flex min-w-0 flex-col gap-0 overflow-hidden p-0 shadow-none transition duration-300"
       variant="default"
     >
       {(isNew || hasSalePrice) && (
