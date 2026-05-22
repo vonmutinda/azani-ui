@@ -54,31 +54,31 @@ Expected: Tailwind remains first; HeroUI styles load before local token override
 In `src/app/globals.css`, keep the existing Azani tokens and add these variables inside `:root` after `--danger`:
 
 ```css
-  --surface: var(--card);
-  --surface-foreground: var(--foreground);
-  --surface-secondary: #fff7fb;
-  --surface-secondary-foreground: var(--foreground);
-  --surface-tertiary: #edf7ff;
-  --surface-tertiary-foreground: var(--foreground);
-  --overlay: #ffffff;
-  --overlay-foreground: var(--foreground);
-  --default: #f5eef4;
-  --default-foreground: var(--foreground);
-  --accent: var(--primary);
-  --accent-foreground: #ffffff;
-  --warning: var(--accent-yellow);
-  --warning-foreground: var(--accent-yellow-ink);
-  --danger-foreground: #ffffff;
-  --separator: var(--border);
-  --focus: var(--primary);
-  --link: var(--secondary);
-  --backdrop: rgba(52, 42, 51, 0.42);
-  --field-background: #ffffff;
-  --field-foreground: var(--foreground);
-  --field-placeholder: var(--muted);
-  --field-border: var(--border);
-  --field-border-width: 1px;
-  --field-radius: var(--radius);
+--surface: var(--card);
+--surface-foreground: var(--foreground);
+--surface-secondary: #fff7fb;
+--surface-secondary-foreground: var(--foreground);
+--surface-tertiary: #edf7ff;
+--surface-tertiary-foreground: var(--foreground);
+--overlay: #ffffff;
+--overlay-foreground: var(--foreground);
+--default: #f5eef4;
+--default-foreground: var(--foreground);
+--accent: var(--primary);
+--accent-foreground: #ffffff;
+--warning: var(--accent-yellow);
+--warning-foreground: var(--accent-yellow-ink);
+--danger-foreground: #ffffff;
+--separator: var(--border);
+--focus: var(--primary);
+--link: var(--secondary);
+--backdrop: rgba(52, 42, 51, 0.42);
+--field-background: #ffffff;
+--field-foreground: var(--foreground);
+--field-placeholder: var(--muted);
+--field-border: var(--border);
+--field-border-width: 1px;
+--field-radius: var(--radius);
 ```
 
 Expected: Existing `bg-card`, `text-primary`, and other Tailwind aliases still work while HeroUI components receive matching semantic variables.
@@ -88,30 +88,30 @@ Expected: Existing `bg-card`, `text-primary`, and other Tailwind aliases still w
 In `src/app/globals.css`, add these entries inside the existing `@theme inline` block:
 
 ```css
-  --color-surface: var(--surface);
-  --color-surface-foreground: var(--surface-foreground);
-  --color-surface-secondary: var(--surface-secondary);
-  --color-surface-secondary-foreground: var(--surface-secondary-foreground);
-  --color-surface-tertiary: var(--surface-tertiary);
-  --color-surface-tertiary-foreground: var(--surface-tertiary-foreground);
-  --color-overlay: var(--overlay);
-  --color-overlay-foreground: var(--overlay-foreground);
-  --color-default: var(--default);
-  --color-default-foreground: var(--default-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-danger-foreground: var(--danger-foreground);
-  --color-separator: var(--separator);
-  --color-focus: var(--focus);
-  --color-link: var(--link);
-  --color-backdrop: var(--backdrop);
-  --color-field: var(--field-background);
-  --color-field-foreground: var(--field-foreground);
-  --color-field-placeholder: var(--field-placeholder);
-  --color-field-border: var(--field-border);
-  --radius-field: var(--field-radius);
+--color-surface: var(--surface);
+--color-surface-foreground: var(--surface-foreground);
+--color-surface-secondary: var(--surface-secondary);
+--color-surface-secondary-foreground: var(--surface-secondary-foreground);
+--color-surface-tertiary: var(--surface-tertiary);
+--color-surface-tertiary-foreground: var(--surface-tertiary-foreground);
+--color-overlay: var(--overlay);
+--color-overlay-foreground: var(--overlay-foreground);
+--color-default: var(--default);
+--color-default-foreground: var(--default-foreground);
+--color-accent: var(--accent);
+--color-accent-foreground: var(--accent-foreground);
+--color-warning: var(--warning);
+--color-warning-foreground: var(--warning-foreground);
+--color-danger-foreground: var(--danger-foreground);
+--color-separator: var(--separator);
+--color-focus: var(--focus);
+--color-link: var(--link);
+--color-backdrop: var(--backdrop);
+--color-field: var(--field-background);
+--color-field-foreground: var(--field-foreground);
+--color-field-placeholder: var(--field-placeholder);
+--color-field-border: var(--field-border);
+--radius-field: var(--field-radius);
 ```
 
 Expected: Tailwind utility classes can address both existing Azani tokens and HeroUI semantic tokens.
@@ -200,7 +200,8 @@ const ICON_MAP: Record<ToastType, React.ElementType> = {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback((message: string, type: ToastType = "success") => {
     const Icon = ICON_MAP[type];
-    const show = type === "success" ? heroToast.success : type === "error" ? heroToast.danger : heroToast.info;
+    const show =
+      type === "success" ? heroToast.success : type === "error" ? heroToast.danger : heroToast.info;
 
     show(message, {
       indicator: <Icon aria-hidden="true" className="size-4" />,
@@ -322,7 +323,10 @@ Replace the closing `</article>` with `</Card>`.
 Replace the `New` badge span with:
 
 ```tsx
-<Chip className="bg-accent-yellow text-foreground text-2xs font-bold tracking-wider uppercase" size="sm">
+<Chip
+  className="bg-accent-yellow text-foreground text-2xs font-bold tracking-wider uppercase"
+  size="sm"
+>
   New
 </Chip>
 ```
@@ -355,7 +359,9 @@ Replace the quick-add `<button>` with:
 <Button
   isDisabled={cartMutation.isPending || !availability.canPurchase || justAdded}
   isIconOnly
-  aria-label={maxedOut ? "Max quantity in cart" : availability.canPurchase ? "Add to cart" : "Out of stock"}
+  aria-label={
+    maxedOut ? "Max quantity in cart" : availability.canPurchase ? "Add to cart" : "Out of stock"
+  }
   className={`h-8 w-8 rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 ${
     justAdded
       ? "bg-accent-green-bold scale-110"
@@ -363,7 +369,9 @@ Replace the quick-add `<button>` with:
         ? "bg-muted cursor-default opacity-60"
         : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 disabled:opacity-40"
   }`}
-  title={maxedOut ? "Max quantity in cart" : availability.canPurchase ? "Add to cart" : "Out of stock"}
+  title={
+    maxedOut ? "Max quantity in cart" : availability.canPurchase ? "Add to cart" : "Out of stock"
+  }
   variant="ghost"
   onPress={() => {
     if (!quickAddVariant || !availability.canPurchase) return;
@@ -462,7 +470,11 @@ Expected: Native buttons can be migrated incrementally.
 Use `Button` with `variant="ghost"` or `variant="secondary"` for category, clear, expand, and mobile filter actions. The mobile trigger should preserve the visible text and count:
 
 ```tsx
-<Button className="border-border text-foreground shadow-sm lg:hidden" variant="secondary" onPress={() => setMobileOpen(true)}>
+<Button
+  className="border-border text-foreground shadow-sm lg:hidden"
+  variant="secondary"
+  onPress={() => setMobileOpen(true)}
+>
   <SlidersHorizontal className="h-4 w-4" />
   Filters
   {activeFilterCount > 0 && (

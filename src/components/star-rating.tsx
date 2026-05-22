@@ -19,7 +19,7 @@ export function StarRating({ rating, total, size = 14 }: Props) {
           />
         ))}
       </div>
-      {total !== undefined && <span className="text-xs text-muted">({total})</span>}
+      {total !== undefined && <span className="text-muted text-xs">({total})</span>}
     </div>
   );
 }
