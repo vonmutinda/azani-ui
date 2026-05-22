@@ -142,6 +142,26 @@ describe("ProductCard", () => {
     expect(screen.getByLabelText("Quick add Pampers Baby Dry Diapers")).toBeInTheDocument();
   });
 
+  it("does not add unavailable products to the cart", async () => {
+    const user = userEvent.setup();
+    const unavailableProduct = {
+      ...mockProduct,
+      variants: [
+        {
+          ...mockProduct.variants![0],
+          manage_inventory: true,
+          inventory_quantity: 0,
+          allow_backorder: false,
+        },
+      ],
+    };
+
+    renderWithProviders(<ProductCard product={unavailableProduct} />);
+
+    await user.click(screen.getByLabelText("Pampers Baby Dry Diapers is out of stock"));
+    expect(mockAddToCart).not.toHaveBeenCalled();
+  });
+
   it("does not show add-to-cart when no variant", () => {
     renderWithProviders(<ProductCard product={mockProductMinimal} />);
     expect(screen.queryByTitle("Add to cart")).not.toBeInTheDocument();
