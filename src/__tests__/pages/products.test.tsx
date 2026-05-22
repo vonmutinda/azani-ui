@@ -355,4 +355,25 @@ describe("ProductsPage", () => {
 
     expect(navigationMocks.push).toHaveBeenCalledWith("/products");
   });
+
+  it("marks the current pagination page", async () => {
+    mockGetProducts.mockResolvedValueOnce({
+      products: [mockProduct],
+      count: 40,
+      offset: 0,
+      limit: 20,
+    });
+    mockGetCategories.mockResolvedValueOnce({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "1" })).toHaveAttribute("aria-current", "page");
+    });
+  });
 });

@@ -500,6 +500,7 @@ function ProductsContent() {
                       }}
                       variant={p === page ? "primary" : "outline"}
                       isIconOnly
+                      aria-current={p === page ? "page" : undefined}
                       className={`az-focus flex h-10 w-10 min-w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 ${
                         p === page
                           ? "bg-foreground text-white"

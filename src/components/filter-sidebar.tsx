@@ -120,6 +120,19 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const selectedCategories = useMemo(() => normalizeCategoryFilter(filters.category), [filters]);
   const selectedCategorySet = useMemo(() => new Set(selectedCategories), [selectedCategories]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const media = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = (event: MediaQueryListEvent | MediaQueryList) => {
+      if (event.matches) setMobileOpen(false);
+    };
+
+    closeOnDesktop(media);
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, []);
+
   const topCategories = categories
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toCategory);
@@ -210,6 +223,9 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         className="az-btn az-btn-outline az-focus flex w-full rounded-full px-4 py-2.5 lg:hidden"
         variant="secondary"
         onPress={() => setMobileOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={mobileOpen}
+        aria-controls="filters-drawer"
       >
         <SlidersHorizontal className="h-4 w-4" />
         Filters
@@ -227,7 +243,11 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         className="lg:hidden"
       >
         <Drawer.Content className="w-80 max-w-[85vw]" placement="left">
-          <Drawer.Dialog aria-label="Filters" className="h-full">
+          <Drawer.Dialog
+            id="filters-drawer"
+            aria-labelledby="filters-title-mobile"
+            className="h-full"
+          >
             <Drawer.CloseTrigger aria-label="Close filters" />
             <Drawer.Body className="px-6 py-6">{renderContent("filters-title-mobile")}</Drawer.Body>
           </Drawer.Dialog>
