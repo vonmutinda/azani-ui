@@ -71,6 +71,19 @@ describe("Home Page", () => {
     expect(screen.getByText("Explore Our Collection")).toBeInTheDocument();
   });
 
+  it("connects collection tabs to their product panel", () => {
+    renderWithProviders(<Home />);
+
+    const featuredTab = screen.getByRole("tab", { name: "Featured" });
+
+    expect(featuredTab).toHaveAttribute("aria-selected", "true");
+    expect(featuredTab).toHaveAttribute("aria-controls", "home-featured-panel");
+    expect(screen.getByRole("tabpanel", { name: "Featured" })).toHaveAttribute(
+      "id",
+      "home-featured-panel",
+    );
+  });
+
   it("renders shop by category section heading", () => {
     renderWithProviders(<Home />);
     expect(screen.getByText("Shop by Category")).toBeInTheDocument();

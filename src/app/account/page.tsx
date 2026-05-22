@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Input } from "@heroui/react";
 import {
   getCustomer,
   updateCustomer,
@@ -457,13 +458,14 @@ export default function AccountPage() {
             <p className="text-muted truncate text-sm">{customer.email}</p>
           </div>
         </div>
-        <button
-          onClick={handleSignOut}
+        <Button
+          onPress={handleSignOut}
+          variant="ghost"
           className="border-border/50 text-muted hover:border-danger/20 hover:bg-danger/5 hover:text-danger hidden items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm font-medium transition sm:flex"
         >
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
-        </button>
+        </Button>
       </div>
 
       <EmailVerificationBanner customer={customer} />
@@ -547,11 +549,11 @@ export default function AccountPage() {
                 </div>
                 <ChevronRight className="text-muted h-3.5 w-3.5" />
               </Link>
-              <button
-                type="button"
-                onClick={() =>
+              <Button
+                onPress={() =>
                   addressesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }
+                variant="ghost"
                 className="text-foreground hover:bg-foreground/[0.04]/60 flex w-full items-center justify-between px-5 py-3 text-left text-sm transition"
               >
                 <div className="flex items-center gap-2.5">
@@ -559,18 +561,19 @@ export default function AccountPage() {
                   Manage Addresses
                 </div>
                 <ChevronRight className="text-muted h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* Mobile sign out */}
-          <button
-            onClick={handleSignOut}
+          <Button
+            onPress={handleSignOut}
+            variant="ghost"
             className="border-border/50 bg-card text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition sm:hidden"
           >
             <LogOut className="h-4 w-4" />
             Sign Out
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -609,13 +612,14 @@ function EmailVerificationBanner({
           : "Please verify your email address. Check your inbox for a verification link."}
       </p>
       {!sent && (
-        <button
-          onClick={handleResend}
-          disabled={sending}
+        <Button
+          onPress={handleResend}
+          isDisabled={sending}
+          variant="ghost"
           className="bg-secondary hover:bg-secondary/85 shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50"
         >
           {sending ? "Sending..." : "Resend"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -657,13 +661,14 @@ function ProfileDetails({
           <h2 className="text-foreground text-sm font-semibold">Personal Information</h2>
         </div>
         {!editing && (
-          <button
-            onClick={() => setEditing(true)}
+          <Button
+            onPress={() => setEditing(true)}
+            variant="ghost"
             className="text-muted hover:text-foreground flex items-center gap-1 text-sm font-medium transition"
           >
             <Pencil className="h-3 w-3" />
             Edit
-          </button>
+          </Button>
         )}
       </div>
 
@@ -672,18 +677,20 @@ function ProfileDetails({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="text-muted mb-1.5 block text-sm font-medium">First Name</label>
-              <input
+              <Input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 className={INPUT_CLASS}
+                variant="secondary"
               />
             </div>
             <div>
               <label className="text-muted mb-1.5 block text-sm font-medium">Last Name</label>
-              <input
+              <Input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 className={INPUT_CLASS}
+                variant="secondary"
               />
             </div>
           </div>
@@ -695,29 +702,32 @@ function ProfileDetails({
           </div>
           <div className="mt-3">
             <label className="text-muted mb-1.5 block text-sm font-medium">Phone</label>
-            <input
+            <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className={INPUT_CLASS}
+              variant="secondary"
             />
           </div>
           {mutation.isError && (
             <p className="text-danger mt-2 text-sm">Failed to update profile. Please try again.</p>
           )}
           <div className="mt-4 flex gap-2">
-            <button
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
+            <Button
+              onPress={() => mutation.mutate()}
+              isDisabled={mutation.isPending}
+              variant="ghost"
               className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               {mutation.isPending ? "Saving..." : "Save"}
-            </button>
-            <button
-              onClick={handleCancel}
+            </Button>
+            <Button
+              onPress={handleCancel}
+              variant="ghost"
               className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] rounded-full border bg-white px-5 py-2 text-sm font-semibold transition"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -833,9 +843,9 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
   return (
     <div ref={ref} className="border-border/50 bg-card overflow-hidden rounded-2xl border">
       {/* Collapsible header */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
+      <Button
+        onPress={() => setExpanded((v) => !v)}
+        variant="ghost"
         className="hover:bg-foreground/[0.04]/40 flex w-full items-center justify-between px-5 py-3.5 text-left transition"
       >
         <div className="flex items-center gap-2">
@@ -848,7 +858,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
         <ChevronDown
           className={`text-muted h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
         />
-      </button>
+      </Button>
 
       {expanded && (
         <div className="border-border/50 border-t">
@@ -882,21 +892,25 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <button
-                        onClick={() => startEdit(addr)}
+                      <Button
+                        isIconOnly
+                        onPress={() => startEdit(addr)}
+                        variant="ghost"
                         className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-border flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Edit address"
                       >
                         <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => addr.id && deleteMutation.mutate(addr.id)}
-                        disabled={deleteMutation.isPending}
+                      </Button>
+                      <Button
+                        isIconOnly
+                        onPress={() => addr.id && deleteMutation.mutate(addr.id)}
+                        isDisabled={deleteMutation.isPending}
+                        variant="ghost"
                         className="text-muted hover:bg-danger/5 hover:text-danger focus-visible:ring-danger/20 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         aria-label="Delete address"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ),
@@ -928,13 +942,14 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
 
           {!isFormVisible && (
             <div className="border-border/50 border-t px-5 py-2.5">
-              <button
-                onClick={handleAddNew}
+              <Button
+                onPress={handleAddNew}
+                variant="ghost"
                 className="text-secondary hover:text-secondary-hover flex items-center gap-1.5 text-sm font-medium transition"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add New Address
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -963,83 +978,93 @@ function AddressForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">First Name</label>
-          <input
+          <Input
             value={form.first_name ?? ""}
             onChange={(e) => update("first_name", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Last Name</label>
-          <input
+          <Input
             value={form.last_name ?? ""}
             onChange={(e) => update("last_name", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div className="sm:col-span-2">
           <label className="text-muted mb-1.5 block text-sm font-medium">Address Line 1</label>
-          <input
+          <Input
             value={form.address_1 ?? ""}
             onChange={(e) => update("address_1", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div className="sm:col-span-2">
           <label className="text-muted mb-1.5 block text-sm font-medium">Address Line 2</label>
-          <input
+          <Input
             value={form.address_2 ?? ""}
             onChange={(e) => update("address_2", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">City</label>
-          <input
+          <Input
             value={form.city ?? ""}
             onChange={(e) => update("city", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Province</label>
-          <input
+          <Input
             value={form.province ?? ""}
             onChange={(e) => update("province", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Postal Code</label>
-          <input
+          <Input
             value={form.postal_code ?? ""}
             onChange={(e) => update("postal_code", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Phone</label>
-          <input
+          <Input
             value={form.phone ?? ""}
             onChange={(e) => update("phone", e.target.value)}
             className={INPUT_CLASS}
+            variant="secondary"
           />
         </div>
       </div>
       <div className="mt-4 flex gap-2">
-        <button
-          onClick={onSave}
-          disabled={saving}
+        <Button
+          onPress={onSave}
+          isDisabled={saving}
+          variant="ghost"
           className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
-        </button>
-        <button
-          onClick={onCancel}
+        </Button>
+        <Button
+          onPress={onCancel}
+          variant="ghost"
           className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] rounded-full border bg-white px-5 py-2 text-sm font-semibold transition"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1189,9 +1214,9 @@ function OrdersSection({
           const isOpen = expandedId === order.id;
           return (
             <div key={order.id}>
-              <button
-                type="button"
-                onClick={() => setExpandedId(isOpen ? null : order.id)}
+              <Button
+                onPress={() => setExpandedId(isOpen ? null : order.id)}
+                variant="ghost"
                 className="hover:bg-foreground/[0.04]/50 flex w-full items-center px-5 py-3 text-left transition"
               >
                 {/* Desktop row */}
@@ -1273,7 +1298,7 @@ function OrdersSection({
                 <ChevronDown
                   className={`text-muted ml-2 h-4 w-4 shrink-0 transition-transform duration-200 sm:ml-2 ${isOpen ? "rotate-180" : ""}`}
                 />
-              </button>
+              </Button>
 
               {isOpen && <OrderDetail orderId={order.id} productsById={productsById} />}
             </div>

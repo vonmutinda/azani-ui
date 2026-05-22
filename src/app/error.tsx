@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { Button } from "@heroui/react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function GlobalError({
@@ -25,13 +26,14 @@ export default function GlobalError({
         An unexpected error occurred. Please try again or return to the home page.
       </p>
       <div className="flex items-center gap-3">
-        <button
-          onClick={reset}
+        <Button
+          onPress={reset}
+          variant="ghost"
           className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <RefreshCw className="h-4 w-4" />
           Try Again
-        </button>
+        </Button>
         <Link
           href="/"
           className="border-border hover:bg-background text-foreground inline-flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-semibold shadow-sm transition"

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Input } from "@heroui/react";
 import {
   loginCustomer,
   loginWithGoogle,
@@ -267,12 +268,13 @@ export default function LoginPage() {
             <span className="text-foreground font-medium">{forgotEmail}</span>, you&apos;ll receive
             an email with instructions to reset your password.
           </p>
-          <button
-            onClick={() => switchTo("login")}
+          <Button
+            onPress={() => switchTo("login")}
+            variant="ghost"
             className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Sign In
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -295,13 +297,14 @@ export default function LoginPage() {
             <label htmlFor="forgot-email" className="text-muted mb-1.5 block text-sm font-medium">
               Email
             </label>
-            <input
+            <Input
               id="forgot-email"
               type="email"
               placeholder="you@example.com"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
               className={inputClass}
+              variant="secondary"
               autoFocus
             />
           </div>
@@ -310,22 +313,23 @@ export default function LoginPage() {
             <p className="text-danger text-sm">{(forgotMutation.error as Error).message}</p>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={forgotMutation.isPending || !EMAIL_RE.test(forgotEmail)}
+            isDisabled={forgotMutation.isPending || !EMAIL_RE.test(forgotEmail)}
+            variant="ghost"
             className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
             {forgotMutation.isPending ? "Sending..." : "Send Reset Link"}
-          </button>
+          </Button>
 
           <p className="text-muted text-center text-sm">
-            <button
-              type="button"
-              onClick={() => switchTo("login")}
+            <Button
+              onPress={() => switchTo("login")}
+              variant="ghost"
               className="text-secondary focus-visible:ring-secondary/20 rounded font-medium transition hover:underline focus-visible:ring-2 focus-visible:outline-none"
             >
               Back to Sign In
-            </button>
+            </Button>
           </p>
         </form>
       </div>
@@ -365,10 +369,10 @@ export default function LoginPage() {
       </h1>
 
       <div className="mb-4 space-y-4">
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading || isPending}
+        <Button
+          onPress={handleGoogleSignIn}
+          isDisabled={googleLoading || isPending}
+          variant="ghost"
           className="border-border/50 bg-card hover:bg-foreground/[0.04] focus-visible:ring-border flex w-full items-center justify-center gap-3 rounded-full border px-4 py-3 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -390,7 +394,7 @@ export default function LoginPage() {
             />
           </svg>
           {googleLoading ? "Connecting..." : "Continue with Google"}
-        </button>
+        </Button>
 
         <div className="flex items-center gap-3">
           <div className="bg-border h-px flex-1" />
@@ -412,12 +416,13 @@ export default function LoginPage() {
               >
                 First name
               </label>
-              <input
+              <Input
                 id="account-first-name"
                 placeholder="First name"
                 value={form.first_name}
                 onChange={(e) => setForm({ ...form, first_name: e.target.value })}
                 className={inputClass}
+                variant="secondary"
               />
               {validationErrors.first_name && (
                 <p className="text-danger mt-1 text-sm">{validationErrors.first_name}</p>
@@ -430,12 +435,13 @@ export default function LoginPage() {
               >
                 Last name
               </label>
-              <input
+              <Input
                 id="account-last-name"
                 placeholder="Last name"
                 value={form.last_name}
                 onChange={(e) => setForm({ ...form, last_name: e.target.value })}
                 className={inputClass}
+                variant="secondary"
               />
               {validationErrors.last_name && (
                 <p className="text-danger mt-1 text-sm">{validationErrors.last_name}</p>
@@ -448,13 +454,14 @@ export default function LoginPage() {
           <label htmlFor="account-email" className="text-muted mb-1.5 block text-sm font-medium">
             Email
           </label>
-          <input
+          <Input
             id="account-email"
             type="text"
             placeholder="Email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className={inputClass}
+            variant="secondary"
           />
           {validationErrors.email && (
             <p className="text-danger mt-1 text-sm">{validationErrors.email}</p>
@@ -467,36 +474,37 @@ export default function LoginPage() {
               Password
             </label>
             {!isRegister && (
-              <button
-                type="button"
-                onClick={() => {
+              <Button
+                onPress={() => {
                   setForgotEmail(form.email);
                   switchTo("forgot");
                 }}
+                variant="ghost"
                 className="text-secondary text-xs font-medium transition hover:underline"
               >
                 Forgot password?
-              </button>
+              </Button>
             )}
           </div>
           <div className="relative">
-            <input
+            <Input
               id="account-password"
               type={showPassword ? "text" : "password"}
               placeholder={isRegister ? "Min. 8 characters" : "Password"}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className={`${inputClass} pr-10`}
+              variant="secondary"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
+            <Button
+              isIconOnly
+              onPress={() => setShowPassword(!showPassword)}
+              variant="ghost"
               className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
-              tabIndex={-1}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+            </Button>
           </div>
           {validationErrors.password && (
             <p className="text-danger mt-1 text-sm">{validationErrors.password}</p>
@@ -543,23 +551,24 @@ export default function LoginPage() {
               Confirm Password
             </label>
             <div className="relative">
-              <input
+              <Input
                 id="account-confirm-password"
                 type={showConfirm ? "text" : "password"}
                 placeholder="Re-enter your password"
                 value={form.confirm_password}
                 onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
                 className={`${inputClass} pr-10`}
+                variant="secondary"
               />
-              <button
-                type="button"
-                onClick={() => setShowConfirm(!showConfirm)}
+              <Button
+                isIconOnly
+                onPress={() => setShowConfirm(!showConfirm)}
+                variant="ghost"
                 className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
-                tabIndex={-1}
                 aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
             {validationErrors.confirm_password && (
               <p className="text-danger mt-1 text-sm">{validationErrors.confirm_password}</p>
@@ -579,13 +588,14 @@ export default function LoginPage() {
           <p className="text-danger text-sm">{normalizeError(apiError as Error)}</p>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={isPending}
+          isDisabled={isPending}
+          variant="ghost"
           className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {isPending ? "Please wait..." : isRegister ? "Create Account" : "Sign In"}
-        </button>
+        </Button>
 
         {isRegister && (
           <p className="text-muted text-center text-xs leading-relaxed">
@@ -595,13 +605,13 @@ export default function LoginPage() {
 
         <p className="text-muted text-center text-sm">
           {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
-          <button
-            type="button"
-            onClick={() => switchTo(isRegister ? "login" : "register")}
+          <Button
+            onPress={() => switchTo(isRegister ? "login" : "register")}
+            variant="ghost"
             className="text-secondary focus-visible:ring-secondary/20 rounded font-medium transition hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {isRegister ? "Sign in" : "Create one"}
-          </button>
+          </Button>
         </p>
       </form>
     </div>

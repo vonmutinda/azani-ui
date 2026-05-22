@@ -137,7 +137,6 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           className={`az-icon-button az-focus border-border/50 bg-card min-w-10 rounded-full border disabled:opacity-50 ${
             isWishlisted ? "text-primary" : "text-muted"
           }`}
-          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={wishlistLabel}
           variant="ghost"
           onPress={() => wishlistMutation.mutate()}
@@ -216,13 +215,6 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
                     : "bg-foreground hover:bg-foreground/85 disabled:opacity-40"
               }`}
               aria-label={quickAddLabel}
-              title={
-                maxedOut
-                  ? "Max quantity in cart"
-                  : availability.canPurchase
-                    ? "Quick add"
-                    : "Out of stock"
-              }
               variant="ghost"
               onPress={() => {
                 if (!quickAddVariant || !availability.canPurchase) return;

@@ -69,6 +69,14 @@ describe("CartPage", () => {
     });
   });
 
+  it("exposes an accessible promo code input", async () => {
+    mockGetCart.mockResolvedValueOnce(mockCart);
+
+    renderWithProviders(<CartPage />);
+
+    expect(await screen.findByRole("textbox", { name: /promo code/i })).toBeInTheDocument();
+  });
+
   it("shows checkout link", async () => {
     mockGetCart.mockResolvedValueOnce(mockCart);
 

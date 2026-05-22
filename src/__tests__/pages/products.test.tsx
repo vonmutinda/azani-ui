@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductsPage from "@/app/products/page";
 import { renderWithProviders } from "../test-utils";
-import { mockProduct, mockCategory, mockCategories } from "../fixtures";
+import { mockProduct, mockCategories } from "../fixtures";
 
 const mockGetProducts = vi.fn();
 const mockGetCategories = vi.fn();
@@ -101,13 +101,13 @@ describe("ProductsPage", () => {
 
   it("renders a category header with child category navigation", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering");
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -116,22 +116,22 @@ describe("ProductsPage", () => {
 
     renderWithProviders(<ProductsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Bath & Diapering" })).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByRole("heading", { name: "Bath & Diapering" }, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Everything for bath time and diaper changes")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Browse Diapers & Pull-Ups" })).toBeInTheDocument();
   });
 
   it("passes category descendants and sort order to the products request", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering&sort=newest");
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -153,13 +153,13 @@ describe("ProductsPage", () => {
   it("updates shareable query state when sort changes", async () => {
     const user = userEvent.setup();
     navigationMocks.searchParams = new URLSearchParams("category=feeding&q=bottle&page=3");
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 40,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -180,13 +180,13 @@ describe("ProductsPage", () => {
     navigationMocks.searchParams = new URLSearchParams(
       "category=bath-diapering&category=feeding&q=bottle&page=3",
     );
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 40,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -204,13 +204,13 @@ describe("ProductsPage", () => {
 
   it("requests product results for all selected category descendants", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering&category=feeding");
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -233,13 +233,13 @@ describe("ProductsPage", () => {
     navigationMocks.searchParams = new URLSearchParams(
       "category=bath-diapering&category=feeding&q=bottle&sort=price_desc",
     );
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -290,7 +290,7 @@ describe("ProductsPage", () => {
         limit,
       });
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
@@ -307,7 +307,7 @@ describe("ProductsPage", () => {
 
   it("shows an error state instead of empty products when category lookup fails", async () => {
     navigationMocks.searchParams = new URLSearchParams("category=bath-diapering");
-    mockGetCategories.mockRejectedValueOnce(new Error("Category API unavailable"));
+    mockGetCategories.mockRejectedValue(new Error("Category API unavailable"));
 
     renderWithProviders(<ProductsPage />);
 
@@ -323,8 +323,8 @@ describe("ProductsPage", () => {
     navigationMocks.searchParams = new URLSearchParams(
       "q=notfound&category=feeding&sort=price_desc",
     );
-    mockGetProducts.mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 20 });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 20 });
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,

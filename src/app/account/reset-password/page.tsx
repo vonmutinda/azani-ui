@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { Button, Input } from "@heroui/react";
 import { resetPassword } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle } from "lucide-react";
@@ -102,23 +103,25 @@ export default function ResetPasswordPage() {
 
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">New Password</label>
-          <input
+          <Input
             type="password"
             placeholder="New password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
+            variant="secondary"
           />
         </div>
 
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
-          <input
+          <Input
             type="password"
             placeholder="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className={inputClass}
+            variant="secondary"
           />
         </div>
 
@@ -134,13 +137,14 @@ export default function ResetPasswordPage() {
           </p>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={mutation.isPending}
+          isDisabled={mutation.isPending}
+          variant="ghost"
           className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {mutation.isPending ? "Resetting..." : "Reset Password"}
-        </button>
+        </Button>
 
         <p className="text-muted text-center text-sm">
           <Link

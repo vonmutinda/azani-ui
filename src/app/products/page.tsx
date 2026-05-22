@@ -330,17 +330,17 @@ function ProductsContent() {
         {!selectedProductId && categoryChildren.length > 0 && (
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {categoryChildren.map((child) => (
-              <button
+              <Button
                 key={child.id}
-                type="button"
                 aria-label={`Browse ${child.name}`}
-                onClick={() =>
+                onPress={() =>
                   updateQuery({ category: uniqueValues([...categoryHandles, child.handle]) })
                 }
+                variant="ghost"
                 className="az-focus border-secondary/30 bg-secondary-light text-secondary hover:border-secondary hover:bg-primary-light hover:text-primary shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
               >
                 {child.name}
-              </button>
+              </Button>
             ))}
           </div>
         )}

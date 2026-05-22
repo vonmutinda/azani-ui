@@ -83,6 +83,31 @@ describe("ProductDetail", () => {
     });
   });
 
+  it("marks the selected product option as pressed", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "24 Count" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    const fiftyCount = screen.getByRole("button", { name: "50 Count" });
+    expect(fiftyCount).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(fiftyCount);
+
+    expect(screen.getByRole("button", { name: "24 Count" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(fiftyCount).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("calls onBack when back button is clicked", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
     const onBack = vi.fn();
