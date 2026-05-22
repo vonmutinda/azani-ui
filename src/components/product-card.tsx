@@ -134,7 +134,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         <Button
           isDisabled={wishlistMutation.isPending}
           isIconOnly
-          className={`az-icon-button az-focus border-border/50 bg-card rounded-full border disabled:opacity-50 ${
+          className={`az-icon-button az-focus border-border/50 bg-card min-w-10 rounded-full border disabled:opacity-50 ${
             isWishlisted ? "text-primary" : "text-muted"
           }`}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -193,12 +193,12 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </p>
 
         <div className="mt-auto flex items-end justify-between gap-2">
-          <div className="flex min-w-0 flex-col">
-            <span className="text-foreground text-base leading-tight font-bold">
+          <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5">
+            <span className="text-foreground max-w-full truncate text-base leading-tight font-bold">
               {price?.formatted ?? "--"}
             </span>
             {originalPrice && (
-              <span className="text-muted text-2xs leading-tight line-through">
+              <span className="text-muted text-2xs max-w-full truncate leading-tight line-through">
                 {originalPrice}
               </span>
             )}
@@ -208,7 +208,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
             <Button
               isDisabled={cartMutation.isPending || !availability.canPurchase || justAdded}
               isIconOnly
-              className={`az-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
+              className={`az-focus flex h-9 w-9 min-w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
                 justAdded
                   ? "bg-success scale-110"
                   : maxedOut

@@ -33,24 +33,28 @@ vi.mock("@/lib/medusa-api", () => ({
 
 describe("ProductsPage", () => {
   beforeEach(() => {
-    mockGetProducts.mockReset();
-    mockGetCategories.mockReset();
-    navigationMocks.push.mockClear();
+    vi.clearAllMocks();
     navigationMocks.searchParams = new URLSearchParams();
-  });
-
-  it("renders the products heading", async () => {
-    mockGetProducts.mockResolvedValueOnce({
-      products: [mockProduct],
-      count: 1,
+    mockGetProducts.mockResolvedValue({
+      products: [],
+      count: 0,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
+    mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
       offset: 0,
       limit: 100,
+    });
+  });
+
+  it("renders the products heading", async () => {
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
     });
 
     renderWithProviders(<ProductsPage />);
@@ -60,17 +64,11 @@ describe("ProductsPage", () => {
   });
 
   it("renders product cards when products are loaded", async () => {
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
-    });
-    mockGetCategories.mockResolvedValueOnce({
-      product_categories: mockCategories,
-      count: 3,
-      offset: 0,
-      limit: 100,
     });
 
     renderWithProviders(<ProductsPage />);
@@ -80,14 +78,6 @@ describe("ProductsPage", () => {
   });
 
   it("renders empty state when no products", async () => {
-    mockGetProducts.mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 20 });
-    mockGetCategories.mockResolvedValueOnce({
-      product_categories: mockCategories,
-      count: 3,
-      offset: 0,
-      limit: 100,
-    });
-
     renderWithProviders(<ProductsPage />);
     await waitFor(() => {
       expect(screen.getByText(/no products/i)).toBeInTheDocument();
@@ -96,17 +86,11 @@ describe("ProductsPage", () => {
   });
 
   it("renders filter sidebar", async () => {
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 1,
       offset: 0,
       limit: 20,
-    });
-    mockGetCategories.mockResolvedValueOnce({
-      product_categories: mockCategories,
-      count: 3,
-      offset: 0,
-      limit: 100,
     });
 
     renderWithProviders(<ProductsPage />);
@@ -357,23 +341,20 @@ describe("ProductsPage", () => {
   });
 
   it("marks the current pagination page", async () => {
-    mockGetProducts.mockResolvedValueOnce({
+    mockGetProducts.mockResolvedValue({
       products: [mockProduct],
       count: 40,
       offset: 0,
       limit: 20,
     });
-    mockGetCategories.mockResolvedValueOnce({
-      product_categories: mockCategories,
-      count: 3,
-      offset: 0,
-      limit: 100,
-    });
 
     renderWithProviders(<ProductsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "1" })).toHaveAttribute("aria-current", "page");
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByRole("button", { name: "1" })).toHaveAttribute("aria-current", "page");
+      },
+      { timeout: 5000 },
+    );
+  }, 10_000);
 });

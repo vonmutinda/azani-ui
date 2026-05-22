@@ -63,7 +63,7 @@ function HeroCarousel({
 
   const positionStyles = {
     left: "left-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[52%]",
+    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[62%] sm:w-[52%]",
     right: "right-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
   };
 
@@ -113,7 +113,9 @@ function HeroCarousel({
                     {p.title}
                   </p>
                   {p.price && (
-                    <p className="text-lg font-bold text-white drop-shadow-sm">{p.price}</p>
+                    <p className="truncate text-base font-bold text-white drop-shadow-sm sm:text-lg">
+                      {p.price}
+                    </p>
                   )}
                 </div>
               )}

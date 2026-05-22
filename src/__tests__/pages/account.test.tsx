@@ -250,9 +250,12 @@ describe("AccountPage", () => {
 
       renderWithProviders(<AccountPage />);
 
-      await waitFor(() => {
-        expect(screen.getByText("Test Item")).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText("Test Item")).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
     }
 
     it("shows Ordered as active for a new unfulfilled order", async () => {

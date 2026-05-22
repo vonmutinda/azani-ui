@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { renderWithProviders } from "../test-utils";
@@ -18,17 +18,17 @@ describe("FilterSidebar", () => {
   });
 
   it("opens and closes the mobile filter drawer", async () => {
-    const user = userEvent.setup();
-
     renderWithProviders(<FilterSidebar {...defaultProps} />);
 
-    await user.click(screen.getByRole("button", { name: /filters/i }));
+    fireEvent.click(screen.getByRole("button", { name: /filters/i }));
     const dialog = screen.getByRole("dialog", { name: /filters/i });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText("All Categories")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /close filters/i }));
-    expect(screen.queryByRole("dialog", { name: /filters/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /close filters/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /filters/i })).not.toBeInTheDocument();
+    });
   });
 
   it("marks the mobile filter trigger as a dialog trigger while open", async () => {
