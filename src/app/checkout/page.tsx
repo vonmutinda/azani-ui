@@ -671,7 +671,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="flex gap-8">
+      <div className="flex max-w-full gap-8">
         {/* Desktop: vertical stepper sidebar */}
         <div className="hidden w-48 shrink-0 lg:block">
           <div className="sticky top-24">
@@ -717,11 +717,18 @@ export default function CheckoutPage() {
 
         {/* Main content: form + order summary */}
         <div className="min-w-0 flex-1">
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-            <div className="space-y-6">
+          <div
+            data-testid="checkout-flow-grid"
+            className="grid max-w-full grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
+          >
+            <div data-testid="checkout-primary-column" className="max-w-full min-w-0 space-y-6">
               {/* Step: Address */}
               {step === "address" && (
-                <form onSubmit={handleAddressSubmit} className="az-surface space-y-5 p-4 sm:p-6">
+                <form
+                  data-testid="checkout-address-form"
+                  onSubmit={handleAddressSubmit}
+                  className="az-surface max-w-full min-w-0 space-y-5 p-4 sm:p-6"
+                >
                   <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
                   {customerQuery.data && (
                     <div className="border-trust/15 bg-trust-light rounded-[var(--radius)] border p-4">
@@ -1181,7 +1188,10 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Summary sidebar */}
-            <div className="az-surface p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start">
+            <div
+              data-testid="checkout-order-summary"
+              className="az-surface max-w-full min-w-0 p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start"
+            >
               <h3 className="text-foreground mb-4 text-base font-semibold">
                 Order Summary
                 <span className="text-muted ml-1.5 text-sm font-medium">
