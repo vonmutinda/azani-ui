@@ -1,40 +1,8 @@
-import { afterEach, beforeAll, describe, it, expect, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@testing-library/react";
-import { toast as heroToast } from "@heroui/react";
 import { ToastProvider, useToast } from "@/components/toast";
-
-beforeAll(() => {
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
-
-  Object.defineProperty(window, "ResizeObserver", {
-    writable: true,
-    value: class ResizeObserver {
-      observe = vi.fn();
-      unobserve = vi.fn();
-      disconnect = vi.fn();
-    },
-  });
-});
-
-afterEach(async () => {
-  await act(async () => {
-    heroToast.clear();
-  });
-});
 
 function ToastTrigger({
   message,
@@ -73,12 +41,12 @@ describe("ToastProvider", () => {
     expect(screen.getByText("Item added!")).toBeInTheDocument();
   });
 
-  it("shows toast with correct type icon", async () => {
+  it("shows a cart toast without changing the showToast API", async () => {
     const user = userEvent.setup();
-    renderWithToast("Error occurred", "error");
+    renderWithToast("Added to cart", "cart");
 
     await user.click(screen.getByText("Show Toast"));
-    expect(screen.getByText("Error occurred")).toBeInTheDocument();
+    expect(screen.getByText("Added to cart")).toBeInTheDocument();
   });
 
   it("dismisses toast when X button is clicked", async () => {
