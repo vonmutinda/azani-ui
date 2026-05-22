@@ -1,24 +1,16 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { Check, Info, ShoppingBag, X } from "lucide-react";
+import { Toast, toast as heroToast } from "@heroui/react";
 
 type ToastType = "success" | "error" | "info" | "cart";
-
-type Toast = {
-  id: number;
-  message: string;
-  type: ToastType;
-  exiting: boolean;
-};
 
 type ToastContextValue = {
   showToast: (message: string, type?: ToastType) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
-
-let nextId = 0;
 
 const ICON_MAP: Record<ToastType, React.ElementType> = {
   success: Check,
@@ -27,71 +19,27 @@ const ICON_MAP: Record<ToastType, React.ElementType> = {
   cart: ShoppingBag,
 };
 
-const ACCENT_MAP: Record<ToastType, string> = {
-  success: "bg-success-light text-success-ink",
-  error: "bg-danger-light text-danger",
-  info: "bg-trust-light text-trust-ink",
-  cart: "bg-promo-light text-promo-ink",
-};
-
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
   const showToast = useCallback((message: string, type: ToastType = "success") => {
-    const id = ++nextId;
-    setToasts((prev) => [...prev, { id, message, type, exiting: false }]);
+    const Icon = ICON_MAP[type];
+    const show =
+      type === "success" ? heroToast.success : type === "error" ? heroToast.danger : heroToast.info;
 
-    setTimeout(() => {
-      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)));
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 300);
-    }, 3000);
-  }, []);
-
-  const dismiss = useCallback((id: number) => {
-    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)));
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 300);
+    show(message, {
+      indicator: <Icon aria-hidden="true" className="size-4" />,
+      timeout: 3000,
+    });
   }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:items-end"
-        style={{ bottom: "calc(5rem + max(1rem, env(safe-area-inset-bottom)))" }}
-      >
-        {toasts.map((toast) => {
-          const Icon = ICON_MAP[toast.type];
-          const accent = ACCENT_MAP[toast.type];
-          return (
-            <div
-              key={toast.id}
-              className={`az-surface pointer-events-auto flex max-w-sm items-center gap-3 px-4 py-3 shadow-lg transition-all duration-300 ${
-                toast.exiting
-                  ? "translate-x-full opacity-0"
-                  : "translate-x-0 animate-[slideInRight_0.3s_ease-out] opacity-100"
-              }`}
-            >
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${accent}`}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-              <p className="text-foreground text-sm font-medium">{toast.message}</p>
-              <button
-                onClick={() => dismiss(toast.id)}
-                aria-label="Dismiss notification"
-                className="az-icon-button az-focus ml-1 min-h-8 min-w-8 shrink-0 rounded-full p-2"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      <Toast.Provider
+        className="z-[100]"
+        maxVisibleToasts={4}
+        placement="bottom end"
+        width="min(28rem, calc(100vw - 2rem))"
+      />
     </ToastContext.Provider>
   );
 }

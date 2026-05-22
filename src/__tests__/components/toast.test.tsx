@@ -1,8 +1,40 @@
-import { describe, it, expect } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeAll, describe, it, expect, vi } from "vitest";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@testing-library/react";
+import { toast as heroToast } from "@heroui/react";
 import { ToastProvider, useToast } from "@/components/toast";
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+
+  Object.defineProperty(window, "ResizeObserver", {
+    writable: true,
+    value: class ResizeObserver {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  });
+});
+
+afterEach(async () => {
+  await act(async () => {
+    heroToast.clear();
+  });
+});
 
 function ToastTrigger({
   message,
@@ -56,7 +88,8 @@ describe("ToastProvider", () => {
     await user.click(screen.getByText("Show Toast"));
     expect(screen.getByText("Dismissable toast")).toBeInTheDocument();
 
-    const dismissBtn = screen.getByLabelText("Dismiss notification");
+    const toast = screen.getByRole("alertdialog", { name: "Dismissable toast" });
+    const dismissBtn = within(toast).getByRole("button", { name: /dismiss|close/i });
     await user.click(dismissBtn);
 
     await waitFor(
