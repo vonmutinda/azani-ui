@@ -84,6 +84,20 @@ describe("CheckoutPage", () => {
     expect(screen.getByRole("textbox", { name: /street address/i })).toBeInTheDocument();
   });
 
+  it("keeps the checkout flow constrained on mobile-sized layouts", async () => {
+    renderWithProviders(<CheckoutPage />);
+
+    await screen.findByText("Shipping Address");
+
+    expect(screen.getByTestId("checkout-flow-grid")).toHaveClass(
+      "grid-cols-[minmax(0,1fr)]",
+      "max-w-full",
+    );
+    expect(screen.getByTestId("checkout-primary-column")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByTestId("checkout-address-form")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByTestId("checkout-order-summary")).toHaveClass("min-w-0", "max-w-full");
+  });
+
   it("lets guests continue without sending an empty optional email", async () => {
     renderWithProviders(<CheckoutPage />);
 
