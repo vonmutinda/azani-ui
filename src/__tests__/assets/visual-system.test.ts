@@ -35,4 +35,11 @@ describe("visual system polish", () => {
       expect(source).not.toContain("rounded-2xl");
     }
   });
+
+  it("defines a product grid utility that densifies desktop browse cards", () => {
+    const source = sourceFile("src/app/globals.css");
+
+    expect(source).toMatch(/\.az-product-grid\s*\{/);
+    expect(source).toContain("repeat(auto-fill, minmax(16rem, 1fr))");
+  });
 });

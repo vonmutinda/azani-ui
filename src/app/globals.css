@@ -217,6 +217,12 @@ h4 {
   box-shadow: var(--shadow);
 }
 
+@media (min-width: 1024px) {
+  .az-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  }
+}
+
 .az-btn {
   display: inline-flex;
   max-width: 100%;

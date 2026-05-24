@@ -77,6 +77,27 @@ describe("ProductsPage", () => {
     });
   });
 
+  it("uses a container-driven product grid on desktop", async () => {
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    const productCard = await screen.findByRole("article");
+    const productGrid = productCard.parentElement;
+
+    expect(productGrid).toHaveClass("az-product-grid");
+    expect(productGrid).not.toHaveClass(
+      "lg:[grid-template-columns:repeat(auto-fill,minmax(16rem,1fr))]",
+    );
+    expect(productGrid).not.toHaveClass("min-[1180px]:grid-cols-3");
+    expect(productGrid).not.toHaveClass("xl:grid-cols-3");
+  });
+
   it("renders a search results header with inline refinement controls", async () => {
     const user = userEvent.setup();
     navigationMocks.searchParams = new URLSearchParams("q=bibs");
@@ -104,6 +125,26 @@ describe("ProductsPage", () => {
     await user.type(searchInput, "burp cloths{Enter}");
 
     expect(navigationMocks.push).toHaveBeenCalledWith("/products?q=burp+cloths");
+  });
+
+  it("keeps active filters in the results header for search pages", async () => {
+    navigationMocks.searchParams = new URLSearchParams("q=bibs");
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    const resultsHeader = await screen.findByTestId("products-results-header");
+    const activeFilters = within(resultsHeader).getByLabelText("Active product filters");
+
+    expect(within(activeFilters).getByText("“bibs”")).toBeInTheDocument();
+    expect(
+      within(activeFilters).getByRole("button", { name: "Remove search filter" }),
+    ).toBeInTheDocument();
   });
 
   it("renders empty state when no products", async () => {
