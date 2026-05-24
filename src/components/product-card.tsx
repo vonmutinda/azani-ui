@@ -10,6 +10,7 @@ import { MedusaCart, MedusaProduct } from "@/types/medusa";
 import {
   getProductPrice,
   getProductOriginalPrice,
+  getProductDiscountPercent,
   getVariantAvailability,
   resolveProductImage,
 } from "@/lib/formatters";
@@ -28,6 +29,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const imageUrl = resolveProductImage(product);
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
+  const discountPercent = getProductDiscountPercent(product);
   const quickAddVariant =
     product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
     product.variants?.[0];
@@ -125,6 +127,14 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               size="sm"
             >
               Sale
+            </Chip>
+          )}
+          {discountPercent && (
+            <Chip
+              className="az-pill az-pill-neutral text-2xs bg-card/95 px-2 py-1 tracking-wider uppercase"
+              size="sm"
+            >
+              Save {discountPercent}%
             </Chip>
           )}
         </div>

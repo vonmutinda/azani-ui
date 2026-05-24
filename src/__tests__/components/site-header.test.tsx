@@ -158,6 +158,26 @@ describe("SiteHeader", () => {
     expect(badge).toHaveClass("-right-1");
   });
 
+  it("renders a compact offer strip below the primary navigation", () => {
+    renderHeader();
+
+    const offerStrip = screen.getByTestId("header-offer-strip");
+
+    expect(offerStrip).toHaveClass("border-b");
+    expect(within(offerStrip).getByRole("link", { name: /Diaper deals/i })).toHaveAttribute(
+      "href",
+      "/products?category=bath-diapering",
+    );
+    expect(within(offerStrip).getByRole("link", { name: /Newborn checklist/i })).toHaveAttribute(
+      "href",
+      "/products?category=nursery",
+    );
+    expect(within(offerStrip).getByRole("link", { name: /Same-day Nairobi/i })).toHaveAttribute(
+      "href",
+      "/products",
+    );
+  });
+
   it("opens desktop search inline with the header actions", async () => {
     const user = userEvent.setup();
     renderHeader();

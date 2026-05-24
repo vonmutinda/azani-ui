@@ -4,7 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button, Input } from "@heroui/react";
 import {
+  BadgePercent,
   ChevronDown,
+  Clock3,
   Heart,
   LayoutGrid,
   Menu,
@@ -33,6 +35,27 @@ const TRUST_SIGNALS = [
   { icon: Truck, text: "Free delivery over KSh5,000" },
   { icon: Shield, text: "Safe & certified products" },
   { icon: Heart, text: "Curated for newborn to mama" },
+];
+
+const OFFER_LINKS = [
+  {
+    href: "/products?category=bath-diapering",
+    icon: BadgePercent,
+    title: "Diaper deals",
+    detail: "Wipes, creams, and changing care",
+  },
+  {
+    href: "/products?category=nursery",
+    icon: Heart,
+    title: "Newborn checklist",
+    detail: "Sleep, swaddles, and first essentials",
+  },
+  {
+    href: "/products",
+    icon: Clock3,
+    title: "Same-day Nairobi",
+    detail: "Fast local dispatch on ready stock",
+  },
 ];
 
 const subscribeToClientSnapshot = () => () => {};
@@ -432,6 +455,26 @@ export function SiteHeader() {
               })}
             </div>
           </nav>
+        </div>
+      </div>
+
+      <div data-testid="header-offer-strip" className="bg-surface-tint border-border/55 border-b">
+        <div className="hide-scrollbar mx-auto flex h-11 max-w-7xl items-center gap-4 overflow-x-auto px-4 sm:px-6 lg:justify-center lg:gap-8 lg:px-8">
+          {OFFER_LINKS.map((offer) => (
+            <Link
+              key={offer.title}
+              href={offer.href}
+              className="az-focus text-foreground hover:text-primary flex min-w-fit items-center gap-2 rounded-md py-1 text-sm font-bold transition"
+            >
+              <span className="bg-card text-primary border-border/65 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border">
+                <offer.icon className="h-3.5 w-3.5" />
+              </span>
+              <span className="whitespace-nowrap">{offer.title}</span>
+              <span className="text-muted hidden max-w-[18rem] truncate text-xs font-medium sm:inline">
+                {offer.detail}
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
 

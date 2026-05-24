@@ -102,6 +102,26 @@ describe("Home Page", () => {
     expect(screen.getByText("Shop by Category")).toBeInTheDocument();
   });
 
+  it("renders a campaign band with focused category links", () => {
+    renderWithProviders(<Home />);
+
+    const campaignBand = screen.getByTestId("home-campaign-band");
+
+    expect(campaignBand).toHaveClass("grid");
+    expect(screen.getByRole("link", { name: /Diaper Week/i })).toHaveAttribute(
+      "href",
+      "/products?category=bath-diapering",
+    );
+    expect(screen.getByRole("link", { name: /Newborn Sleep Edit/i })).toHaveAttribute(
+      "href",
+      "/products?category=nursery",
+    );
+    expect(screen.getByRole("link", { name: /Tiny Wardrobe Refresh/i })).toHaveAttribute(
+      "href",
+      "/products?category=clothing",
+    );
+  });
+
   it("renders feature bar items", () => {
     renderWithProviders(<Home />);
     expect(screen.getByText("Free Shipping")).toBeInTheDocument();

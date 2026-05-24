@@ -7,8 +7,10 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ArrowRight,
   Baby,
+  BadgePercent,
   ChevronLeft,
   ChevronRight,
+  Moon,
   Package,
   ShieldCheck,
   Shirt,
@@ -28,6 +30,33 @@ import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 const FREE_SHIPPING_THRESHOLD = 5_000;
 
 const CAROUSEL_INTERVAL = 5000;
+
+const CAMPAIGN_TILES = [
+  {
+    href: "/products?category=bath-diapering",
+    eyebrow: "Restock favorites",
+    title: "Diaper Week",
+    description: "Daily-change essentials, gentle wipes, rash care, and travel-ready bags.",
+    icon: BadgePercent,
+    surface: "bg-primary-light text-primary",
+  },
+  {
+    href: "/products?category=nursery",
+    eyebrow: "Sleep setup",
+    title: "Newborn Sleep Edit",
+    description: "Soft bedding, swaddles, night lights, and calm nursery basics.",
+    icon: Moon,
+    surface: "bg-trust-light text-trust-ink",
+  },
+  {
+    href: "/products?category=clothing",
+    eyebrow: "Fresh arrivals",
+    title: "Tiny Wardrobe Refresh",
+    description: "Everyday bodysuits, sleepwear, socks, hats, and occasion outfits.",
+    icon: Shirt,
+    surface: "bg-accent-warm-light text-accent-warm-ink",
+  },
+];
 
 function HeroCarousel({
   products,
@@ -260,6 +289,36 @@ export default function Home() {
               <HeroCarousel products={heroProducts} />
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="border-border/50 bg-card border-y">
+        <div
+          data-testid="home-campaign-band"
+          className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:grid-cols-3 lg:px-8"
+        >
+          {CAMPAIGN_TILES.map((tile) => (
+            <Link
+              key={tile.title}
+              href={tile.href}
+              className="az-focus border-border/75 hover:border-border-hover hover:bg-surface-soft group flex min-h-32 items-center gap-4 rounded-lg border bg-white p-4 transition"
+            >
+              <span
+                className={`${tile.surface} flex h-14 w-14 shrink-0 items-center justify-center rounded-lg transition group-hover:scale-105`}
+              >
+                <tile.icon className="h-6 w-6" />
+              </span>
+              <span className="min-w-0">
+                <span className="text-muted block text-xs font-bold tracking-wide uppercase">
+                  {tile.eyebrow}
+                </span>
+                <span className="text-foreground mt-1 block text-base leading-tight font-bold">
+                  {tile.title}
+                </span>
+                <span className="text-muted mt-1 block text-sm leading-5">{tile.description}</span>
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
 

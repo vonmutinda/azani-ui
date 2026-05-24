@@ -61,6 +61,16 @@ export function getProductOriginalPrice(product: MedusaProduct): string | null {
   return null;
 }
 
+export function getProductDiscountPercent(product: MedusaProduct): number | null {
+  const variant = product.variants?.[0];
+  if (!variant?.calculated_price) return null;
+
+  const { original_amount, calculated_amount } = variant.calculated_price;
+  if (original_amount <= calculated_amount || original_amount <= 0) return null;
+
+  return Math.round(((original_amount - calculated_amount) / original_amount) * 100);
+}
+
 export function resolveProductImage(product: MedusaProduct): string | undefined {
   if (product.thumbnail) return product.thumbnail;
   return product.images?.[0]?.url;

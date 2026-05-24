@@ -101,6 +101,26 @@ describe("ProductCard", () => {
     expect(screen.getByText("Sale")).toBeInTheDocument();
   });
 
+  it("shows the savings percentage for sale products", () => {
+    const saleProduct = {
+      ...mockProduct,
+      variants: [
+        {
+          ...mockProduct.variants![0],
+          calculated_price: {
+            calculated_amount: 68000,
+            original_amount: 85000,
+            currency_code: "kes",
+          },
+        },
+      ],
+    };
+
+    renderWithProviders(<ProductCard product={saleProduct} />);
+
+    expect(screen.getByText("Save 20%")).toBeInTheDocument();
+  });
+
   it("shows low-stock and out-of-stock states without hiding the quick-add control", () => {
     const lowStockProduct = {
       ...mockProduct,
