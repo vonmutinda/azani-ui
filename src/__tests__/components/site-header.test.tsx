@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { renderToString } from "react-dom/server";
@@ -60,7 +60,16 @@ const allTopCategories = [
   },
 ];
 
+const categoriesResponse = {
+  product_categories: allTopCategories,
+  count: allTopCategories.length,
+  offset: 0,
+  limit: 100,
+};
+
 function renderHeader(queryClient = new QueryClient()) {
+  queryClient.setQueryData(["categories-nav"], categoriesResponse);
+
   return render(
     <QueryClientProvider client={queryClient}>
       <SiteHeader />
@@ -70,12 +79,7 @@ function renderHeader(queryClient = new QueryClient()) {
 
 describe("SiteHeader", () => {
   beforeEach(() => {
-    vi.mocked(getCategories).mockResolvedValue({
-      product_categories: allTopCategories,
-      count: allTopCategories.length,
-      offset: 0,
-      limit: 100,
-    });
+    vi.mocked(getCategories).mockResolvedValue(categoriesResponse);
     vi.mocked(getCart).mockResolvedValue(mockCart);
     vi.mocked(getCustomer).mockResolvedValue(null);
   });
@@ -94,6 +98,9 @@ describe("SiteHeader", () => {
     );
     expect(screen.getByRole("link", { name: "Cart" })).toHaveAttribute("href", "/cart");
 
+    const primaryNav = screen.getByRole("navigation", { name: "Primary categories" });
+    await within(primaryNav).findByText("Feeding");
+
     for (const category of [
       "Feeding",
       "Bath & Diapering",
@@ -103,7 +110,7 @@ describe("SiteHeader", () => {
       "Toys & Books",
       "Mom & Maternity",
     ]) {
-      expect(await screen.findByRole("link", { name: new RegExp(category) })).toBeInTheDocument();
+      expect(primaryNav).toHaveTextContent(category);
     }
   });
 
@@ -133,7 +140,7 @@ describe("SiteHeader", () => {
 
     renderHeader(queryClient);
 
-    await waitFor(() => expect(screen.getByText("7")).toBeInTheDocument());
+    await expect(screen.findByTestId("header-cart-count")).resolves.toHaveTextContent("7");
     expect(screen.getByRole("link", { name: "Cart" })).toHaveAttribute("href", "/cart");
   });
 
@@ -188,26 +195,33 @@ describe("SiteHeader", () => {
     );
   });
 
-  it("opens desktop search inline with the header actions", async () => {
+  it("keeps desktop search expanded and opens command-style suggestions", async () => {
     const user = userEvent.setup();
     renderHeader();
 
-    const searchToggle = screen.getByRole("button", { name: "Search" });
-    expect(searchToggle).toHaveAttribute("aria-expanded", "false");
-    expect(searchToggle).toHaveAttribute("aria-controls", "desktop-product-search");
-
-    await user.click(searchToggle);
-
-    expect(screen.getByRole("button", { name: "Close search" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-
     const desktopSearch = screen.getByRole("search", { name: "Desktop product search" });
+    const searchInput = screen.getByRole("searchbox", { name: "Search products" });
+
     expect(desktopSearch).toHaveAttribute("id", "desktop-product-search");
-    expect(desktopSearch).toBeInTheDocument();
     expect(desktopSearch).toHaveClass("hidden");
     expect(desktopSearch).toHaveClass("lg:flex");
+    expect(searchInput).toHaveAttribute("placeholder", "Search products...");
+
+    await user.click(searchInput);
+
+    const commandPanel = screen.getByTestId("desktop-search-command-panel");
+    expect(commandPanel).toHaveAttribute("role", "dialog");
+    expect(within(commandPanel).getByText("Popular searches")).toBeInTheDocument();
+    expect(within(commandPanel).getByRole("link", { name: /Diapers/i })).toHaveAttribute(
+      "href",
+      "/products?q=diapers",
+    );
+    const categoryGroup = within(commandPanel).getByRole("region", { name: "Shop categories" });
+    expect(within(categoryGroup).getByRole("link", { name: /^Feeding$/i })).toHaveAttribute(
+      "href",
+      "/products?category=feeding",
+    );
+    expect(within(commandPanel).getByText("Enter")).toBeInTheDocument();
     expect(screen.queryByTestId("desktop-search-below-header")).not.toBeInTheDocument();
   });
 

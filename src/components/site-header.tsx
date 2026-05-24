@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, Kbd, SearchField } from "@heroui/react";
 import {
   BadgePercent,
   ChevronDown,
@@ -56,6 +56,13 @@ const OFFER_LINKS = [
     title: "Same-day Nairobi",
     detail: "Fast local dispatch on ready stock",
   },
+];
+
+const QUICK_SEARCHES = [
+  { label: "Diapers", query: "diapers", description: "Wipes, creams, rash care" },
+  { label: "Bottles", query: "bottles", description: "Feeding bottles and teats" },
+  { label: "Newborn", query: "newborn", description: "First essentials and gifts" },
+  { label: "Car seats", query: "car seat", description: "Travel and safety gear" },
 ];
 
 const subscribeToClientSnapshot = () => () => {};
@@ -163,6 +170,7 @@ function MegaMenu({
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
   const hasHydrated = useSyncExternalStore(
@@ -171,6 +179,7 @@ export function SiteHeader() {
     getServerSnapshot,
   );
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
   const desktopSearchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
@@ -220,6 +229,7 @@ export function SiteHeader() {
     e.preventDefault();
     if (searchQuery.trim()) {
       window.location.href = `/products?q=${encodeURIComponent(searchQuery.trim())}`;
+      setDesktopSearchOpen(false);
       setSearchOpen(false);
       setMobileOpen(false);
     }
@@ -244,19 +254,15 @@ export function SiteHeader() {
     setActiveMega(null);
   };
 
+  const closeSearchSurfaces = () => {
+    setDesktopSearchOpen(false);
+    setSearchOpen(false);
+  };
+
   const toggleSearch = useCallback(() => {
     setSearchOpen((prev) => {
       if (!prev) {
-        setTimeout(() => {
-          if (
-            typeof window.matchMedia === "function" &&
-            window.matchMedia("(min-width: 1024px)").matches
-          ) {
-            desktopSearchInputRef.current?.focus();
-            return;
-          }
-          mobileSearchInputRef.current?.focus();
-        }, 50);
+        setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
       }
       return !prev;
     });
@@ -267,6 +273,30 @@ export function SiteHeader() {
       if (megaTimeout.current) clearTimeout(megaTimeout.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!desktopSearchOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (desktopSearchRef.current?.contains(event.target as Node)) return;
+      setDesktopSearchOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDesktopSearchOpen(false);
+        desktopSearchInputRef.current?.blur();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [desktopSearchOpen]);
 
   return (
     <header className="bg-card/98 supports-[backdrop-filter]:bg-card/92 sticky top-0 z-50 backdrop-blur-xl">
@@ -327,43 +357,130 @@ export function SiteHeader() {
             />
           </Link>
 
-          <div className="ml-auto flex min-w-0 items-center gap-1.5 lg:gap-2">
-            {searchOpen && (
-              <form
-                id="desktop-product-search"
-                role="search"
-                aria-label="Desktop product search"
-                onSubmit={handleSearch}
-                className="relative hidden min-w-0 items-center lg:flex lg:w-64 xl:w-80"
-              >
-                <Search className="text-muted pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
-                <Input
-                  ref={desktopSearchInputRef}
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
-                  aria-label="Search products"
-                  className="az-form-field h-10 pr-4 pl-10 text-sm"
-                  variant="secondary"
-                />
-              </form>
-            )}
-            <Button
-              isIconOnly
-              onPress={toggleSearch}
-              aria-label={searchOpen ? "Close search" : "Search"}
-              aria-expanded={searchOpen}
-              aria-controls="desktop-product-search"
-              variant="ghost"
-              className="az-icon-button az-focus h-10 min-h-10 w-10 min-w-10 shrink-0"
+          <div
+            ref={desktopSearchRef}
+            className="relative hidden min-w-0 flex-1 justify-center px-4 lg:flex"
+          >
+            <form
+              id="desktop-product-search"
+              role="search"
+              aria-label="Desktop product search"
+              onSubmit={handleSearch}
+              className="hidden w-full max-w-xl lg:flex"
             >
-              {searchOpen ? (
-                <X className="h-[18px] w-[18px]" />
-              ) : (
-                <Search className="h-[18px] w-[18px]" />
-              )}
-            </Button>
+              <SearchField
+                name="desktop-products-search"
+                aria-label="Search products"
+                value={searchQuery}
+                onChange={setSearchQuery}
+                fullWidth
+              >
+                <SearchField.Group className="border-border/70 bg-surface-soft hover:border-border-hover data-[focus-within]:border-primary data-[focus-within]:ring-primary/15 h-11 rounded-full border px-3 shadow-none transition data-[focus-within]:ring-2">
+                  <SearchField.SearchIcon>
+                    <Search className="text-muted h-4 w-4" />
+                  </SearchField.SearchIcon>
+                  <SearchField.Input
+                    ref={desktopSearchInputRef}
+                    aria-label="Search products"
+                    placeholder="Search products..."
+                    onFocus={() => setDesktopSearchOpen(true)}
+                    onClick={() => setDesktopSearchOpen(true)}
+                    className="text-foreground placeholder:text-muted bg-transparent text-sm"
+                  />
+                  <SearchField.ClearButton aria-label="Clear search" />
+                </SearchField.Group>
+              </SearchField>
+            </form>
+
+            {desktopSearchOpen && (
+              <div
+                data-testid="desktop-search-command-panel"
+                role="dialog"
+                aria-label="Product search suggestions"
+                className="bg-card border-border/70 absolute top-[calc(100%+0.5rem)] right-4 left-4 z-50 overflow-hidden rounded-xl border shadow-xl"
+              >
+                <div className="border-border/60 border-b px-4 py-3">
+                  <p className="text-foreground text-sm font-bold">Search Azani</p>
+                  <p className="text-muted mt-0.5 text-xs">Products, categories, and essentials.</p>
+                </div>
+
+                <div className="grid gap-4 p-3">
+                  <section aria-label="Popular searches">
+                    <p className="text-muted px-2 pb-2 text-xs font-bold tracking-wide uppercase">
+                      Popular searches
+                    </p>
+                    <div className="grid gap-1">
+                      {QUICK_SEARCHES.map((item) => (
+                        <Link
+                          key={item.query}
+                          href={`/products?q=${encodeURIComponent(item.query)}`}
+                          onClick={closeSearchSurfaces}
+                          className="az-focus hover:bg-surface-soft flex items-center gap-3 rounded-lg px-2 py-2 transition"
+                        >
+                          <span className="bg-primary-light text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+                            <Search className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="text-foreground block text-sm font-bold">
+                              {item.label}
+                            </span>
+                            <span className="text-muted block truncate text-xs">
+                              {item.description}
+                            </span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section aria-label="Shop categories">
+                    <p className="text-muted px-2 pb-2 text-xs font-bold tracking-wide uppercase">
+                      Shop categories
+                    </p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {topCategories.slice(0, 6).map((cat) => (
+                        <Link
+                          key={cat.slug}
+                          href={`/products?category=${cat.slug}`}
+                          onClick={closeSearchSurfaces}
+                          className="az-focus hover:bg-surface-soft flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-bold transition"
+                        >
+                          <CategoryIcon icon={cat.icon} size={16} colored />
+                          <span className="min-w-0 truncate">{cat.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                <div className="border-border/60 text-muted flex items-center justify-between border-t px-4 py-2 text-xs">
+                  <span>Product search</span>
+                  <Kbd variant="light" className="text-[11px]">
+                    <Kbd.Content>Enter</Kbd.Content>
+                  </Kbd>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="ml-auto flex min-w-0 items-center gap-1.5 lg:gap-2">
+            <div className="lg:hidden">
+              <Button
+                isIconOnly
+                onPress={toggleSearch}
+                aria-label={searchOpen ? "Close search" : "Search"}
+                aria-expanded={searchOpen}
+                aria-controls="mobile-product-search"
+                variant="ghost"
+                className="az-icon-button az-focus h-10 min-h-10 w-10 min-w-10 shrink-0"
+              >
+                {searchOpen ? (
+                  <X className="h-[18px] w-[18px]" />
+                ) : (
+                  <Search className="h-[18px] w-[18px]" />
+                )}
+              </Button>
+            </div>
             <Link
               href={accountHref}
               aria-label="Account"
