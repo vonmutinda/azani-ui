@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, SearchField } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense, type FormEvent } from "react";
 import { getProducts, getCategories } from "@/lib/medusa-api";
 import { AlertCircle, ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
@@ -25,6 +25,12 @@ type ProductRequestParams = Record<string, string | number | boolean | string[] 
 const PAGE_SIZE = 20;
 const PRICE_SORT_BATCH_SIZE = 100;
 const EMPTY_PRODUCTS: MedusaProduct[] = [];
+const SEARCH_RECOVERY_TERMS = [
+  { label: "diapers", query: "diapers" },
+  { label: "bottles", query: "bottles" },
+  { label: "newborn", query: "newborn" },
+];
+const SEARCH_RECOVERY_CATEGORY_HANDLES = ["feeding", "bath-diapering", "clothing"];
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured", order: undefined },
@@ -111,8 +117,15 @@ function ProductsContent() {
     category: categoryHandles,
     q: searchParams.get("q") ?? undefined,
   };
+  const activeSearchTerm = typeof filters.q === "string" ? filters.q : "";
+  const hasSearchTerm = activeSearchTerm.length > 0;
+  const [searchDraft, setSearchDraft] = useState(activeSearchTerm);
   const requestedSort = searchParams.get("sort");
   const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
+
+  useEffect(() => {
+    setSearchDraft(activeSearchTerm);
+  }, [activeSearchTerm]);
 
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = PAGE_SIZE;
@@ -241,6 +254,15 @@ function ProductsContent() {
     [filters.category, filters.q, router, sort],
   );
 
+  const handleSearchSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setSelectedProductId(null);
+      updateQuery({ q: searchDraft.trim() || undefined });
+    },
+    [searchDraft, updateQuery],
+  );
+
   const categoryLookupFailed = categoryHandles.length > 0 && categoriesQuery.isError;
   const hasBrowseError = categoryLookupFailed || productsQuery.isError;
   const isLoading =
@@ -256,11 +278,14 @@ function ProductsContent() {
 
   const activeFilterCount = categoryHandles.length + (filters.q ? 1 : 0);
   const singleSelectedCategory = selectedCategories.length === 1 ? selectedCategories[0] : null;
+  const searchRecoveryCategories = SEARCH_RECOVERY_CATEGORY_HANDLES.map((handle) =>
+    categoryLookup.get(handle),
+  ).filter((category): category is MedusaProductCategory => !!category);
 
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
-    : filters.q
-      ? `Search: "${filters.q}"`
+    : hasSearchTerm
+      ? undefined
       : singleSelectedCategory
         ? singleSelectedCategory.name
         : selectedCategories.length > 1
@@ -279,7 +304,7 @@ function ProductsContent() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {selectedProductId && (
@@ -293,7 +318,13 @@ function ProductsContent() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
-              <h1 className="text-foreground text-2xl font-bold">{headingText}</h1>
+              <h1 className="text-foreground text-2xl font-bold">
+                {hasSearchTerm && !selectedProductId ? (
+                  <>Results for &ldquo;{activeSearchTerm}&rdquo;</>
+                ) : (
+                  headingText
+                )}
+              </h1>
             </div>
             {!selectedProductId && (
               <>
@@ -308,22 +339,60 @@ function ProductsContent() {
           </div>
 
           {!selectedProductId && (
-            <label className="text-muted flex w-full items-center gap-2 text-sm sm:w-auto">
-              <ArrowUpDown className="h-4 w-4 shrink-0" />
-              <span className="sr-only">Sort products</span>
-              <select
-                aria-label="Sort products"
-                value={sort}
-                onChange={(event) => updateQuery({ sort: event.target.value })}
-                className="az-form-field min-w-0 px-3 sm:w-52"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="flex w-full flex-col gap-2 sm:w-auto lg:min-w-[420px]">
+              {hasSearchTerm && (
+                <form
+                  role="search"
+                  aria-label="Refine product search"
+                  onSubmit={handleSearchSubmit}
+                  className="flex w-full items-center gap-2"
+                >
+                  <SearchField
+                    name="products-search"
+                    aria-label="Search products"
+                    value={searchDraft}
+                    onChange={setSearchDraft}
+                    fullWidth
+                  >
+                    <SearchField.Group className="border-border/70 bg-card data-[focus-within]:border-primary data-[focus-within]:ring-primary/15 h-10 rounded-full border px-3 shadow-none transition data-[focus-within]:ring-2">
+                      <SearchField.SearchIcon>
+                        <Search className="text-muted h-4 w-4" />
+                      </SearchField.SearchIcon>
+                      <SearchField.Input
+                        aria-label="Search products"
+                        placeholder="Search products..."
+                        className="text-foreground placeholder:text-muted bg-transparent text-sm"
+                      />
+                      <SearchField.ClearButton aria-label="Clear product search" />
+                    </SearchField.Group>
+                  </SearchField>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="az-btn az-btn-primary az-focus h-10 shrink-0 rounded-full px-4 text-sm"
+                  >
+                    Search
+                  </Button>
+                </form>
+              )}
+
+              <label className="text-muted flex w-full items-center gap-2 text-sm sm:w-auto sm:self-end">
+                <ArrowUpDown className="h-4 w-4 shrink-0" />
+                <span className="sr-only">Sort products</span>
+                <select
+                  aria-label="Sort products"
+                  value={sort}
+                  onChange={(event) => updateQuery({ sort: event.target.value })}
+                  className="az-form-field min-w-0 px-3 sm:w-52"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
         </div>
 
@@ -455,16 +524,79 @@ function ProductsContent() {
               </Button>
             </div>
           ) : sortedProducts.length === 0 ? (
-            <div className="az-empty-state flex flex-col items-center gap-5 p-10">
-              <div className="bg-trust-light flex h-20 w-20 items-center justify-center rounded-full">
+            <div className="az-empty-state flex flex-col items-center gap-5 p-6 sm:p-10">
+              <div className="bg-trust-light flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
                 <ShoppingBag className="text-trust h-8 w-8" />
               </div>
-              <div>
-                <p className="text-foreground text-lg font-semibold">No products found</p>
+              <div className="text-center">
+                <h2 className="text-foreground text-lg font-semibold">
+                  {hasSearchTerm ? (
+                    <>No matches for &ldquo;{activeSearchTerm}&rdquo;</>
+                  ) : (
+                    "No products found"
+                  )}
+                </h2>
                 <p className="text-muted mt-1 text-sm">
-                  Try adjusting your filters or search terms.
+                  {hasSearchTerm
+                    ? "Try another search, browse a category, or clear the filters."
+                    : "Try adjusting your filters or search terms."}
                 </p>
               </div>
+
+              {hasSearchTerm && (
+                <div className="grid w-full max-w-xl gap-4 text-left">
+                  <div>
+                    <p className="text-muted mb-2 text-xs font-bold tracking-wide uppercase">
+                      Popular searches
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {SEARCH_RECOVERY_TERMS.map((term) => (
+                        <Button
+                          key={term.query}
+                          variant="outline"
+                          size="sm"
+                          onPress={() =>
+                            updateQuery({ category: [], q: term.query, sort: undefined })
+                          }
+                          className="az-focus rounded-full px-3"
+                        >
+                          <Search className="h-3.5 w-3.5" />
+                          Search {term.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {searchRecoveryCategories.length > 0 && (
+                    <div>
+                      <p className="text-muted mb-2 text-xs font-bold tracking-wide uppercase">
+                        Browse categories
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {searchRecoveryCategories.map((category) => (
+                          <Button
+                            key={category.handle}
+                            variant="secondary"
+                            size="sm"
+                            onPress={() =>
+                              updateQuery({
+                                category: category.handle,
+                                q: undefined,
+                                sort: undefined,
+                              })
+                            }
+                            className="az-focus rounded-full px-3"
+                          >
+                            <Tag className="h-3.5 w-3.5" />
+                            Browse {category.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 onPress={() => updateQuery({ category: undefined, q: undefined, sort: undefined })}
                 variant="primary"

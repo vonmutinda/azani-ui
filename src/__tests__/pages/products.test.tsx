@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductsPage from "@/app/products/page";
 import { renderWithProviders } from "../test-utils";
@@ -77,12 +77,61 @@ describe("ProductsPage", () => {
     });
   });
 
+  it("renders a search results header with inline refinement controls", async () => {
+    const user = userEvent.setup();
+    navigationMocks.searchParams = new URLSearchParams("q=bibs");
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    expect(await screen.findByRole("heading", { name: "Results for “bibs”" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText((_, node) => node?.textContent === "1 product found"),
+      ).toBeInTheDocument();
+    });
+
+    const refineSearch = screen.getByRole("search", { name: "Refine product search" });
+    const searchInput = within(refineSearch).getByRole("searchbox", { name: "Search products" });
+    expect(searchInput).toHaveValue("bibs");
+
+    await user.clear(searchInput);
+    await user.type(searchInput, "burp cloths{Enter}");
+
+    expect(navigationMocks.push).toHaveBeenCalledWith("/products?q=burp+cloths");
+  });
+
   it("renders empty state when no products", async () => {
     renderWithProviders(<ProductsPage />);
     await waitFor(() => {
       expect(screen.getByText(/no products/i)).toBeInTheDocument();
     });
     expect(screen.getByText("Clear filters and browse all products")).toBeInTheDocument();
+  });
+
+  it("offers guided recovery actions for empty search results", async () => {
+    const user = userEvent.setup();
+    navigationMocks.searchParams = new URLSearchParams("q=bibs");
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 20 });
+
+    renderWithProviders(<ProductsPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "No matches for “bibs”" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search diapers" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Browse Feeding" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Browse Bath & Diapering" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Browse Clothing" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Search diapers" }));
+
+    expect(navigationMocks.push).toHaveBeenCalledWith("/products?q=diapers");
   });
 
   it("renders filter sidebar", async () => {
