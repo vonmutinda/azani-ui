@@ -27,6 +27,14 @@ describe("CategoryIcon", () => {
     expect(svg).toHaveClass("text-red");
   });
 
+  it("uses Azani token colors for colored category icons", () => {
+    const { container } = render(<CategoryIcon icon="baby" colored />);
+    const svg = container.querySelector("svg");
+
+    expect(svg).toHaveClass("text-primary");
+    expect(svg?.getAttribute("class")).not.toMatch(/text-(pink|rose|orange|sky)-/);
+  });
+
   it("falls back to Baby icon for unknown icons", () => {
     const { container: known } = render(<CategoryIcon icon="baby" />);
     const { container: unknown } = render(<CategoryIcon icon="totally-unknown" />);

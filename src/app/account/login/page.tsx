@@ -219,7 +219,7 @@ export default function LoginPage() {
   const apiError = loginMutation.error || registerMutation.error;
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-[var(--radius)] border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   /* ── Post-registration verification notice ── */
   if (view === "registered") {
@@ -228,7 +228,7 @@ export default function LoginPage() {
 
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-5 text-center sm:p-8">
           <div className="bg-secondary-light flex h-16 w-16 items-center justify-center rounded-full">
             <Mail className="text-secondary h-7 w-7" />
           </div>
@@ -258,7 +258,7 @@ export default function LoginPage() {
   if (view === "forgot-sent") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-5 text-center sm:p-8">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -287,7 +287,7 @@ export default function LoginPage() {
         <h1 className="text-foreground mb-8 text-center text-2xl font-bold">Forgot Password</h1>
         <form
           onSubmit={handleForgotSubmit}
-          className="border-border/50 bg-card space-y-4 rounded-2xl border p-6"
+          className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-6"
         >
           <p className="text-muted text-sm">
             Enter the email address associated with your account and we&apos;ll send you a link to
@@ -405,7 +405,7 @@ export default function LoginPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border/50 bg-card space-y-4 rounded-2xl border p-6"
+        className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-6"
       >
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">

@@ -127,7 +127,7 @@ function GoogleCallbackContent() {
   if (error) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-8">
+        <div className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-8">
           <p className="text-danger text-sm font-medium">{error}</p>
           <Button
             onPress={() => router.push("/account/login")}

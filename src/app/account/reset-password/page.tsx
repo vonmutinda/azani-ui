@@ -41,12 +41,12 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-[var(--radius)] border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   if (!token || !email) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-8 text-center">
           <div className="bg-danger/10 flex h-16 w-16 items-center justify-center rounded-full">
             <AlertTriangle className="text-danger h-7 w-7" />
           </div>
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
   if (mutation.isSuccess) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-8 text-center">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -94,7 +94,7 @@ export default function ResetPasswordPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6"
+        className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-4 sm:p-6"
       >
         <p className="text-muted text-sm">
           Enter a new password for{" "}
