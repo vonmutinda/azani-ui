@@ -11,40 +11,40 @@ const methodIcons: Record<string, LucideIcon> = {
 export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
   return (
     <div className="bg-background">
-      <article className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <article className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
         <Link
           href="/"
-          className="az-focus text-muted hover:text-foreground mb-8 inline-flex items-center gap-2 rounded-md text-sm font-semibold transition"
+          className="az-focus text-muted hover:text-foreground mb-5 inline-flex items-center gap-2 rounded-md text-sm font-semibold transition"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
 
         <header className="max-w-3xl">
-          <p className="text-primary mb-3 text-xs font-bold tracking-wide uppercase">
+          <p className="text-primary mb-2 text-xs font-bold tracking-wide uppercase">
             {page.eyebrow}
           </p>
-          <h1 className="text-foreground text-4xl leading-tight font-extrabold sm:text-5xl">
+          <h1 className="text-foreground text-3xl leading-tight font-extrabold sm:text-4xl">
             {page.title}
           </h1>
-          <p className="text-muted mt-4 text-lg leading-8">{page.description}</p>
-          <p className="text-muted-light mt-4 text-sm">Last updated: {page.updatedAt}</p>
+          <p className="text-muted mt-3 text-base leading-7">{page.description}</p>
+          <p className="text-muted-light mt-3 text-sm">Last updated: {page.updatedAt}</p>
         </header>
 
         <section
           aria-label={`${page.title} quick facts`}
-          className="mt-8 grid gap-3 sm:grid-cols-3"
+          className="mt-6 grid gap-3 sm:grid-cols-3"
         >
           {page.quickFacts.map((fact) => (
-            <div key={fact.label} className="az-surface p-4">
+            <div key={fact.label} className="az-surface p-3.5">
               <p className="text-muted text-xs font-bold tracking-wide uppercase">{fact.label}</p>
-              <p className="text-foreground mt-2 text-sm font-bold">{fact.value}</p>
+              <p className="text-foreground mt-1.5 text-sm font-bold">{fact.value}</p>
             </div>
           ))}
         </section>
 
         {page.contactMethods && (
-          <section aria-label="Contact methods" className="mt-10 grid gap-3 sm:grid-cols-3">
+          <section aria-label="Contact methods" className="mt-8 grid gap-3 sm:grid-cols-3">
             {page.contactMethods.map((method) => {
               const Icon = methodIcons[method.label] ?? MessageCircle;
 
@@ -54,7 +54,7 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
                   href={method.href}
                   target={method.href.startsWith("https://") ? "_blank" : undefined}
                   rel={method.href.startsWith("https://") ? "noopener noreferrer" : undefined}
-                  className="az-focus az-surface hover:border-border-hover group flex min-h-36 flex-col justify-between p-4 transition"
+                  className="az-focus az-surface hover:border-border-hover group flex min-h-32 flex-col justify-between p-4 transition"
                   aria-label={method.label}
                 >
                   <span className="text-primary bg-primary-light flex h-10 w-10 items-center justify-center rounded-full">
@@ -74,16 +74,16 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
           </section>
         )}
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_16rem]">
-          <div className="space-y-8">
+        <div data-testid="store-info-content" className="mt-8 grid gap-6 lg:grid-cols-[1fr_16rem]">
+          <div className="space-y-6">
             {page.sections.map((section) => (
               <section key={section.title}>
                 <h2 className="text-foreground text-xl font-bold">{section.title}</h2>
                 {section.body && (
-                  <p className="text-muted mt-3 text-base leading-8">{section.body}</p>
+                  <p className="text-muted mt-2.5 text-base leading-7">{section.body}</p>
                 )}
                 {section.items && (
-                  <ul className="text-muted mt-3 space-y-3 text-base leading-7">
+                  <ul className="text-muted mt-2.5 space-y-2.5 text-base leading-7">
                     {section.items.map((item) => (
                       <li key={item} className="flex gap-3">
                         <span className="bg-secondary mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full" />

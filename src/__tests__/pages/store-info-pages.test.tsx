@@ -37,6 +37,20 @@ describe("store information pages", () => {
     expect(screen.getByText(/We do not sell customer personal information/i)).toBeInTheDocument();
   });
 
+  it("keeps policy pages compact enough for first-screen content", () => {
+    render(<PrivacyPolicyPage />);
+
+    const backLink = screen.getByRole("link", { name: /Back to home/i });
+    const article = backLink.closest("article");
+    const quickFacts = screen.getByLabelText("Privacy Policy quick facts");
+
+    expect(article).toHaveClass("py-6");
+    expect(article).toHaveClass("lg:py-8");
+    expect(backLink).toHaveClass("mb-5");
+    expect(quickFacts).toHaveClass("mt-6");
+    expect(screen.getByTestId("store-info-content")).toHaveClass("mt-8");
+  });
+
   it("renders terms with ordering and payment expectations", () => {
     render(<TermsPolicyPage />);
 
