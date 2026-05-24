@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Facebook, Heart, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import { AZANI_DEFAULT_LOGO } from "@/lib/brand-assets";
 import { siteConfig } from "@/lib/site-config";
+import { contactPage, policyPages } from "@/lib/store-info-pages";
 
 const TOP_CATEGORIES = [
   { name: "Feeding", slug: "feeding" },
@@ -12,6 +13,15 @@ const TOP_CATEGORIES = [
   { name: "Clothing", slug: "clothing" },
   { name: "Toys & Books", slug: "toys-books" },
   { name: "Mom & Maternity", slug: "mom-maternity" },
+];
+
+const CUSTOMER_SERVICE_LINKS = [
+  { name: "Checkout", href: "/checkout" },
+  { name: "Shipping Policy", href: policyPages.shipping.href },
+  { name: "Returns & Exchanges", href: policyPages.returns.href },
+  { name: "Privacy Policy", href: policyPages.privacy.href },
+  { name: "Terms of Service", href: policyPages.terms.href },
+  { name: "Contact", href: contactPage.href },
 ];
 
 export function SiteFooter() {
@@ -137,20 +147,13 @@ export function SiteFooter() {
         <div>
           <h4 className="text-foreground mb-4 text-sm font-bold">Customer Service</h4>
           <ul className="text-muted space-y-2.5 text-sm">
-            <li>
-              <Link href="/checkout" className="hover:text-foreground transition">
-                Checkout
-              </Link>
-            </li>
-            <li>
-              <span className="text-muted/60 cursor-default">Shipping Info</span>
-            </li>
-            <li>
-              <span className="text-muted/60 cursor-default">Returns & Exchanges</span>
-            </li>
-            <li>
-              <span className="text-muted/60 cursor-default">Privacy Policy</span>
-            </li>
+            {CUSTOMER_SERVICE_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="hover:text-foreground transition">
+                  {link.name}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
       </div>

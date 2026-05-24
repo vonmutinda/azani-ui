@@ -16,4 +16,26 @@ describe("SiteFooter", () => {
     expect(logo).toHaveClass("sm:h-14");
     expect(logo).not.toHaveClass("h-16");
   });
+
+  it("links to customer policy and contact pages", () => {
+    render(<SiteFooter />);
+
+    expect(screen.getByRole("link", { name: "Shipping Policy" })).toHaveAttribute(
+      "href",
+      "/policies/shipping",
+    );
+    expect(screen.getByRole("link", { name: "Returns & Exchanges" })).toHaveAttribute(
+      "href",
+      "/policies/returns",
+    );
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+      "href",
+      "/policies/privacy",
+    );
+    expect(screen.getByRole("link", { name: "Terms of Service" })).toHaveAttribute(
+      "href",
+      "/policies/terms",
+    );
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+  });
 });
