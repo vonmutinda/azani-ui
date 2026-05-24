@@ -6,6 +6,8 @@ import { Button, Card } from "@heroui/react";
 import {
   ArrowLeft,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   MessageCircle,
   Minus,
@@ -297,13 +299,24 @@ export function ProductDetail({ productId, onBack }: Props) {
   const handleImageLoad = (url: string) => {
     setLoadedImageUrls((prev) => new Set(prev).add(url));
   };
+  const showImageAtIndex = (index: number) => {
+    if (allImages.length === 0) return;
+    setActiveImageSelection({
+      productId: product.id,
+      index: (index + allImages.length) % allImages.length,
+    });
+  };
+  const hasMultipleImages = allImages.length > 1;
 
   return (
     <div>
       {backLink}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start">
         <div className="space-y-3">
-          <div className="border-border/50 bg-product-media relative aspect-[4/5] overflow-hidden rounded-[var(--radius)] border">
+          <div
+            data-testid="product-gallery-stage"
+            className="border-border/50 bg-product-media relative h-[min(70vw,22rem)] overflow-hidden rounded-[var(--radius)] border sm:h-[min(56vw,26rem)] lg:h-[min(460px,calc(100vh-280px))] lg:min-h-[21rem]"
+          >
             {visibleActiveImage ? (
               <>
                 {imageLoading && (
@@ -316,8 +329,8 @@ export function ProductDetail({ productId, onBack }: Props) {
                   src={visibleActiveImage.url}
                   alt={product.title}
                   fill
-                  sizes="(max-width: 1024px) 100vw, 52vw"
-                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 48vw"
+                  className="object-contain p-4 sm:p-6"
                   onLoad={() => handleImageLoad(visibleActiveImage.url)}
                   onError={() => handleImageError(visibleActiveImage.url)}
                   loading="eager"
@@ -333,16 +346,44 @@ export function ProductDetail({ productId, onBack }: Props) {
                 </div>
               </div>
             )}
+            {hasMultipleImages && (
+              <>
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  onPress={() => showImageAtIndex(activeImageIndex - 1)}
+                  className="az-icon-button az-focus bg-card/90 text-foreground hover:bg-card border-border/60 absolute top-1/2 left-3 z-20 h-9 min-h-9 w-9 min-w-9 -translate-y-1/2 rounded-full border shadow-sm backdrop-blur"
+                  aria-label="Show previous product image"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  onPress={() => showImageAtIndex(activeImageIndex + 1)}
+                  className="az-icon-button az-focus bg-card/90 text-foreground hover:bg-card border-border/60 absolute top-1/2 right-3 z-20 h-9 min-h-9 w-9 min-w-9 -translate-y-1/2 rounded-full border shadow-sm backdrop-blur"
+                  aria-label="Show next product image"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <div
+                  data-testid="product-gallery-counter"
+                  className="bg-card/90 text-foreground border-border/60 absolute right-3 bottom-3 z-20 rounded-full border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur"
+                >
+                  {activeImageIndex + 1} / {allImages.length}
+                </div>
+              </>
+            )}
           </div>
 
-          {allImages.length > 1 && (
+          {hasMultipleImages && (
             <div className="hide-scrollbar grid auto-cols-[4.25rem] grid-flow-col gap-2 overflow-x-auto pb-1">
               {allImages.map((img, i) => (
                 <Button
                   key={img.url}
                   isIconOnly
                   variant="ghost"
-                  onPress={() => setActiveImageSelection({ productId: product.id, index: i })}
+                  onPress={() => showImageAtIndex(i)}
                   className={`az-focus bg-product-media relative aspect-square h-auto w-full min-w-0 overflow-hidden rounded-[var(--radius)] border-2 p-0 transition ${
                     i === activeImageIndex
                       ? "border-foreground"

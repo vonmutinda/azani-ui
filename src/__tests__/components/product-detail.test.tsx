@@ -239,6 +239,33 @@ describe("ProductDetail", () => {
     });
   });
 
+  it("renders a bounded product gallery carousel that keeps product media visible", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        thumbnail: "https://example.com/pampers-primary.jpg",
+        images: [
+          { id: "img_01", url: "https://example.com/pampers-primary.jpg" },
+          { id: "img_02", url: "https://example.com/pampers-side.jpg" },
+        ],
+      },
+    });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    const galleryStage = await screen.findByTestId("product-gallery-stage");
+    const productImage = screen.getByAltText("Pampers Baby Dry Diapers");
+
+    expect(galleryStage).toHaveClass("h-[min(70vw,22rem)]");
+    expect(galleryStage).toHaveClass("lg:h-[min(460px,calc(100vh-280px))]");
+    expect(galleryStage).not.toHaveClass("aspect-[4/5]");
+    expect(productImage).toHaveClass("object-contain");
+    expect(productImage).not.toHaveClass("object-cover");
+    expect(screen.getByTestId("product-gallery-counter")).toHaveTextContent("1 / 2");
+    expect(screen.getByRole("button", { name: "Show previous product image" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show next product image" })).toBeInTheDocument();
+  });
+
   it("shows a missing image fallback without rendering a broken product image", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProductMinimal });
 
