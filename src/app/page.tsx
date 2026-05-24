@@ -295,18 +295,18 @@ export default function Home() {
       <section className="border-border/50 bg-card border-y">
         <div
           data-testid="home-campaign-band"
-          className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:grid-cols-3 lg:px-8"
+          className="hide-scrollbar mx-auto flex w-full max-w-7xl gap-3 overflow-x-auto px-4 py-3 sm:px-6 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-8 lg:py-4"
         >
           {CAMPAIGN_TILES.map((tile) => (
             <Link
               key={tile.title}
               href={tile.href}
-              className="az-focus border-border/75 hover:border-border-hover hover:bg-surface-soft group flex min-h-32 items-center gap-4 rounded-lg border bg-white p-4 transition"
+              className="az-focus border-border/75 hover:border-border-hover hover:bg-surface-soft group flex min-w-[17rem] shrink-0 items-center gap-3 rounded-lg border bg-white p-3 transition sm:min-w-[19rem] lg:min-h-28 lg:min-w-0 lg:gap-4 lg:p-4"
             >
               <span
-                className={`${tile.surface} flex h-14 w-14 shrink-0 items-center justify-center rounded-lg transition group-hover:scale-105`}
+                className={`${tile.surface} flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition group-hover:scale-105 lg:h-14 lg:w-14`}
               >
-                <tile.icon className="h-6 w-6" />
+                <tile.icon className="h-5 w-5 lg:h-6 lg:w-6" />
               </span>
               <span className="min-w-0">
                 <span className="text-muted block text-xs font-bold tracking-wide uppercase">
@@ -315,7 +315,9 @@ export default function Home() {
                 <span className="text-foreground mt-1 block text-base leading-tight font-bold">
                   {tile.title}
                 </span>
-                <span className="text-muted mt-1 block text-sm leading-5">{tile.description}</span>
+                <span className="text-muted mt-1 hidden text-sm leading-5 sm:block">
+                  {tile.description}
+                </span>
               </span>
             </Link>
           ))}

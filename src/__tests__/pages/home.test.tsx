@@ -107,7 +107,8 @@ describe("Home Page", () => {
 
     const campaignBand = screen.getByTestId("home-campaign-band");
 
-    expect(campaignBand).toHaveClass("grid");
+    expect(campaignBand).toHaveClass("flex");
+    expect(campaignBand).toHaveClass("lg:grid");
     expect(screen.getByRole("link", { name: /Diaper Week/i })).toHaveAttribute(
       "href",
       "/products?category=bath-diapering",
@@ -120,6 +121,21 @@ describe("Home Page", () => {
       "href",
       "/products?category=clothing",
     );
+  });
+
+  it("keeps the mobile campaign band compact before category discovery", () => {
+    renderWithProviders(<Home />);
+
+    const campaignBand = screen.getByTestId("home-campaign-band");
+    const diaperWeek = screen.getByRole("link", { name: /Diaper Week/i });
+
+    expect(campaignBand).toHaveClass("hide-scrollbar");
+    expect(campaignBand).toHaveClass("overflow-x-auto");
+    expect(campaignBand).toHaveClass("lg:overflow-visible");
+    expect(diaperWeek).toHaveClass("min-w-[17rem]");
+    expect(diaperWeek).toHaveClass("lg:min-w-0");
+    expect(screen.getByText(/Daily-change essentials/i)).toHaveClass("hidden");
+    expect(screen.getByText(/Daily-change essentials/i)).toHaveClass("sm:block");
   });
 
   it("renders feature bar items", () => {
