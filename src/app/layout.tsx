@@ -6,6 +6,7 @@ import { Providers } from "@/app/providers";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingWhatsApp } from "@/components/floating-whatsapp";
+import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,7 @@ export default function RootLayout({
       >
         <Providers>
           <div className="bg-background text-foreground flex min-h-screen flex-col">
+            <RouteScrollRestoration />
             <Suspense>
               <SiteHeader />
             </Suspense>
