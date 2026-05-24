@@ -158,12 +158,22 @@ describe("SiteHeader", () => {
     expect(badge).toHaveClass("-right-1");
   });
 
-  it("renders a compact offer strip below the primary navigation", () => {
+  it("keeps the trust bar slim so the fixed desktop header uses less vertical space", () => {
+    renderHeader();
+
+    const trustBar = screen.getByTestId("header-trust-bar");
+
+    expect(trustBar).toHaveClass("h-7");
+    expect(trustBar).not.toHaveClass("h-8");
+  });
+
+  it("keeps the offer strip compact on mobile and tablet while hiding it on desktop", () => {
     renderHeader();
 
     const offerStrip = screen.getByTestId("header-offer-strip");
 
     expect(offerStrip).toHaveClass("border-b");
+    expect(offerStrip).toHaveClass("lg:hidden");
     expect(within(offerStrip).getByRole("link", { name: /Diaper deals/i })).toHaveAttribute(
       "href",
       "/products?category=bath-diapering",

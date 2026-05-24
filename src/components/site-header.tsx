@@ -92,7 +92,7 @@ function MegaMenu({
       id={panelId}
       role="group"
       aria-label={`${category.name} categories`}
-      className="fixed inset-x-0 top-[152px] z-50 hidden lg:block"
+      className="fixed inset-x-0 top-[148px] z-50 hidden lg:block"
     >
       <div className="bg-card/98 border-border/55 border-t shadow-lg backdrop-blur-xl">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-6 lg:grid-cols-[260px_1fr] lg:px-8">
@@ -271,12 +271,15 @@ export function SiteHeader() {
   return (
     <header className="bg-card/98 supports-[backdrop-filter]:bg-card/92 sticky top-0 z-50 backdrop-blur-xl">
       <div className="bg-foreground text-white/86">
-        <div className="mx-auto flex h-8 max-w-7xl items-center justify-center px-4 text-[11px] font-semibold tracking-wide sm:px-6 sm:text-xs lg:justify-between lg:px-8">
+        <div
+          data-testid="header-trust-bar"
+          className="mx-auto flex h-7 max-w-7xl items-center justify-center px-4 text-[10px] font-semibold tracking-wide sm:px-6 sm:text-[11px] lg:justify-between lg:px-8"
+        >
           <div className="flex items-center gap-1.5 sm:hidden">
             <Truck className="h-3 w-3 opacity-70" />
             <span>Free delivery over KSh5,000</span>
           </div>
-          <div className="hidden min-w-0 items-center gap-6 sm:flex lg:gap-8">
+          <div className="hidden min-w-0 items-center gap-5 sm:flex lg:gap-6">
             {TRUST_SIGNALS.map((signal) => (
               <div key={signal.text} className="flex items-center gap-1.5 whitespace-nowrap">
                 <signal.icon className="h-3.5 w-3.5 opacity-70" />
@@ -458,7 +461,10 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div data-testid="header-offer-strip" className="bg-surface-tint border-border/55 border-b">
+      <div
+        data-testid="header-offer-strip"
+        className="bg-surface-tint border-border/55 border-b lg:hidden"
+      >
         <div className="hide-scrollbar mx-auto flex h-11 max-w-7xl items-center gap-4 overflow-x-auto px-4 sm:px-6 lg:justify-center lg:gap-8 lg:px-8">
           {OFFER_LINKS.map((offer) => (
             <Link
