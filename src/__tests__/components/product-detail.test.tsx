@@ -46,6 +46,19 @@ describe("ProductDetail", () => {
     expect(screen.getByText("KSh85,000.00")).toBeInTheDocument();
   });
 
+  it("uses the product title as the page heading", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Pampers Baby Dry Diapers",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("renders product description", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 

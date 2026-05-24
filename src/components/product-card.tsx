@@ -167,7 +167,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       </Link>
 
-      <div className="flex min-h-[9rem] flex-1 flex-col gap-2 px-3 pt-2.5 pb-3">
+      <div
+        data-testid="product-card-details"
+        className="flex min-h-[7.25rem] flex-1 flex-col gap-1.5 px-3 pt-2.5 pb-3"
+      >
         <Link
           href={productHref}
           onClick={handleClick}
@@ -191,9 +194,15 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
-        <div className="mt-auto flex items-end justify-between gap-2">
+        <div
+          data-testid="product-card-purchase-row"
+          className="flex items-end justify-between gap-2"
+        >
           <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5">
-            <span className="text-foreground max-w-full truncate text-base leading-tight font-bold">
+            <span
+              data-testid="product-card-price"
+              className="text-foreground max-w-full text-base leading-tight font-bold whitespace-nowrap"
+            >
               {price?.formatted ?? "--"}
             </span>
             {originalPrice && (

@@ -35,6 +35,16 @@ describe("ProductCard", () => {
     expect(screen.getByText("KSh85,000.00")).toBeInTheDocument();
   });
 
+  it("keeps the current price readable next to quick add on narrow cards", () => {
+    renderWithProviders(<ProductCard product={mockProduct} />);
+
+    const price = screen.getByTestId("product-card-price");
+
+    expect(price).toHaveTextContent("KSh85,000.00");
+    expect(price).toHaveClass("whitespace-nowrap");
+    expect(price).not.toHaveClass("truncate");
+  });
+
   it("renders product image", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
     const img = screen.getByAltText("Pampers Baby Dry Diapers");
@@ -59,6 +69,14 @@ describe("ProductCard", () => {
 
     expect(screen.getByTestId("product-card-title")).toHaveClass("line-clamp-2");
     expect(screen.getByTestId("product-card-media")).toHaveClass("aspect-[4/5]");
+  });
+
+  it("keeps product details grouped in a compact purchase block", () => {
+    renderWithProviders(<ProductCard product={mockProduct} />);
+
+    expect(screen.getByTestId("product-card-details")).toHaveClass("min-h-[7.25rem]");
+    expect(screen.getByTestId("product-card-details")).not.toHaveClass("min-h-[9rem]");
+    expect(screen.getByTestId("product-card-purchase-row")).not.toHaveClass("mt-auto");
   });
 
   it("shows sale treatment when the variant has an original price", () => {

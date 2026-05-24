@@ -457,6 +457,7 @@ export default function LoginPage() {
           <Input
             id="account-email"
             type="text"
+            autoComplete="email"
             placeholder="Email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -490,6 +491,7 @@ export default function LoginPage() {
             <Input
               id="account-password"
               type={showPassword ? "text" : "password"}
+              autoComplete={isRegister ? "new-password" : "current-password"}
               placeholder={isRegister ? "Min. 8 characters" : "Password"}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -554,6 +556,7 @@ export default function LoginPage() {
               <Input
                 id="account-confirm-password"
                 type={showConfirm ? "text" : "password"}
+                autoComplete="new-password"
                 placeholder="Re-enter your password"
                 value={form.confirm_password}
                 onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}

@@ -60,6 +60,19 @@ describe("Home Page", () => {
     expect(screen.getByText("Little One")).toBeInTheDocument();
   });
 
+  it("keeps the hero carousel stage compact above the headline", async () => {
+    renderWithProviders(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Pampers Baby Dry Diapers").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId("home-hero-carousel")).toHaveClass("max-w-[400px]");
+    expect(screen.getByTestId("home-hero-carousel-stage")).toHaveClass("h-[220px]");
+    expect(screen.getByTestId("home-hero-carousel-stage")).toHaveClass("sm:h-[300px]");
+    expect(screen.getByTestId("home-hero-carousel-stage")).not.toHaveClass("h-[260px]");
+  });
+
   it("renders 'Shop Now' link", () => {
     renderWithProviders(<Home />);
     const shopNow = screen.getByText("Shop Now");

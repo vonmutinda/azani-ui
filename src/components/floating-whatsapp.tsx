@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site-config";
 
 // Mirrored as the Tailwind arbitrary value `bg-[#25D366]/40` on the pulse ring below.
@@ -5,9 +8,14 @@ import { siteConfig } from "@/lib/site-config";
 const WA_GREEN = "#25D366";
 
 export function FloatingWhatsApp() {
+  const pathname = usePathname();
   const href = `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(
     siteConfig.whatsapp.prefillMessage,
   )}`;
+
+  if (pathname === "/cart" || pathname === "/checkout") {
+    return null;
+  }
 
   return (
     <a

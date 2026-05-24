@@ -382,9 +382,9 @@ export function ProductDetail({ productId, onBack }: Props) {
                   {[categoryName, brand].filter(Boolean).join(" / ")}
                 </p>
               )}
-              <h2 className="text-foreground mt-1 text-2xl leading-tight font-bold sm:text-3xl">
+              <h1 className="text-foreground mt-1 text-2xl leading-tight font-bold sm:text-3xl">
                 {product.title}
-              </h2>
+              </h1>
             </div>
             <Button
               isIconOnly

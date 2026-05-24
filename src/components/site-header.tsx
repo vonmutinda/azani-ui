@@ -358,13 +358,14 @@ export function SiteHeader() {
             <Link
               href="/cart"
               aria-label="Cart"
-              className="az-btn az-btn-primary az-focus relative inline-flex h-10 min-h-10 w-10 min-w-10 shrink-0 rounded-full px-0 text-[13px] sm:w-auto sm:px-3 lg:px-4"
+              className="az-focus text-primary border-primary/15 bg-primary/[0.07] hover:bg-primary/[0.12] relative inline-flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-xl border text-[13px] font-semibold transition sm:h-10 sm:min-h-10 sm:w-auto sm:gap-2 sm:rounded-full sm:px-3 lg:px-4"
             >
-              <ShoppingBag className="h-4 w-4" />
+              <ShoppingBag className="h-[18px] w-[18px]" />
               <span className="hidden sm:inline">Cart</span>
               <span
+                data-testid="header-cart-count"
                 aria-hidden="true"
-                className={`bg-primary flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white transition-opacity ${
+                className={`bg-primary ring-card absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold text-white ring-2 transition-opacity ${
                   showCartCount ? "opacity-100" : "opacity-0"
                 }`}
               >

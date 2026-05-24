@@ -70,11 +70,15 @@ function HeroCarousel({
 
   return (
     <div
-      className="relative w-full max-w-[460px]"
+      data-testid="home-hero-carousel"
+      className="relative w-full max-w-[400px] sm:max-w-[430px] lg:max-w-[460px]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative h-[260px] w-full sm:h-[340px] lg:h-[420px]">
+      <div
+        data-testid="home-hero-carousel-stage"
+        className="relative h-[220px] w-full sm:h-[300px] lg:h-[380px]"
+      >
         {cards.map(({ idx, position }) => {
           const p = products[idx];
           return (
@@ -126,12 +130,12 @@ function HeroCarousel({
       </div>
 
       {count > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3">
+        <div className="mt-2 flex items-center justify-center gap-2.5 sm:mt-3 sm:gap-3">
           <Button
             isIconOnly
             variant="ghost"
             onPress={() => go(active - 1)}
-            className="az-icon-button az-focus flex h-10 min-h-10 w-10 min-w-10 rounded-full"
+            className="az-icon-button az-focus flex h-9 min-h-9 w-9 min-w-9 rounded-full sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10"
             aria-label="Previous product"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -152,7 +156,7 @@ function HeroCarousel({
             isIconOnly
             variant="ghost"
             onPress={() => go(active + 1)}
-            className="az-icon-button az-focus flex h-10 min-h-10 w-10 min-w-10 rounded-full"
+            className="az-icon-button az-focus flex h-9 min-h-9 w-9 min-w-9 rounded-full sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10"
             aria-label="Next product"
           >
             <ChevronRight className="h-4 w-4" />
@@ -247,7 +251,7 @@ export default function Home() {
           {/* Right — product carousel */}
           <div className="hero-fade-in-delay flex flex-1 items-center justify-center">
             {featuredQuery.isLoading ? (
-              <div className="relative h-[260px] w-full max-w-[460px] sm:h-[340px] lg:h-[420px]">
+              <div className="relative h-[220px] w-full max-w-[400px] sm:h-[300px] sm:max-w-[430px] lg:h-[380px] lg:max-w-[460px]">
                 <div className="az-skeleton absolute top-1/2 left-1/2 h-full w-[52%] -translate-x-1/2 -translate-y-1/2" />
                 <div className="az-skeleton absolute top-1/2 left-0 h-[65%] w-[38%] -translate-y-1/2 opacity-70" />
                 <div className="az-skeleton absolute top-1/2 right-0 h-[65%] w-[38%] -translate-y-1/2 opacity-70" />

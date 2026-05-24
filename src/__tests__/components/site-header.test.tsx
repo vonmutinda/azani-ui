@@ -137,6 +137,27 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: "Cart" })).toHaveAttribute("href", "/cart");
   });
 
+  it("presents the cart as a compact nav control with an overlay count", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["cart"], {
+      ...mockCart,
+      items: [{ ...mockCart.items[0], quantity: 7 }],
+    });
+
+    renderHeader(queryClient);
+
+    const cartLink = screen.getByRole("link", { name: "Cart" });
+    expect(cartLink).toHaveClass("w-11");
+    expect(cartLink).toHaveClass("rounded-xl");
+    expect(cartLink).not.toHaveClass("az-btn-primary");
+
+    const badge = await screen.findByTestId("header-cart-count");
+    expect(badge).toHaveTextContent("7");
+    expect(badge).toHaveClass("absolute");
+    expect(badge).toHaveClass("-top-1");
+    expect(badge).toHaveClass("-right-1");
+  });
+
   it("opens desktop search inline with the header actions", async () => {
     const user = userEvent.setup();
     renderHeader();

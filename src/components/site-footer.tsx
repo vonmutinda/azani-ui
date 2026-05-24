@@ -19,17 +19,17 @@ export function SiteFooter() {
     <footer className="border-border/50 bg-card mt-10 border-t">
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div className="space-y-4">
-          <Link href="/">
+          <Link href="/" className="az-focus block w-fit rounded-md">
             <Image
               src={AZANI_DEFAULT_LOGO.logo.inline2x}
               alt="Azani"
               width={AZANI_DEFAULT_LOGO.logo.width}
               height={AZANI_DEFAULT_LOGO.logo.height}
-              sizes="184px"
-              className="h-16 w-auto"
+              sizes="(min-width: 640px) 161px, 138px"
+              className="h-12 w-auto sm:h-14"
             />
           </Link>
-          <p className="text-muted text-sm leading-relaxed">
+          <p className="text-muted max-w-sm text-sm leading-relaxed">
             Quality baby products, clothing, toys and essentials. Curated with love for your little
             ones.
           </p>
