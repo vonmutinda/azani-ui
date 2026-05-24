@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, SearchField } from "@heroui/react";
+import { Button, Chip, SearchField } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense, type FormEvent } from "react";
@@ -281,6 +281,77 @@ function ProductsContent() {
   const searchRecoveryCategories = SEARCH_RECOVERY_CATEGORY_HANDLES.map((handle) =>
     categoryLookup.get(handle),
   ).filter((category): category is MedusaProductCategory => !!category);
+  const activeFilterStrip =
+    activeFilterCount > 0 && !selectedProductId ? (
+      <div
+        aria-label="Active product filters"
+        className="mt-3 flex flex-wrap items-center gap-2 lg:mt-2"
+      >
+        {categoryHandles.map((handle) => {
+          const categoryName = categoryLookup.get(handle)?.name ?? handle;
+
+          return (
+            <Chip
+              key={handle}
+              className="az-pill border-secondary/25 bg-secondary-light flex max-w-full min-w-0 border py-1 pr-1.5 pl-3 text-sm"
+              variant="secondary"
+            >
+              <Tag className="text-secondary h-3 w-3 shrink-0" />
+              <Chip.Label className="text-foreground min-w-0 flex-1 truncate font-medium">
+                {categoryName}
+              </Chip.Label>
+              <Button
+                isIconOnly
+                variant="ghost"
+                size="sm"
+                onPress={() =>
+                  updateQuery({
+                    category: categoryHandles.filter((category) => category !== handle),
+                  })
+                }
+                className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
+                aria-label={`Remove ${categoryName} filter`}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Chip>
+          );
+        })}
+        {filters.q && (
+          <Chip
+            className="az-pill border-primary/20 bg-primary-light flex max-w-full min-w-0 border py-1 pr-1.5 pl-3 text-sm"
+            variant="secondary"
+          >
+            <Search className="text-primary h-3 w-3 shrink-0" />
+            <Chip.Label className="text-foreground min-w-0 flex-1 truncate font-medium">
+              &ldquo;{String(filters.q)}&rdquo;
+            </Chip.Label>
+            <Button
+              isIconOnly
+              variant="ghost"
+              size="sm"
+              onPress={() => updateQuery({ q: undefined })}
+              className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
+              aria-label="Remove search filter"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </Chip>
+        )}
+        {activeFilterCount > 1 && (
+          <Button
+            variant="ghost"
+            onPress={() => {
+              setSelectedProductId(null);
+              updateQuery({ category: [], q: undefined });
+            }}
+            className="text-secondary hover:text-secondary-hover ml-1 h-auto min-h-0 px-0 py-0 text-sm font-medium shadow-none hover:underline"
+          >
+            Clear all
+          </Button>
+        )}
+      </div>
+    ) : null;
 
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
@@ -302,9 +373,9 @@ function ProductsContent() {
   const categoryChildren = singleSelectedCategory?.category_children ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-4" data-testid="products-results-header">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {selectedProductId && (
@@ -396,6 +467,8 @@ function ProductsContent() {
           )}
         </div>
 
+        {activeFilterStrip}
+
         {!selectedProductId && categoryChildren.length > 0 && (
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {categoryChildren.map((child) => (
@@ -415,7 +488,7 @@ function ProductsContent() {
         )}
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
         <FilterSidebar
           filters={filters}
           onFilterChange={(newFilters) => {
@@ -426,77 +499,13 @@ function ProductsContent() {
         />
 
         <div className="min-w-0 flex-1">
-          {activeFilterCount > 0 && !selectedProductId && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {categoryHandles.map((handle) => {
-                const categoryName = categoryLookup.get(handle)?.name ?? handle;
-
-                return (
-                  <span
-                    key={handle}
-                    className="az-pill border-secondary/25 bg-secondary-light flex max-w-full min-w-0 items-center gap-1.5 border py-1 pr-1.5 pl-3 text-sm"
-                  >
-                    <Tag className="text-secondary h-3 w-3 shrink-0" />
-                    <span className="text-foreground min-w-0 flex-1 truncate font-medium">
-                      {categoryName}
-                    </span>
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      size="sm"
-                      onPress={() =>
-                        updateQuery({
-                          category: categoryHandles.filter((category) => category !== handle),
-                        })
-                      }
-                      className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
-                      aria-label={`Remove ${categoryName} filter`}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </span>
-                );
-              })}
-              {filters.q && (
-                <span className="az-pill border-primary/20 bg-primary-light flex max-w-full min-w-0 items-center gap-1.5 border py-1 pr-1.5 pl-3 text-sm">
-                  <Search className="text-primary h-3 w-3 shrink-0" />
-                  <span className="text-foreground min-w-0 flex-1 truncate font-medium">
-                    &ldquo;{String(filters.q)}&rdquo;
-                  </span>
-                  <Button
-                    isIconOnly
-                    variant="ghost"
-                    size="sm"
-                    onPress={() => updateQuery({ q: undefined })}
-                    className="az-icon-button az-focus ml-0.5 flex h-5 min-h-5 w-5 min-w-5 shrink-0 rounded-full shadow-none"
-                    aria-label="Remove search filter"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </span>
-              )}
-              {activeFilterCount > 1 && (
-                <Button
-                  variant="ghost"
-                  onPress={() => {
-                    setSelectedProductId(null);
-                    updateQuery({ category: [], q: undefined });
-                  }}
-                  className="text-secondary hover:text-secondary-hover ml-1 h-auto min-h-0 px-0 py-0 text-sm font-medium shadow-none hover:underline"
-                >
-                  Clear all
-                </Button>
-              )}
-            </div>
-          )}
-
           {selectedProductId ? (
             <ProductDetail
               productId={selectedProductId}
               onBack={() => setSelectedProductId(null)}
             />
           ) : isLoading ? (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="az-product-grid grid grid-cols-2 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="az-skeleton aspect-[3/4]" />
               ))}
@@ -608,7 +617,7 @@ function ProductsContent() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="az-product-grid grid grid-cols-2 gap-4">
                 {sortedProducts.map((product) => (
                   <ProductCard
                     key={product.id}
