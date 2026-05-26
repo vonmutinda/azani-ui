@@ -406,6 +406,15 @@ describe("CheckoutPage", () => {
           payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
         },
       });
+      // Timeout-UX tests don't want the poke's success path to fire. Override
+      // the suite-wide default so the poke gets the realistic "not_allowed"
+      // 400 from a still-pending session.
+      mockCompleteCart.mockRejectedValue(
+        Object.assign(new Error("not authorized with the provider"), {
+          status: 400,
+          type: "not_allowed",
+        }),
+      );
 
       renderWithProviders(<CheckoutPage />);
       await continueToPayment();
@@ -426,6 +435,38 @@ describe("CheckoutPage", () => {
       expect(screen.queryByText("Waiting for M-Pesa confirmation")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Try Again/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Check Payment Status/i })).toBeInTheDocument();
+    }, 30_000);
+
+    it("finalizes the order when the cart/complete poke returns success while cart is still pending", async () => {
+      // Setup: STK push fires, cart stays pending (no captured status on payment_sessions).
+      // The background poke (15s interval) calls completeCart which the backend can
+      // complete out-of-band once the Daraja callback authorizes the session. The
+      // poke's response then carries the order — UI must flip to order-placed.
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+
+      mockInitializePaymentSession.mockResolvedValue({
+        payment_collection: {
+          id: "pc_1",
+          payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+        },
+      });
+      mockCompleteCart.mockResolvedValue({
+        type: "order",
+        order: { id: "order_1", display_id: 1001, created_at: "2026-05-26T12:54:19.000Z" },
+      });
+
+      renderWithProviders(<CheckoutPage />);
+      await continueToPayment();
+      fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+      await screen.findByText("Review & Place Order");
+      fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+      await screen.findByText("Waiting for M-Pesa confirmation");
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000);
+      });
+
+      expect(await screen.findByText("Order placed")).toBeInTheDocument();
     }, 30_000);
 
     it("shows the timed-out branch past 90s with only a Try Again action", async () => {
