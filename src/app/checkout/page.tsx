@@ -45,6 +45,12 @@ const FREE_SHIPPING_THRESHOLD = 5_000;
 const MPESA_PAYBILL_NUMBER = process.env.NEXT_PUBLIC_AZANI_PAYBILL_NUMBER || "—";
 const MPESA_BUSINESS_NAME = "Azani";
 
+// STK Push thresholds. Daraja typically resolves the prompt in < 30 s; past 60 s
+// the customer has almost certainly ignored or dropped the prompt. At 90 s we
+// treat the attempt as timed out (the backend's polled STK Query will catch up).
+const STK_SLOW_THRESHOLD_SECS = 60;
+const STK_TIMEOUT_THRESHOLD_SECS = 90;
+
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
 type PaymentSession = { id: string; provider_id: string; status: string };
@@ -219,6 +225,10 @@ export default function CheckoutPage() {
   // already surfaced — prevents the same stale session from re-triggering the
   // outcome state on subsequent cart refetches (e.g. while a retry is in flight).
   const handledOutcomeSessionId = useRef<string | null>(null);
+  const [paymentPendingSince, setPaymentPendingSince] = useState<number | null>(null);
+  // Re-render trigger for the elapsed-seconds display. The actual elapsed value
+  // is derived from `paymentPendingSince` against this tick.
+  const [pendingNowTick, setPendingNowTick] = useState<number>(() => Date.now());
 
   const [form, setForm] = useState({
     email: "",
@@ -512,6 +522,34 @@ export default function CheckoutPage() {
     return () => clearInterval(interval);
   }, [paymentPending]);
 
+  // Track when paymentPending flips on/off so we can show elapsed seconds and
+  // the slow / timed-out branches of the pending UI.
+  /* eslint-disable react-hooks/set-state-in-effect -- derived from paymentPending lifecycle */
+  useEffect(() => {
+    if (paymentPending && paymentPendingSince === null) {
+      const startedAt = Date.now();
+      setPaymentPendingSince(startedAt);
+      setPendingNowTick(startedAt);
+    } else if (!paymentPending && paymentPendingSince !== null) {
+      setPaymentPendingSince(null);
+    }
+  }, [paymentPending, paymentPendingSince]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Tick once per second while pending so the elapsed copy / threshold UI
+  // re-renders. Cleared as soon as pending clears.
+  useEffect(() => {
+    if (!paymentPending) return;
+    const tick = setInterval(() => setPendingNowTick(Date.now()), 1_000);
+    return () => clearInterval(tick);
+  }, [paymentPending]);
+
+  const pendingElapsedSeconds = paymentPendingSince
+    ? Math.max(0, Math.floor((pendingNowTick - paymentPendingSince) / 1000))
+    : 0;
+  const stkIsSlow = pendingElapsedSeconds >= STK_SLOW_THRESHOLD_SECS;
+  const stkTimedOut = pendingElapsedSeconds >= STK_TIMEOUT_THRESHOLD_SECS;
+
   const retryMpesaPrompt = () => {
     setPaymentOutcome(null);
     setErrorMessage(null);
@@ -587,32 +625,56 @@ export default function CheckoutPage() {
   }
 
   if (paymentPending) {
+    const title = stkTimedOut
+      ? "STK Push timed out"
+      : stkIsSlow
+        ? "Taking longer than expected"
+        : "Waiting for M-Pesa confirmation";
+    const lead = stkTimedOut
+      ? "We did not get a confirmation from M-Pesa within a reasonable time."
+      : stkIsSlow
+        ? "Check your phone for the M-Pesa prompt — it may have been dismissed or the network is slow."
+        : "Check your phone for the M-Pesa prompt";
+
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
           <div className="bg-warning/15 flex h-20 w-20 items-center justify-center rounded-full">
             <Smartphone className="text-trust h-9 w-9" />
           </div>
-          <span className="az-pill bg-warning/15 text-warning-ink">Pending payment</span>
-          <h1 className="text-foreground text-2xl font-bold">Waiting for M-Pesa confirmation</h1>
+          <span className="az-pill bg-warning/15 text-warning-ink">
+            Pending payment · {pendingElapsedSeconds}s
+          </span>
+          <h1 className="text-foreground text-2xl font-bold">{title}</h1>
           <div className="max-w-md space-y-2">
-            <p className="text-foreground text-sm font-medium">
-              Check your phone for the M-Pesa prompt
-            </p>
+            <p className="text-foreground text-sm font-medium">{lead}</p>
             <p className="text-muted text-sm leading-relaxed">
               Enter your M-Pesa PIN on{" "}
               <span className="text-foreground font-medium">{mpesaPhone}</span>. Your order will be
               created after payment is captured by M-Pesa.
             </p>
           </div>
-          <Button
-            onPress={() => cartQuery.refetch()}
-            isDisabled={cartQuery.isFetching}
-            variant="ghost"
-            className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
-          >
-            {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {!stkTimedOut && (
+              <Button
+                onPress={() => cartQuery.refetch()}
+                isDisabled={cartQuery.isFetching}
+                variant="ghost"
+                className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
+              >
+                {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
+              </Button>
+            )}
+            {(stkIsSlow || stkTimedOut) && (
+              <Button
+                onPress={retryMpesaPrompt}
+                isDisabled={completeMutation.isPending}
+                className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
+              >
+                {completeMutation.isPending ? "Sending..." : "Try Again"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
