@@ -508,17 +508,21 @@ export default function CheckoutPage() {
   }, [cart?.payment_collection?.payment_sessions, paymentPending]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // While waiting for confirmation, poke `cart/complete` every 10s so the
-  // backend re-queries Daraja STK Query and flips session.data.status from
+  // While waiting for confirmation, poke `cart/complete` so the backend
+  // re-queries Daraja STK Query and flips session.data.status from
   // pending → canceled/failed (the only way to discover non-success states,
   // since Medusa's webhook subscriber drops those actions).
+  //
+  // Daraja STK Query is rate-limited to 5 messages per 60s (one per 12s). We
+  // poll at 15s to stay under the cap with headroom; 10s previously cascaded
+  // into 429s that left the session stuck in pending.
   useEffect(() => {
     if (!paymentPending) return;
     const interval = setInterval(() => {
       // 400 "not_allowed" until provider authorizes — swallow it; the next
       // cart refetch picks up the freshly-updated data.status.
       completeCart().catch(() => {});
-    }, 10_000);
+    }, 15_000);
     return () => clearInterval(interval);
   }, [paymentPending]);
 
