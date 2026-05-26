@@ -42,8 +42,7 @@ import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } fr
 
 const FREE_SHIPPING_THRESHOLD = 5_000;
 
-// TODO: replace placeholder with Azani's real Lipa na M-Pesa Paybill number
-const MPESA_PAYBILL_NUMBER = "123456";
+const MPESA_PAYBILL_NUMBER = process.env.NEXT_PUBLIC_AZANI_PAYBILL_NUMBER || "—";
 const MPESA_BUSINESS_NAME = "Azani";
 
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
