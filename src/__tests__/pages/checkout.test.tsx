@@ -240,8 +240,13 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
     expect(await screen.findByText("Awaiting manual payment")).toBeInTheDocument();
-    expect(screen.getByText("Account no.")).toBeInTheDocument();
-    expect(screen.getByText("AZN-2605-1001R1")).toBeInTheDocument();
+    // Long order ref still appears in the order headline for support.
+    expect(screen.getByText(/AZN-2605-1001R1/)).toBeInTheDocument();
+    // Paybill Account no. uses display_id (short, all-numeric, easy to type
+    // on M-Pesa keypad). Verifies the customer isn't being asked to type
+    // "AZN-2605-1001R1" into Account No. field.
+    const accountSection = screen.getByText("Account no.").closest("div");
+    expect(accountSection).toHaveTextContent(/^Account no\.1001$/);
     expect(mockInitializePaymentSession).toHaveBeenCalledTimes(1);
     expect(mockCompleteCart).toHaveBeenCalledTimes(1);
   }, 30_000);

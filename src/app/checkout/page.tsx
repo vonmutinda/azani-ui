@@ -214,6 +214,11 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
   const [placedOrderRef, setPlacedOrderRef] = useState<string | null>(null);
+  // Short, all-numeric Paybill account number — display_id (e.g. "1037")
+  // rather than the long human-readable order ref. Customer types this into
+  // the M-Pesa Lipa na M-Pesa Account No. field; ops looks it up by the same
+  // number in Medusa admin.
+  const [placedOrderPaybillRef, setPlacedOrderPaybillRef] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
@@ -426,6 +431,7 @@ export default function CheckoutPage() {
       if (order?.display_id) {
         const stored = order.metadata?.order_ref as string | undefined;
         setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id, stored));
+        setPlacedOrderPaybillRef(String(order.display_id));
       }
       setOrderPlaced(true);
     },
@@ -744,7 +750,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <p className="text-muted">Account no.</p>
-                  <p className="text-foreground font-semibold">{placedOrderRef ?? "—"}</p>
+                  <p className="text-foreground font-semibold">{placedOrderPaybillRef ?? "—"}</p>
                 </div>
               </div>
               <p className="text-muted text-xs leading-relaxed">
