@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Input } from "@heroui/react";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   Baby,
@@ -410,9 +410,8 @@ export default function CheckoutPage() {
     },
   });
 
-  const finalizeOrderMutation = useMutation({
-    mutationFn: () => completeCart(),
-    onSuccess: (data) => {
+  const applyOrderPlaced = useCallback(
+    (data: Awaited<ReturnType<typeof completeCart>>) => {
       clearStoredCartId();
       setPaymentPending(false);
       queryClient.invalidateQueries({ queryKey: ["cart"] });
@@ -430,6 +429,12 @@ export default function CheckoutPage() {
       }
       setOrderPlaced(true);
     },
+    [queryClient],
+  );
+
+  const finalizeOrderMutation = useMutation({
+    mutationFn: () => completeCart(),
+    onSuccess: applyOrderPlaced,
     onError: (err: Error) => {
       setErrorMessage(err.message || "Failed to place order.");
     },
@@ -511,20 +516,29 @@ export default function CheckoutPage() {
   // While waiting for confirmation, poke `cart/complete` so the backend
   // re-queries Daraja STK Query and flips session.data.status from
   // pending → canceled/failed (the only way to discover non-success states,
-  // since Medusa's webhook subscriber drops those actions).
+  // since Medusa's webhook subscriber drops those actions). The poke can
+  // ALSO succeed and place the order in one shot when the Daraja callback
+  // has already authorized the session — the cart completes too quickly for
+  // the captured-status effect to observe, so we react to the poke's own
+  // success here.
   //
   // Daraja STK Query is rate-limited to 5 messages per 60s (one per 12s). We
-  // poll at 15s to stay under the cap with headroom; 10s previously cascaded
-  // into 429s that left the session stuck in pending.
+  // poll at 15s to stay under the cap with headroom.
   useEffect(() => {
     if (!paymentPending) return;
-    const interval = setInterval(() => {
-      // 400 "not_allowed" until provider authorizes — swallow it; the next
-      // cart refetch picks up the freshly-updated data.status.
-      completeCart().catch(() => {});
+    const interval = setInterval(async () => {
+      try {
+        const result = await completeCart();
+        if (result?.type === "order") {
+          applyOrderPlaced(result);
+        }
+      } catch {
+        // 400 "not_allowed" until provider authorizes — swallow it; the next
+        // poke or cart refetch picks up the freshly-updated state.
+      }
     }, 15_000);
     return () => clearInterval(interval);
-  }, [paymentPending]);
+  }, [paymentPending, applyOrderPlaced]);
 
   // Track when paymentPending flips on/off so we can show elapsed seconds and
   // the slow / timed-out branches of the pending UI.
