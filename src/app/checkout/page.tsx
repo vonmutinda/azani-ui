@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Input } from "@heroui/react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   ArrowLeft,
   Baby,
@@ -49,6 +49,10 @@ type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
 type PaymentSession = { id: string; provider_id: string; status: string };
 type CheckoutPaymentResult = { type: "payment_pending" } | { type: "payment_captured" };
+// Medusa core's payment-webhook subscriber ignores CANCELED/FAILED actions, so
+// session.status stays "pending" forever. Provider-side state lives on data.status
+// once `cart/complete` triggers authorizePayment → Daraja STK Query.
+type PaymentOutcome = { kind: "canceled" | "failed"; resultDesc?: string };
 
 const PAID_PAYMENT_STATUSES = new Set(["captured"]);
 
@@ -210,6 +214,11 @@ export default function CheckoutPage() {
   const [useManualAddress, setUseManualAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa_express");
   const [mpesaPhone, setMpesaPhone] = useState("");
+  const [paymentOutcome, setPaymentOutcome] = useState<PaymentOutcome | null>(null);
+  // Tracks the most recent session id whose canceled/failed outcome we've
+  // already surfaced — prevents the same stale session from re-triggering the
+  // outcome state on subsequent cart refetches (e.g. while a retry is in flight).
+  const handledOutcomeSessionId = useRef<string | null>(null);
 
   const [form, setForm] = useState({
     email: "",
@@ -469,6 +478,47 @@ export default function CheckoutPage() {
     paymentPending,
   ]);
 
+  // Surface a canceled / failed provider outcome (M-Pesa branches Medusa core
+  // ignores). Keyed by session id so the same stale session can't re-trigger.
+  /* eslint-disable react-hooks/set-state-in-effect -- derived from server state, not local input */
+  useEffect(() => {
+    if (!paymentPending) return;
+    const session = cart?.payment_collection?.payment_sessions?.[0];
+    if (!session) return;
+    if (handledOutcomeSessionId.current === session.id) return;
+    const providerStatus = session.data?.status;
+    if (providerStatus === "canceled" || providerStatus === "failed") {
+      handledOutcomeSessionId.current = session.id;
+      setPaymentOutcome({
+        kind: providerStatus,
+        resultDesc: session.data?.resultDesc ?? undefined,
+      });
+      setPaymentPending(false);
+    }
+  }, [cart?.payment_collection?.payment_sessions, paymentPending]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // While waiting for confirmation, poke `cart/complete` every 10s so the
+  // backend re-queries Daraja STK Query and flips session.data.status from
+  // pending → canceled/failed (the only way to discover non-success states,
+  // since Medusa's webhook subscriber drops those actions).
+  useEffect(() => {
+    if (!paymentPending) return;
+    const interval = setInterval(() => {
+      // 400 "not_allowed" until provider authorizes — swallow it; the next
+      // cart refetch picks up the freshly-updated data.status.
+      completeCart().catch(() => {});
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [paymentPending]);
+
+  const retryMpesaPrompt = () => {
+    setPaymentOutcome(null);
+    setErrorMessage(null);
+    setPaymentPending(true);
+    completeMutation.mutate();
+  };
+
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (hasUnavailableItems) {
@@ -485,6 +535,56 @@ export default function CheckoutPage() {
     { id: "review", label: "Review", icon: Package },
   ];
   const currentIdx = steps.findIndex((s) => s.id === step);
+
+  if (paymentOutcome) {
+    const isCanceled = paymentOutcome.kind === "canceled";
+    const title = isCanceled ? "Payment was canceled" : "Payment failed";
+    const description = isCanceled
+      ? "The M-Pesa prompt was canceled on your phone. You can try again or edit the number."
+      : paymentOutcome.resultDesc ||
+        "M-Pesa could not complete the payment. You can try again with the same number.";
+
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
+          <div className="bg-danger/15 flex h-20 w-20 items-center justify-center rounded-full">
+            <Smartphone className="text-danger h-9 w-9" />
+          </div>
+          <span className="az-pill bg-danger/15 text-danger">
+            {isCanceled ? "Canceled" : "Failed"}
+          </span>
+          <h1 className="text-foreground text-2xl font-bold">{title}</h1>
+          <div className="max-w-md space-y-2">
+            <p className="text-muted text-sm leading-relaxed">{description}</p>
+            <p className="text-muted text-xs">
+              M-Pesa number: <span className="text-foreground font-medium">{mpesaPhone}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              onPress={retryMpesaPrompt}
+              isDisabled={completeMutation.isPending}
+              className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
+            >
+              {completeMutation.isPending ? "Sending..." : "Try Again"}
+            </Button>
+            {isCanceled && (
+              <Button
+                onPress={() => {
+                  setPaymentOutcome(null);
+                  setStep("payment");
+                }}
+                variant="ghost"
+                className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
+              >
+                Edit Phone Number
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (paymentPending) {
     return (

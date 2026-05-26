@@ -246,6 +246,132 @@ describe("CheckoutPage", () => {
     expect(mockCompleteCart).toHaveBeenCalledTimes(1);
   }, 30_000);
 
+  it("surfaces a canceled M-Pesa payment with an option to retry", async () => {
+    const canceledCart = {
+      ...mockCart,
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [
+          {
+            id: "ps_1",
+            provider_id: "pp_mpesa_mpesa",
+            status: "pending",
+            data: { status: "canceled", resultDesc: "Request cancelled by user" },
+          },
+        ],
+      },
+    };
+    mockGetCart.mockResolvedValueOnce({
+      ...mockCart,
+      region: mockRegion,
+      subtotal: 3000,
+      total: 3000,
+    });
+    mockGetCart.mockResolvedValue(canceledCart);
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    expect(await screen.findByText(/Payment was canceled/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Try Again/i })).toBeInTheDocument();
+    expect(mockCompleteCart).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("surfaces a failed M-Pesa payment with the result description", async () => {
+    const failedCart = {
+      ...mockCart,
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [
+          {
+            id: "ps_1",
+            provider_id: "pp_mpesa_mpesa",
+            status: "pending",
+            data: { status: "failed", resultDesc: "Insufficient balance" },
+          },
+        ],
+      },
+    };
+    mockGetCart.mockResolvedValueOnce({
+      ...mockCart,
+      region: mockRegion,
+      subtotal: 3000,
+      total: 3000,
+    });
+    mockGetCart.mockResolvedValue(failedCart);
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    expect(await screen.findByText(/Payment failed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Insufficient balance/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Try Again/i })).toBeInTheDocument();
+  }, 30_000);
+
+  it("retries the STK Push from a canceled payment by re-sending the prompt", async () => {
+    const canceledCart = {
+      ...mockCart,
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [
+          {
+            id: "ps_1",
+            provider_id: "pp_mpesa_mpesa",
+            status: "pending",
+            data: { status: "canceled" },
+          },
+        ],
+      },
+    };
+    mockGetCart.mockResolvedValueOnce({
+      ...mockCart,
+      region: mockRegion,
+      subtotal: 3000,
+      total: 3000,
+    });
+    mockGetCart.mockResolvedValue(canceledCart);
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    await screen.findByText(/Payment was canceled/i);
+    expect(mockInitializePaymentSession).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /Try Again/i }));
+
+    await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalledTimes(2));
+  }, 30_000);
+
   it("creates the order when a pending M-Pesa Express payment becomes captured", async () => {
     const capturedCart = {
       ...mockCart,
