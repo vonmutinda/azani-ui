@@ -129,6 +129,9 @@ export type MedusaCart = {
   id: string;
   email?: string | null;
   currency_code: string;
+  // Set by Medusa once cart/complete succeeds. Storefront treats a non-null
+  // value as "this cart is gone — start a fresh one".
+  completed_at?: string | null;
   items: MedusaLineItem[];
   region?: { id: string; name: string; currency_code: string } | null;
   shipping_address?: MedusaAddress | null;
