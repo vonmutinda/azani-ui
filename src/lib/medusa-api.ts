@@ -12,6 +12,7 @@ import {
   medusaRequest,
   getStoredCartId,
   setStoredCartId,
+  clearStoredCartId,
   getAuthToken,
   clearAuthToken,
   clearStoredWishlistProductIds,
@@ -177,13 +178,17 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
   if (cartId) {
     try {
       const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${validateId(cartId)}`);
-      return res.cart;
+      // Medusa still returns 200 for a completed cart, but mutations against
+      // it 400 with "already completed". Treat it as gone and mint a fresh one.
+      if (!res.cart.completed_at) {
+        return res.cart;
+      }
+      clearStoredCartId();
     } catch {
       // Cart not found or expired, create new one
     }
   }
 
-  // Get Ethiopia region for cart (fallback to first available)
   const regionsRes = await medusaRequest<{ regions: MedusaRegion[] }>("store/regions", {
     searchParams: { limit: 50 },
   });
@@ -206,6 +211,13 @@ export async function getCart(): Promise<MedusaCart | null> {
 
   try {
     const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
+    // An already-completed cart shouldn't drive the storefront UI (mutations
+    // against it 400). Drop the stored id so the next `getOrCreateCart` mints
+    // a new one, and surface "no cart" to callers like the cart page.
+    if (res.cart.completed_at) {
+      clearStoredCartId();
+      return null;
+    }
     return res.cart;
   } catch {
     return null;

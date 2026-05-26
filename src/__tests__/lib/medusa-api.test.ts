@@ -46,6 +46,7 @@ vi.mock("@/lib/http", () => ({
   medusaRequest: vi.fn(),
   getStoredCartId: vi.fn(),
   setStoredCartId: vi.fn(),
+  clearStoredCartId: vi.fn(),
   getAuthToken: vi.fn(),
   clearAuthToken: vi.fn(),
   getStoredWishlistProductIds: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock("@/lib/http", () => ({
 const mockRequest = http.medusaRequest as Mock;
 const mockGetCartId = http.getStoredCartId as Mock;
 const mockSetCartId = http.setStoredCartId as Mock;
+const mockClearCartId = http.clearStoredCartId as Mock;
 const mockGetAuthToken = http.getAuthToken as Mock;
 const mockClearAuthToken = http.clearAuthToken as Mock;
 const mockGetStoredWishlistIds = http.getStoredWishlistProductIds as Mock;
@@ -269,6 +271,25 @@ describe("getOrCreateCart", () => {
     const result = await getOrCreateCart();
     expect(result).toEqual(mockCart);
   });
+
+  it("discards a stored cart that the backend reports as already completed", async () => {
+    mockGetCartId.mockReturnValue("cart_completed");
+    const completedCart = {
+      ...mockCart,
+      id: "cart_completed",
+      completed_at: "2026-05-26T11:50:00.000Z",
+    };
+    mockRequest
+      .mockResolvedValueOnce({ cart: completedCart })
+      .mockResolvedValueOnce({ regions: [mockRegion] })
+      .mockResolvedValueOnce({ cart: { ...mockCart, id: "cart_fresh" } });
+
+    const result = await getOrCreateCart();
+
+    expect(mockClearCartId).toHaveBeenCalled();
+    expect(result.id).toBe("cart_fresh");
+    expect(mockSetCartId).toHaveBeenCalledWith("cart_fresh");
+  });
 });
 
 describe("getCart", () => {
@@ -292,6 +313,18 @@ describe("getCart", () => {
 
     const result = await getCart();
     expect(result).toBeNull();
+  });
+
+  it("returns null and clears the stored id when the cart is already completed", async () => {
+    mockGetCartId.mockReturnValue("cart_completed");
+    mockRequest.mockResolvedValueOnce({
+      cart: { ...mockCart, id: "cart_completed", completed_at: "2026-05-26T11:50:00.000Z" },
+    });
+
+    const result = await getCart();
+
+    expect(result).toBeNull();
+    expect(mockClearCartId).toHaveBeenCalled();
   });
 });
 
