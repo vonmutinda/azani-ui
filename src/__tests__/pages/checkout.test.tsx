@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CheckoutPage from "@/app/checkout/page";
 import { renderWithProviders } from "../test-utils";
 import { mockCart, mockProduct, mockRegion } from "../fixtures";
@@ -371,6 +371,77 @@ describe("CheckoutPage", () => {
 
     await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalledTimes(2));
   }, 30_000);
+
+  it("shows initial elapsed-seconds badge while waiting", async () => {
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    expect(await screen.findByText(/Pending payment · 0s/)).toBeInTheDocument();
+  }, 30_000);
+
+  describe("STK Push timeout UX (fake timers)", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function reachPendingStateUnderFakeTimers() {
+      // Fake setInterval/clearInterval/Date from the start so the page's
+      // elapsed-tick interval is created under our control. setTimeout is left
+      // real so testing-library's waitFor polling still progresses.
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+
+      mockInitializePaymentSession.mockResolvedValue({
+        payment_collection: {
+          id: "pc_1",
+          payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+        },
+      });
+
+      renderWithProviders(<CheckoutPage />);
+      await continueToPayment();
+      fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+      await screen.findByText("Review & Place Order");
+      fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+      await screen.findByText("Waiting for M-Pesa confirmation");
+    }
+
+    it("swaps to 'Taking longer than expected' with Try Again past 60s", async () => {
+      await reachPendingStateUnderFakeTimers();
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(await screen.findByText(/Taking longer than expected/i)).toBeInTheDocument();
+      expect(screen.queryByText("Waiting for M-Pesa confirmation")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Try Again/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Check Payment Status/i })).toBeInTheDocument();
+    }, 30_000);
+
+    it("shows the timed-out branch past 90s with only a Try Again action", async () => {
+      await reachPendingStateUnderFakeTimers();
+
+      await act(async () => {
+        vi.advanceTimersByTime(90_000);
+      });
+
+      expect(await screen.findByText(/STK Push timed out/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Try Again/i })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Check Payment Status/i }),
+      ).not.toBeInTheDocument();
+    }, 30_000);
+  });
 
   it("creates the order when a pending M-Pesa Express payment becomes captured", async () => {
     const capturedCart = {
