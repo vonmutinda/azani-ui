@@ -420,11 +420,18 @@ export default function CheckoutPage() {
   const completeMutation = useMutation({
     mutationFn: async (): Promise<CheckoutPaymentResult> => {
       if (paymentMethod === "mpesa_express") {
-        const payment = await initializePaymentSession();
+        // Route to the M-Pesa provider and pass the payer's phone so the
+        // backend can fire an STK Push. Backend normalizes to 254XXXXXXXXX.
+        const payment = await initializePaymentSession({
+          providerId: "pp_mpesa_mpesa",
+          data: { mpesa_phone: mpesaPhone },
+        });
         if (!hasCapturedPayment(payment.payment_collection.payment_sessions)) {
           return { type: "payment_pending" };
         }
       } else {
+        // Paybill: no STK; manual reconciliation. System default lets us
+        // create the order in awaiting-payment state.
         await initializePaymentSession();
       }
 

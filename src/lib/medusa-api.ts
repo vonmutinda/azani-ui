@@ -298,7 +298,10 @@ export async function addShippingMethod(optionId: string) {
 
 // ── Payment ─────────────────────────────────────────────────────────
 
-export async function initializePaymentSession() {
+export async function initializePaymentSession(opts?: {
+  providerId?: string;
+  data?: Record<string, unknown>;
+}) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
@@ -315,7 +318,13 @@ export async function initializePaymentSession() {
 
   const pcId = pcRes.payment_collection.id;
 
-  // Create a payment session with the system default provider
+  // Provider-specific session payload. M-Pesa Express requires `data.mpesa_phone`
+  // so the backend can fire an STK Push to the payer; the system default
+  // provider takes no extra fields.
+  const providerId = opts?.providerId ?? "pp_system_default";
+  const body: Record<string, unknown> = { provider_id: providerId };
+  if (opts?.data) body.data = opts.data;
+
   return medusaRequest<{
     payment_collection: {
       id: string;
@@ -323,7 +332,7 @@ export async function initializePaymentSession() {
     };
   }>(`store/payment-collections/${pcId}/payment-sessions`, {
     method: "POST",
-    body: { provider_id: "pp_system_default" },
+    body,
   });
 }
 
