@@ -136,7 +136,14 @@ export type MedusaCart = {
   shipping_methods?: MedusaShippingMethod[];
   payment_collection?: {
     id: string;
-    payment_sessions?: { id: string; provider_id: string; status: string }[];
+    payment_sessions?: {
+      id: string;
+      provider_id: string;
+      status: string;
+      // Provider-side state. M-Pesa surfaces a real outcome here (canceled /
+      // failed) when Medusa core's webhook subscriber ignores those branches.
+      data?: { status?: string; resultDesc?: string } | null;
+    }[];
   } | null;
   promotions?: { code: string }[];
   metadata?: Record<string, unknown> | null;
