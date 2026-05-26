@@ -670,6 +670,32 @@ describe("initializePaymentSession", () => {
     mockGetCartId.mockReturnValue(null);
     await expect(initializePaymentSession()).rejects.toThrow("No cart found");
   });
+
+  it("forwards providerId and data when called for M-Pesa Express", async () => {
+    mockGetCartId.mockReturnValue("cart_01");
+    mockRequest
+      .mockResolvedValueOnce({ payment_collection: { id: "pc_01" } })
+      .mockResolvedValueOnce({
+        payment_collection: {
+          id: "pc_01",
+          payment_sessions: [{ id: "ps_01", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+        },
+      });
+
+    await initializePaymentSession({
+      providerId: "pp_mpesa_mpesa",
+      data: { mpesa_phone: "+254712345678" },
+    });
+
+    expect(mockRequest).toHaveBeenNthCalledWith(
+      2,
+      "store/payment-collections/pc_01/payment-sessions",
+      {
+        method: "POST",
+        body: { provider_id: "pp_mpesa_mpesa", data: { mpesa_phone: "+254712345678" } },
+      },
+    );
+  });
 });
 
 // ── Customer Profile ────────────────────────────────────────────────────
