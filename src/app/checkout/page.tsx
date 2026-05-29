@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   ArrowLeft,
   Baby,
@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Smartphone,
   Truck,
+  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -37,18 +38,24 @@ import {
   resolveOrderItemImage,
 } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
+import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
-const FREE_SHIPPING_THRESHOLD = 5_000;
-
-// TODO: replace placeholder with Azani's real Lipa na M-Pesa Paybill number
-const MPESA_PAYBILL_NUMBER = "123456";
+// Lipa na M-Pesa Paybill (Business No.), sourced from env. Falls back to an
+// em-dash so a missing value is obvious rather than shipping a fake number.
+const MPESA_PAYBILL_NUMBER = process.env.NEXT_PUBLIC_AZANI_PAYBILL_NUMBER || "—";
 const MPESA_BUSINESS_NAME = "Azani";
+
+// STK Push wait thresholds (seconds). Display-only — nothing is aborted; the
+// copy escalates and "Try Again" lets the shopper re-fire the prompt.
+const STK_SLOW_THRESHOLD_SECS = 60;
+const STK_TIMEOUT_THRESHOLD_SECS = 90;
 
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
 type PaymentSession = { id: string; provider_id: string; status: string };
 type CheckoutPaymentResult = { type: "payment_pending" } | { type: "payment_captured" };
+type PaymentOutcome = { kind: "canceled" | "failed"; resultDesc?: string };
 
 const PAID_PAYMENT_STATUSES = new Set(["captured"]);
 
@@ -67,7 +74,11 @@ function toCheckoutAddress(address: Partial<MedusaAddress>) {
 
 const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string; note?: string }> =
   {
-    "Free Shipping": { icon: Truck, delivery: "Within 24 hours", note: "Orders over KSh5,000" },
+    "Free Shipping": {
+      icon: Truck,
+      delivery: "Within 24 hours",
+      note: `Orders over ${freeShippingThresholdLabel()}`,
+    },
     "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "KSh150" },
     "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "KSh500" },
   };
@@ -110,7 +121,7 @@ function ShippingStep({
   onSelect: (optionId: string) => void;
   onBack: () => void;
 }) {
-  const qualifiesForFree = cartSubtotal >= FREE_SHIPPING_THRESHOLD;
+  const qualifiesForFree = qualifiesForFreeShipping(cartSubtotal);
 
   const sortedOptions = useMemo(() => {
     const order = ["Free Shipping", "Standard Shipping", "Express Shipping"];
@@ -171,7 +182,7 @@ function ShippingStep({
                       {meta.delivery}
                       {isFreeOption && !qualifiesForFree && (
                         <span className="text-danger ml-1">
-                          (orders over KSh{FREE_SHIPPING_THRESHOLD.toLocaleString()})
+                          (orders over {freeShippingThresholdLabel()})
                         </span>
                       )}
                     </p>
@@ -201,6 +212,11 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
   const [placedOrderRef, setPlacedOrderRef] = useState<string | null>(null);
+  const [placedOrderPaybillRef, setPlacedOrderPaybillRef] = useState<string | null>(null);
+  const [paymentOutcome, setPaymentOutcome] = useState<PaymentOutcome | null>(null);
+  const [paymentPendingSince, setPaymentPendingSince] = useState<number | null>(null);
+  const [pendingNowTick, setPendingNowTick] = useState<number>(0);
+  const handledOutcomeSessionId = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
@@ -329,7 +345,7 @@ export default function CheckoutPage() {
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
 
-      const qualifies = (cart?.subtotal ?? 0) >= FREE_SHIPPING_THRESHOLD;
+      const qualifies = qualifiesForFreeShipping(cart?.subtotal ?? 0);
       if (qualifies) {
         try {
           const res = await getShippingOptions();
@@ -388,11 +404,13 @@ export default function CheckoutPage() {
     },
   });
 
-  const finalizeOrderMutation = useMutation({
-    mutationFn: () => completeCart(),
-    onSuccess: (data) => {
+  // Shared "the order exists now" transition. Called both by finalizeOrderMutation
+  // and directly by the 15s poke when the poke's own complete call places the order.
+  const applyOrderPlaced = useCallback(
+    (data: { order?: unknown }) => {
       clearStoredCartId();
       setPaymentPending(false);
+      setPaymentPendingSince(null);
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       const order = data.order as
         | {
@@ -405,9 +423,17 @@ export default function CheckoutPage() {
       if (order?.display_id) {
         const stored = order.metadata?.order_ref as string | undefined;
         setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id, stored));
+        // display_id is short and numeric — ideal as the M-Pesa Paybill account no.
+        setPlacedOrderPaybillRef(String(order.display_id));
       }
       setOrderPlaced(true);
     },
+    [queryClient],
+  );
+
+  const finalizeOrderMutation = useMutation({
+    mutationFn: () => completeCart(),
+    onSuccess: applyOrderPlaced,
     onError: (err: Error) => {
       setErrorMessage(err.message || "Failed to place order.");
     },
@@ -416,11 +442,18 @@ export default function CheckoutPage() {
   const completeMutation = useMutation({
     mutationFn: async (): Promise<CheckoutPaymentResult> => {
       if (paymentMethod === "mpesa_express") {
-        const payment = await initializePaymentSession();
+        // Route to the M-Pesa provider and pass the payer's phone so the backend
+        // can fire an STK Push to it (vs. the system default, which takes no data).
+        const payment = await initializePaymentSession({
+          providerId: "pp_mpesa_mpesa",
+          data: { mpesa_phone: mpesaPhone },
+        });
         if (!hasCapturedPayment(payment.payment_collection.payment_sessions)) {
           return { type: "payment_pending" };
         }
       } else {
+        // Paybill: no STK Push — the system default provider lets us create the
+        // order in an awaiting-payment state for manual reconciliation.
         await initializePaymentSession();
       }
 
@@ -428,7 +461,10 @@ export default function CheckoutPage() {
     },
     onSuccess: (data) => {
       if (data.type === "payment_pending") {
+        const startedAt = Date.now();
         setPaymentPending(true);
+        setPaymentPendingSince(startedAt);
+        setPendingNowTick(startedAt);
         setErrorMessage(null);
         queryClient.invalidateQueries({ queryKey: ["cart"] });
         return;
@@ -459,6 +495,67 @@ export default function CheckoutPage() {
     paymentPending,
   ]);
 
+  // Path B: the 15s cart/complete poke. Forces the backend to re-query Daraja
+  // (flipping the session's provider-side status) and can itself place the
+  // order — the only signal when the cart completes so fast that getCart already
+  // returns null (completed carts are dropped). 15s respects Daraja's STK Query
+  // rate limit (5/60s ≈ one per 12s).
+  useEffect(() => {
+    if (!paymentPending) return;
+    const interval = setInterval(async () => {
+      try {
+        const result = await completeCart();
+        if (result?.type === "order") {
+          applyOrderPlaced(result);
+        }
+      } catch {
+        // 400 "not_allowed" until the provider authorizes — the next poke or
+        // cart refetch picks up the freshly-updated state.
+      }
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, [paymentPending, applyOrderPlaced]);
+
+  // Surface a terminal M-Pesa outcome. Medusa core's webhook subscriber drops
+  // canceled/failed actions, so the real result lives on session.data.status
+  // (populated once the poke triggers a Daraja STK Query).
+  /* eslint-disable react-hooks/set-state-in-effect -- react to the provider outcome on the polled cart */
+  useEffect(() => {
+    if (!paymentPending) return;
+    const session = cart?.payment_collection?.payment_sessions?.[0];
+    if (!session || handledOutcomeSessionId.current === session.id) return;
+    const providerStatus = session.data?.status;
+    if (providerStatus === "canceled" || providerStatus === "failed") {
+      handledOutcomeSessionId.current = session.id;
+      setPaymentOutcome({
+        kind: providerStatus,
+        resultDesc: session.data?.resultDesc ?? undefined,
+      });
+      setPaymentPending(false);
+      setPaymentPendingSince(null);
+    }
+  }, [cart?.payment_collection?.payment_sessions, paymentPending]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // 1s re-render tick so the elapsed counter and slow/timeout thresholds advance.
+  useEffect(() => {
+    if (!paymentPending) return;
+    const tick = setInterval(() => setPendingNowTick(Date.now()), 1_000);
+    return () => clearInterval(tick);
+  }, [paymentPending]);
+
+  // Re-fire the STK Push after a cancel/failure/timeout (mints a fresh session).
+  const retryMpesaPrompt = () => {
+    handledOutcomeSessionId.current = null;
+    setPaymentOutcome(null);
+    setErrorMessage(null);
+    const startedAt = Date.now();
+    setPaymentPending(true);
+    setPaymentPendingSince(startedAt);
+    setPendingNowTick(startedAt);
+    completeMutation.mutate();
+  };
+
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (hasUnavailableItems) {
@@ -476,31 +573,106 @@ export default function CheckoutPage() {
   ];
   const currentIdx = steps.findIndex((s) => s.id === step);
 
+  const pendingElapsedSeconds = paymentPendingSince
+    ? Math.max(0, Math.floor((pendingNowTick - paymentPendingSince) / 1000))
+    : 0;
+  const stkIsSlow = pendingElapsedSeconds >= STK_SLOW_THRESHOLD_SECS;
+  const stkTimedOut = pendingElapsedSeconds >= STK_TIMEOUT_THRESHOLD_SECS;
+
+  if (paymentOutcome) {
+    const isCanceled = paymentOutcome.kind === "canceled";
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
+          <div className="bg-danger/10 flex h-20 w-20 items-center justify-center rounded-full">
+            <X className="text-danger h-9 w-9" />
+          </div>
+          <h1 className="text-foreground text-2xl font-bold">
+            {isCanceled ? "Payment was canceled" : "Payment failed"}
+          </h1>
+          <p className="text-muted max-w-md text-sm leading-relaxed">
+            {isCanceled
+              ? "The M-Pesa prompt was canceled on your phone. You can try again or edit the number."
+              : (paymentOutcome.resultDesc ??
+                "M-Pesa could not complete the payment. You can try again with the same number.")}
+          </p>
+          <p className="text-muted text-sm">
+            Phone: <span className="text-foreground font-medium">{mpesaPhone}</span>
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={retryMpesaPrompt}
+              disabled={completeMutation.isPending}
+              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+            >
+              Try Again
+            </button>
+            {isCanceled && (
+              <button
+                onClick={() => {
+                  setPaymentOutcome(null);
+                  setStep("payment");
+                }}
+                className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                Edit Phone Number
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (paymentPending) {
+    const pendingTitle = stkTimedOut
+      ? "STK Push timed out"
+      : stkIsSlow
+        ? "Taking longer than expected"
+        : "Payment Request Sent";
+    const pendingLead = stkTimedOut
+      ? "We didn't get a confirmation from M-Pesa within a reasonable time."
+      : stkIsSlow
+        ? "Check your phone for the M-Pesa prompt — it may have been dismissed, or the network is slow."
+        : "Check your phone for the M-Pesa prompt";
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
             <Smartphone className="text-secondary h-9 w-9" />
           </div>
-          <h1 className="text-foreground text-2xl font-bold">Payment Request Sent</h1>
+          <span className="bg-accent-yellow-light text-accent-yellow-ink rounded-full px-3 py-1 text-xs font-semibold">
+            Pending payment · {pendingElapsedSeconds}s
+          </span>
+          <h1 className="text-foreground text-2xl font-bold">{pendingTitle}</h1>
           <div className="max-w-md space-y-2">
-            <p className="text-foreground text-sm font-medium">
-              Check your phone for the M-Pesa prompt
-            </p>
+            <p className="text-foreground text-sm font-medium">{pendingLead}</p>
             <p className="text-muted text-sm leading-relaxed">
               Enter your M-Pesa PIN on{" "}
               <span className="text-foreground font-medium">{mpesaPhone}</span>. We&apos;ll create
               your order after M-Pesa confirms the payment.
             </p>
           </div>
-          <button
-            onClick={() => cartQuery.refetch()}
-            disabled={cartQuery.isFetching}
-            className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {!stkTimedOut && (
+              <button
+                onClick={() => cartQuery.refetch()}
+                disabled={cartQuery.isFetching}
+                className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+              >
+                {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
+              </button>
+            )}
+            {(stkIsSlow || stkTimedOut) && (
+              <button
+                onClick={retryMpesaPrompt}
+                disabled={completeMutation.isPending}
+                className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+              >
+                Try Again
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -538,7 +710,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <p className="text-muted">Account no.</p>
-                  <p className="text-foreground font-semibold">{placedOrderRef ?? "—"}</p>
+                  <p className="text-foreground font-semibold">{placedOrderPaybillRef ?? "—"}</p>
                 </div>
               </div>
               <p className="text-muted text-xs leading-relaxed">
@@ -553,7 +725,7 @@ export default function CheckoutPage() {
           </p>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -575,7 +747,7 @@ export default function CheckoutPage() {
           </div>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <Baby className="h-4 w-4" /> Continue Shopping
           </Link>
@@ -761,7 +933,7 @@ export default function CheckoutPage() {
                         <button
                           type="submit"
                           disabled={addressMutation.isPending || hasUnavailableItems}
-                          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                          className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                         >
                           {addressMutation.isPending
                             ? "Saving..."
@@ -849,7 +1021,7 @@ export default function CheckoutPage() {
                     <button
                       type="submit"
                       disabled={addressMutation.isPending || hasUnavailableItems}
-                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
                     </button>
@@ -1014,7 +1186,7 @@ export default function CheckoutPage() {
                         hasUnavailableItems ||
                         (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
                       }
-                      className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {paymentMutation.isPending ? "Saving..." : "Continue to Review"}
                     </button>
@@ -1103,7 +1275,7 @@ export default function CheckoutPage() {
                       finalizeOrderMutation.isPending ||
                       hasUnavailableItems
                     }
-                    className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
                     {completeMutation.isPending || finalizeOrderMutation.isPending
                       ? paymentMethod === "mpesa_express"

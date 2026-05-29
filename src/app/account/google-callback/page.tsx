@@ -130,7 +130,7 @@ function GoogleCallbackContent() {
           <p className="text-danger text-sm font-medium">{error}</p>
           <button
             onClick={() => router.push("/account/login")}
-            className="bg-foreground hover:bg-foreground/85 inline-flex rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover inline-flex rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Back to Sign In
           </button>

@@ -4,8 +4,8 @@
   /* Azani — pastel playful palette */
   --background: #fefcfd;
   --foreground: #342a33;
-  --primary: #c24d79;
-  --primary-hover: #aa3f69;
+  --primary: #d6336c;
+  --primary-hover: #c2255c;
   --primary-light: #fff1f6;
   --secondary: #267cb8;
   --secondary-hover: #1f699f;
@@ -25,6 +25,7 @@
   --card: #ffffff;
   --card-raised: #ffffff;
   --danger: #e26b89;
+  --whatsapp: #25d366;
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
   --radius-lg: 1rem;
@@ -59,6 +60,7 @@
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-success-ink: var(--success-ink);
+  --color-whatsapp: var(--whatsapp);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-dm-sans);

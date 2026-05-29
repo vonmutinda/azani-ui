@@ -8,6 +8,7 @@ import { ArrowLeft, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
+import { buttonVariants } from "@/components/ui/button";
 import { MedusaProductCategory } from "@/types/medusa";
 
 type Filters = Record<string, string | number | undefined>;
@@ -200,7 +201,7 @@ function ProductsContent() {
               </div>
               <button
                 onClick={() => updateFilters({})}
-                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className={buttonVariants()}
               >
                 Clear Filters
               </button>

@@ -69,7 +69,7 @@ export default function VerifyEmailPage() {
           </p>
           <Link
             href="/account"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Continue to Account
           </Link>
@@ -94,7 +94,7 @@ export default function VerifyEmailPage() {
           <button
             onClick={() => resendMutation.mutate()}
             disabled={resendMutation.isPending}
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
           >
             <Mail className="h-4 w-4" />
             {resendMutation.isPending ? "Sending..." : "Resend Verification Email"}

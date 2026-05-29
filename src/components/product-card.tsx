@@ -197,7 +197,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
                   ? "bg-accent-green-bold scale-110"
                   : maxedOut
                     ? "bg-muted cursor-default opacity-60"
-                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 disabled:opacity-40"
+                    : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 disabled:opacity-40"
               }`}
               aria-label={
                 maxedOut

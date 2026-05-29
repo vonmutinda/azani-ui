@@ -331,7 +331,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                   ? "bg-accent-green-bold"
                   : maxedOut
                     ? "bg-muted cursor-default"
-                    : "bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30"
+                    : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/30"
               }`}
             >
               {justAdded ? (

@@ -23,8 +23,7 @@ import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { resolveProductImage, getProductPrice } from "@/lib/formatters";
 import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
-
-const FREE_SHIPPING_THRESHOLD = 5_000;
+import { freeShippingThresholdLabel } from "@/lib/shipping";
 
 const CAROUSEL_INTERVAL = 5000;
 
@@ -199,7 +198,7 @@ export default function Home() {
               Trusted by 10,000+ parents
             </div>
 
-            <h1 className="font-heading text-foreground max-w-xl text-4xl leading-[1.08] font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="font-heading text-foreground max-w-xl text-[clamp(2.25rem,6vw,4rem)] leading-[1.08] font-extrabold tracking-tight">
               Everything Your{" "}
               <span className="text-primary relative">
                 Little One
@@ -224,7 +223,7 @@ export default function Home() {
             <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
               <Link
                 href="/products"
-                className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 Shop Now <ArrowRight className="h-4 w-4" />
               </Link>
@@ -257,7 +256,7 @@ export default function Home() {
       <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between">
           <div>
-            <h2 className="text-foreground text-xl font-bold sm:text-2xl">Shop by Category</h2>
+            <h2 className="text-foreground text-2xl font-bold sm:text-3xl">Shop by Category</h2>
             <p className="text-muted mt-1 text-sm">Find exactly what you need</p>
           </div>
           <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
@@ -286,7 +285,7 @@ export default function Home() {
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-foreground text-xl font-bold sm:text-2xl">
+              <h2 className="text-foreground text-2xl font-bold sm:text-3xl">
                 Explore Our Collection
               </h2>
               <div className="mt-3 flex gap-1" role="tablist">
@@ -403,7 +402,7 @@ export default function Home() {
             {
               icon: Truck,
               title: "Free Shipping",
-              desc: `On orders over KSh${FREE_SHIPPING_THRESHOLD.toLocaleString()}`,
+              desc: `On orders over ${freeShippingThresholdLabel()}`,
               color: "text-secondary",
             },
             {

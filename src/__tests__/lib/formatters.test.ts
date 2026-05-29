@@ -4,6 +4,7 @@ import {
   getProductPrice,
   getVariantPrice,
   getProductOriginalPrice,
+  getProductDiscountPercent,
   getVariantAvailability,
   formatOrderRef,
   formatOrderLabel,
@@ -12,6 +13,27 @@ import {
   stripHtml,
 } from "@/lib/formatters";
 import { mockProduct, mockProductMinimal } from "../fixtures";
+import type { MedusaProduct } from "@/types/medusa";
+
+function productWithPrice(calculated: number, original: number): MedusaProduct {
+  return {
+    variants: [{ calculated_price: { calculated_amount: calculated, original_amount: original } }],
+  } as unknown as MedusaProduct;
+}
+
+describe("getProductDiscountPercent", () => {
+  it("returns the rounded discount percent when on sale", () => {
+    expect(getProductDiscountPercent(productWithPrice(1890, 2117))).toBe(11);
+  });
+
+  it("returns null when there is no discount", () => {
+    expect(getProductDiscountPercent(productWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when the variant has no calculated price", () => {
+    expect(getProductDiscountPercent({ variants: [{}] } as unknown as MedusaProduct)).toBeNull();
+  });
+});
 
 describe("formatPrice", () => {
   it("formats ETB amounts with Br prefix", () => {

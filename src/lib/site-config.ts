@@ -15,4 +15,9 @@ export const siteConfig = {
     number: (process.env.NEXT_PUBLIC_AZANI_WHATSAPP_NUMBER || "254700000000").replace(/\D/g, ""),
     prefillMessage: "Hi Azani, I'd like to ask about...",
   },
+  shipping: {
+    // Single source of truth for the free-delivery threshold (KES). Reused by the
+    // header trust bar, home, cart progress bar and checkout so they never disagree.
+    freeShippingThreshold: 5000,
+  },
 } as const;

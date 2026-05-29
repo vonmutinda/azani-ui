@@ -27,9 +27,8 @@ import {
   removePromoCode,
 } from "@/lib/medusa-api";
 import { formatPrice, getVariantAvailability, resolveOrderItemImage } from "@/lib/formatters";
+import { freeShippingRemaining, freeShippingProgress } from "@/lib/shipping";
 import type { MedusaLineItem, MedusaProduct } from "@/types/medusa";
-
-const FREE_SHIPPING_THRESHOLD = 10_000;
 
 function variantLabel(item: MedusaLineItem): string | null {
   if (
@@ -147,7 +146,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
           >
             <Baby className="h-4 w-4" /> Start Shopping
           </Link>
@@ -239,8 +238,8 @@ export default function CartPage() {
               )}
               {(() => {
                 const subtotal = cart.subtotal ?? 0;
-                const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
-                const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
+                const remaining = freeShippingRemaining(subtotal);
+                const progress = freeShippingProgress(subtotal);
                 if (remaining <= 0) {
                   return (
                     <div className="flex items-center justify-between">
@@ -324,7 +323,7 @@ export default function CartPage() {
                 <button
                   onClick={() => promoMutation.mutate()}
                   disabled={!promoCode || promoMutation.isPending}
-                  className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 rounded-full px-4 text-sm font-medium text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                  className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-4 text-sm font-medium text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                 >
                   Apply
                 </button>
@@ -339,14 +338,14 @@ export default function CartPage() {
             <button
               type="button"
               disabled
-              className="bg-foreground flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white opacity-50"
+              className="bg-primary flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white opacity-50"
             >
               Resolve Stock Issues First
             </button>
           ) : (
             <Link
               href="/checkout"
-              className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Proceed to Checkout <ArrowRight className="h-4 w-4" />
             </Link>

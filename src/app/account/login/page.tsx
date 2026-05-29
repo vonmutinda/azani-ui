@@ -13,6 +13,7 @@ import { clearAuthToken, setAuthToken } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -239,7 +240,7 @@ export default function LoginPage() {
           </p>
           <Link
             href={canContinueToAccount ? "/account" : "/account/login"}
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className={buttonVariants()}
           >
             {canContinueToAccount ? "Continue to Account" : "Sign In to Continue"}
           </Link>
@@ -269,7 +270,7 @@ export default function LoginPage() {
           </p>
           <button
             onClick={() => switchTo("login")}
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className={buttonVariants()}
           >
             <ArrowLeft className="h-4 w-4" /> Back to Sign In
           </button>
@@ -310,7 +311,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={forgotMutation.isPending || !EMAIL_RE.test(forgotEmail)}
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+            className={buttonVariants({ fullWidth: true })}
           >
             {forgotMutation.isPending ? "Sending..." : "Send Reset Link"}
           </button>
@@ -553,7 +554,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {isPending ? "Please wait..." : isRegister ? "Create Account" : "Sign In"}
         </button>
