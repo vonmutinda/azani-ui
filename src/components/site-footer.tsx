@@ -135,13 +135,29 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <span className="text-muted/60 cursor-default">Shipping Info</span>
+              <Link href="/policies/shipping" className="hover:text-foreground transition">
+                Shipping Policy
+              </Link>
             </li>
             <li>
-              <span className="text-muted/60 cursor-default">Returns & Exchanges</span>
+              <Link href="/policies/returns" className="hover:text-foreground transition">
+                Returns & Exchanges
+              </Link>
             </li>
             <li>
-              <span className="text-muted/60 cursor-default">Privacy Policy</span>
+              <Link href="/policies/terms" className="hover:text-foreground transition">
+                Terms of Service
+              </Link>
+            </li>
+            <li>
+              <Link href="/policies/privacy" className="hover:text-foreground transition">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-foreground transition">
+                Contact Us
+              </Link>
             </li>
           </ul>
         </div>

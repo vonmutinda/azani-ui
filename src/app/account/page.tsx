@@ -48,7 +48,7 @@ const EMPTY_ADDRESS: Omit<MedusaAddress, "id"> = {
   city: "",
   province: "",
   postal_code: "",
-  country_code: "et",
+  country_code: "ke",
   phone: "",
 };
 
@@ -626,7 +626,7 @@ function ProfileDetails({
             <button
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
-              className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
+              className="bg-primary hover:bg-primary-hover rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               {mutation.isPending ? "Saving..." : "Save"}
             </button>
@@ -722,7 +722,7 @@ const AddressesSection = forwardRef<HTMLDivElement>(function AddressesSection(_p
       city: addr.city ?? "",
       province: addr.province ?? "",
       postal_code: addr.postal_code ?? "",
-      country_code: addr.country_code ?? "et",
+      country_code: addr.country_code ?? "ke",
       phone: addr.phone ?? "",
     });
     setShowForm(false);
@@ -948,7 +948,7 @@ function AddressForm({
         <button
           onClick={onSave}
           disabled={saving}
-          className="bg-foreground hover:bg-foreground/85 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
+          className="bg-primary hover:bg-primary-hover rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
@@ -1070,7 +1070,7 @@ function OrdersSection({
           <p className="text-muted mt-0.5 text-sm">When you place an order, it will appear here</p>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition"
           >
             <Baby className="h-4 w-4" />
             Start Shopping

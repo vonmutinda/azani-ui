@@ -182,4 +182,29 @@ describe("CheckoutPage", () => {
     await waitFor(() => expect(mockCompleteCart).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
   }, 30_000);
+
+  it("routes M-Pesa Express to the pp_mpesa_mpesa provider with the payer phone", async () => {
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    await waitFor(() =>
+      expect(mockInitializePaymentSession).toHaveBeenCalledWith({
+        providerId: "pp_mpesa_mpesa",
+        data: { mpesa_phone: "+254712345678" },
+      }),
+    );
+  }, 30_000);
 });

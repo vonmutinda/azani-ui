@@ -1,9 +1,5 @@
 import { siteConfig } from "@/lib/site-config";
 
-// Mirrored as the Tailwind arbitrary value `bg-[#25D366]/40` on the pulse ring below.
-// Tailwind class strings can't interpolate JS variables at build time, so the duplication is intentional.
-const WA_GREEN = "#25D366";
-
 export function FloatingWhatsApp() {
   const href = `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(
     siteConfig.whatsapp.prefillMessage,
@@ -15,16 +11,15 @@ export function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
+      className="focus-visible:ring-whatsapp fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
     >
       <span className="relative flex h-14 w-14 items-center justify-center">
         <span
           aria-hidden="true"
-          className="absolute inline-flex h-full w-full rounded-full bg-[#25D366]/40 motion-safe:animate-ping"
+          className="bg-whatsapp/40 absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping"
         />
         <span
-          className="relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105"
-          style={{ backgroundColor: WA_GREEN }}
+          className="bg-whatsapp relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105"
         >
           <svg
             viewBox="0 0 24 24"

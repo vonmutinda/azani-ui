@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Heart, ShoppingBag } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProductCard } from "@/components/product-card";
+import { buttonVariants } from "@/components/ui/button";
 import {
   getCustomer,
   getProductsByIds,
@@ -71,7 +72,7 @@ export default function WishlistPage() {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className={buttonVariants()}
           >
             Browse Products
           </Link>
@@ -123,7 +124,7 @@ export default function WishlistPage() {
           </div>
           <Link
             href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className={buttonVariants()}
           >
             Browse Products
           </Link>

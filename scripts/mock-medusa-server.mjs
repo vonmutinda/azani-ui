@@ -302,9 +302,11 @@ function getSearchValues(url, key) {
   return [...url.searchParams.getAll(key), ...url.searchParams.getAll(`${key}[]`)].filter(Boolean);
 }
 
+let allowedOrigin = "http://localhost:3000";
+
 function send(res, status, body = {}) {
   res.writeHead(status, {
-    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Accept,Authorization,x-publishable-api-key",
@@ -457,6 +459,8 @@ function shippingOptionsFor(cart) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && /^http:\/\/localhost:\d+$/.test(origin)) allowedOrigin = origin;
   if (req.method === "OPTIONS") return send(res, 204);
 
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);

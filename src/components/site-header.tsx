@@ -9,6 +9,7 @@ import {
   Menu,
   Search,
   ShoppingBag,
+  Smartphone,
   Truck,
   User,
   X,
@@ -20,9 +21,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
 import { Category, toCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
+import { freeDeliveryBarLabel } from "@/lib/shipping";
 
 const TRUST_SIGNALS = [
-  { icon: Truck, text: "Free delivery over KSh5,000" },
+  { icon: Truck, text: freeDeliveryBarLabel() },
+  { icon: Smartphone, text: "Pay with M-Pesa" },
   { icon: Shield, text: "Safe & certified products" },
 ];
 

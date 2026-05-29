@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Back to Sign In
           </Link>
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Sign In
           </Link>
@@ -137,7 +137,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {mutation.isPending ? "Resetting..." : "Reset Password"}
         </button>
