@@ -3,7 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronRight, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Heart,
+  Minus,
+  Plus,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
+  Truck,
+} from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
   getProductById,
@@ -12,7 +23,14 @@ import {
   getWishlistProductIds,
   toggleWishlistProduct,
 } from "@/lib/medusa-api";
-import { getVariantAvailability, getVariantPrice, stripHtml } from "@/lib/formatters";
+import {
+  getVariantAvailability,
+  getVariantDiscountPercent,
+  getVariantOriginalPrice,
+  getVariantPrice,
+  stripHtml,
+} from "@/lib/formatters";
+import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { useToast } from "@/components/toast";
 
@@ -217,6 +235,8 @@ export function ProductDetail({ productId, onBack }: Props) {
     : images;
 
   const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
+  const originalPrice = getVariantOriginalPrice(selectedVariant);
+  const discountPercent = getVariantDiscountPercent(selectedVariant);
   const category = product.categories?.[0];
 
   const handleAddToCart = () => {
@@ -323,7 +343,15 @@ export function ProductDetail({ productId, onBack }: Props) {
             </button>
           </div>
 
-          <p className="text-foreground text-2xl font-bold">{price}</p>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-foreground text-2xl font-bold">{price}</span>
+            {originalPrice && (
+              <span className="text-muted text-base line-through">{originalPrice}</span>
+            )}
+            {discountPercent ? (
+              <span className="text-primary text-base font-bold">-{discountPercent}%</span>
+            ) : null}
+          </div>
           <p
             className={`text-sm font-medium ${
               maxedOut
@@ -435,6 +463,27 @@ export function ProductDetail({ productId, onBack }: Props) {
               )}
             </button>
           </div>
+
+          {/* Point-of-purchase reassurance */}
+          <ul className="text-muted flex flex-wrap gap-x-4 gap-y-2 text-xs">
+            <li className="flex items-center gap-1.5">
+              <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Free delivery on orders over {freeShippingThresholdLabel()}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Smartphone className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Pay securely with M-Pesa
+            </li>
+            <li className="flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <Link
+                href="/policies/returns"
+                className="hover:text-foreground underline-offset-2 transition hover:underline"
+              >
+                Easy returns
+              </Link>
+            </li>
+          </ul>
 
           {cartMutation.isError && (
             <p className="text-danger text-sm font-medium">

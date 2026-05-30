@@ -5,6 +5,8 @@ import {
   getVariantPrice,
   getProductOriginalPrice,
   getProductDiscountPercent,
+  getVariantOriginalPrice,
+  getVariantDiscountPercent,
   getVariantAvailability,
   formatOrderRef,
   formatOrderLabel,
@@ -13,12 +15,20 @@ import {
   stripHtml,
 } from "@/lib/formatters";
 import { mockProduct, mockProductMinimal } from "../fixtures";
-import type { MedusaProduct } from "@/types/medusa";
+import type { MedusaProduct, MedusaProductVariant } from "@/types/medusa";
 
 function productWithPrice(calculated: number, original: number): MedusaProduct {
   return {
     variants: [{ calculated_price: { calculated_amount: calculated, original_amount: original } }],
   } as unknown as MedusaProduct;
+}
+
+function variantWithPrice(calculated: number, original: number): MedusaProductVariant {
+  return {
+    id: "v",
+    title: "v",
+    calculated_price: { calculated_amount: calculated, original_amount: original, currency_code: "kes" },
+  };
 }
 
 describe("getProductDiscountPercent", () => {
@@ -32,6 +42,38 @@ describe("getProductDiscountPercent", () => {
 
   it("returns null when the variant has no calculated price", () => {
     expect(getProductDiscountPercent({ variants: [{}] } as unknown as MedusaProduct)).toBeNull();
+  });
+});
+
+describe("getVariantDiscountPercent", () => {
+  it("returns the rounded discount percent when on sale", () => {
+    expect(getVariantDiscountPercent(variantWithPrice(1890, 2117))).toBe(11);
+  });
+
+  it("returns null when there is no discount", () => {
+    expect(getVariantDiscountPercent(variantWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when the variant has no calculated price", () => {
+    expect(getVariantDiscountPercent({ id: "v", title: "v" })).toBeNull();
+  });
+
+  it("returns null for a missing variant", () => {
+    expect(getVariantDiscountPercent(undefined)).toBeNull();
+  });
+});
+
+describe("getVariantOriginalPrice", () => {
+  it("returns the original price when discounted", () => {
+    expect(getVariantOriginalPrice(variantWithPrice(1890, 2117))).toBe("KSh2,117.00");
+  });
+
+  it("returns null when original equals calculated", () => {
+    expect(getVariantOriginalPrice(variantWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when there is no calculated price", () => {
+    expect(getVariantOriginalPrice({ id: "v", title: "v" })).toBeNull();
   });
 });
 
