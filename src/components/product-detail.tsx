@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
   getProductById,
@@ -100,6 +101,57 @@ export function ProductDetail({ productId, onBack }: Props) {
     );
   }, [product, effectiveOptions]);
 
+  // Does an in-stock variant carry `value` for `optionId`, compatible with the
+  // given selection of the *other* options? An empty selection asks the looser
+  // question: is it available in *any* combination?
+  const isValueAvailableGiven = useCallback(
+    (selection: Record<string, string>, optionId: string, value: string) => {
+      const opts = product?.options ?? [];
+      const vars = product?.variants ?? [];
+      return vars.some((v) => {
+        if (!v.options || !getVariantAvailability(v).inStock) return false;
+        const carriesValue = v.options.some((vo) => vo.option_id === optionId && vo.value === value);
+        if (!carriesValue) return false;
+        return opts.every((opt) => {
+          if (opt.id === optionId) return true;
+          const held = selection[opt.id];
+          if (!held) return true;
+          return v.options!.some((vo) => vo.option_id === opt.id && vo.value === held);
+        });
+      });
+    },
+    [product],
+  );
+
+  // A pill is fully disabled only when its value is sold out in *every*
+  // combination (a true dead end). Values available in some in-stock variant
+  // stay selectable — picking one repairs the other options (see below).
+  const isValueAvailable = useCallback(
+    (optionId: string, value: string) => isValueAvailableGiven({}, optionId, value),
+    [isValueAvailableGiven],
+  );
+
+  // Selecting a value can strand another option on a now-unavailable value
+  // (e.g. a size the chosen colour doesn't come in). Repair each other option
+  // to its first still-available value so the selection never hits a dead end.
+  const handleOptionSelect = useCallback(
+    (optionId: string, value: string) => {
+      setSelectedOptions((prev) => {
+        const base = Object.keys(prev).length > 0 ? prev : defaultOptions;
+        const next = { ...base, [optionId]: value };
+        for (const opt of product?.options ?? []) {
+          if (opt.id === optionId) continue;
+          const held = next[opt.id];
+          if (held && isValueAvailableGiven(next, opt.id, held)) continue;
+          const firstAvailable = opt.values.find((v) => isValueAvailableGiven(next, opt.id, v.value));
+          if (firstAvailable) next[opt.id] = firstAvailable.value;
+        }
+        return next;
+      });
+    },
+    [defaultOptions, product, isValueAvailableGiven],
+  );
+
   const availability = getVariantAvailability(selectedVariant);
 
   const cartQtyForVariant = useMemo(() => {
@@ -165,6 +217,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     : images;
 
   const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
+  const category = product.categories?.[0];
 
   const handleAddToCart = () => {
     if (!selectedVariant || !availability.canPurchase) return;
@@ -181,6 +234,29 @@ export function ProductDetail({ productId, onBack }: Props) {
   return (
     <div>
       {backLink}
+      <nav
+        aria-label="Breadcrumb"
+        className="text-muted mb-4 flex flex-wrap items-center gap-1.5 text-sm"
+      >
+        <Link href="/" className="hover:text-foreground transition">
+          Home
+        </Link>
+        {category && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <Link
+              href={`/products?category=${category.handle}`}
+              className="hover:text-foreground transition"
+            >
+              {category.name}
+            </Link>
+          </>
+        )}
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="text-foreground line-clamp-1 font-medium" aria-current="page">
+          {product.title}
+        </span>
+      </nav>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Images */}
         <div className="space-y-3">
@@ -230,11 +306,6 @@ export function ProductDetail({ productId, onBack }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
-              {product.categories?.[0] && (
-                <span className="text-muted mt-1 inline-block text-sm">
-                  {product.categories[0].name}
-                </span>
-              )}
             </div>
             <button
               type="button"
@@ -276,21 +347,29 @@ export function ProductDetail({ productId, onBack }: Props) {
             <div key={option.id} className="space-y-2">
               <label className="text-foreground text-sm font-semibold">{option.title}</label>
               <div className="flex flex-wrap gap-2">
-                {option.values.map((val) => (
-                  <button
-                    key={val.id}
-                    onClick={() =>
-                      setSelectedOptions((prev) => ({ ...prev, [option.id]: val.value }))
-                    }
-                    className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                      effectiveOptions[option.id] === val.value
-                        ? "border-foreground bg-foreground/[0.06] text-foreground"
-                        : "border-border/50 text-foreground hover:bg-foreground/[0.04]"
-                    }`}
-                  >
-                    {val.value}
-                  </button>
-                ))}
+                {option.values.map((val) => {
+                  const selected = effectiveOptions[option.id] === val.value;
+                  const available = isValueAvailable(option.id, val.value);
+                  return (
+                    <button
+                      key={val.id}
+                      type="button"
+                      onClick={() => handleOptionSelect(option.id, val.value)}
+                      disabled={!available && !selected}
+                      aria-pressed={selected}
+                      aria-label={available ? undefined : `${val.value} — sold out`}
+                      className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                        selected
+                          ? "border-foreground bg-foreground/[0.06] text-foreground"
+                          : available
+                            ? "border-border/50 text-foreground hover:bg-foreground/[0.04]"
+                            : "border-border/50 text-muted cursor-not-allowed line-through opacity-60"
+                      }`}
+                    >
+                      {val.value}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
