@@ -6,6 +6,9 @@ import {
   findCategory,
   resolveToMainAndSub,
   TOP_LEVEL_HANDLES,
+  parseCategoryParam,
+  serializeCategoryParam,
+  resolveCategoryIds,
 } from "@/lib/categories";
 import { mockCategory, mockCategories } from "../fixtures";
 
@@ -127,5 +130,55 @@ describe("resolveToMainAndSub", () => {
 
   it("returns undefined for unknown slug", () => {
     expect(resolveToMainAndSub("nonexistent", cats)).toBeUndefined();
+  });
+});
+
+describe("parseCategoryParam", () => {
+  it("splits a comma-joined value into handles", () => {
+    expect(parseCategoryParam("bottles,weaning")).toEqual(["bottles", "weaning"]);
+  });
+
+  it("returns an empty array for empty or missing values", () => {
+    expect(parseCategoryParam(undefined)).toEqual([]);
+    expect(parseCategoryParam(null)).toEqual([]);
+    expect(parseCategoryParam("")).toEqual([]);
+  });
+
+  it("trims whitespace and drops blank entries", () => {
+    expect(parseCategoryParam(" a , , b ")).toEqual(["a", "b"]);
+  });
+});
+
+describe("serializeCategoryParam", () => {
+  it("joins handles with commas", () => {
+    expect(serializeCategoryParam(["a", "b"])).toBe("a,b");
+  });
+
+  it("returns undefined when there are no handles (so the param clears)", () => {
+    expect(serializeCategoryParam([])).toBeUndefined();
+  });
+});
+
+describe("resolveCategoryIds", () => {
+  it("collects a category and all of its descendant ids", () => {
+    expect(resolveCategoryIds(mockCategories, ["bath-diapering"]).sort()).toEqual(
+      ["pcat_bath_diapering", "pcat_diapers", "pcat_wipes"].sort(),
+    );
+  });
+
+  it("unions multiple handles", () => {
+    const ids = resolveCategoryIds(mockCategories, ["wipes", "feeding"]);
+    expect(ids).toContain("pcat_wipes");
+    expect(ids).toContain("pcat_feeding");
+    expect(ids).toHaveLength(2);
+  });
+
+  it("dedupes when a parent and one of its children are both selected", () => {
+    // bath-diapering already includes wipes — wipes must not be counted twice
+    expect(resolveCategoryIds(mockCategories, ["bath-diapering", "wipes"])).toHaveLength(3);
+  });
+
+  it("ignores unknown handles", () => {
+    expect(resolveCategoryIds(mockCategories, ["does-not-exist"])).toEqual([]);
   });
 });

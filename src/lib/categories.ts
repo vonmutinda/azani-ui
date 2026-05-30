@@ -146,3 +146,64 @@ export function resolveToMainAndSub(
   }
   return undefined;
 }
+
+// ── Multi-select category filtering ─────────────────────────────────
+// The `category` query param holds a comma-joined list of handles, so the
+// listing can filter by several (sub)categories at once.
+
+/** Parse the `category` param into a list of handles. */
+export function parseCategoryParam(value?: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((handle) => handle.trim())
+    .filter(Boolean);
+}
+
+/** Serialise selected handles back to a param value (undefined clears it). */
+export function serializeCategoryParam(handles: string[]): string | undefined {
+  const cleaned = handles.filter(Boolean);
+  return cleaned.length > 0 ? cleaned.join(",") : undefined;
+}
+
+/** Find a Medusa category anywhere in the tree by its handle. */
+export function findMedusaCategory(
+  categories: MedusaProductCategory[],
+  handle: string,
+): MedusaProductCategory | undefined {
+  for (const cat of categories) {
+    if (cat.handle === handle) return cat;
+    const match = cat.category_children
+      ? findMedusaCategory(cat.category_children, handle)
+      : undefined;
+    if (match) return match;
+  }
+  return undefined;
+}
+
+/** A category id plus all of its descendant ids. */
+export function collectCategoryIds(cat: MedusaProductCategory): string[] {
+  const ids = [cat.id];
+  for (const child of cat.category_children ?? []) {
+    ids.push(...collectCategoryIds(child));
+  }
+  return ids;
+}
+
+/**
+ * Resolve selected handles to the deduped union of their subtree ids — what we
+ * pass to `getProducts({ category_id })` for a server-side OR across categories.
+ * Selecting a parent therefore includes its children. Unknown handles are skipped.
+ */
+export function resolveCategoryIds(
+  categories: MedusaProductCategory[],
+  handles: string[],
+): string[] {
+  const ids = new Set<string>();
+  for (const handle of handles) {
+    const node = findMedusaCategory(categories, handle);
+    if (!node) continue;
+    for (const id of collectCategoryIds(node)) ids.add(id);
+  }
+  return [...ids];
+}
