@@ -49,8 +49,7 @@ export function getVariantPrice(variant: MedusaProductVariant, _currency?: strin
   return "--";
 }
 
-export function getProductOriginalPrice(product: MedusaProduct): string | null {
-  const variant = product.variants?.[0];
+export function getVariantOriginalPrice(variant?: MedusaProductVariant | null): string | null {
   if (!variant?.calculated_price) return null;
 
   const { original_amount, calculated_amount } = variant.calculated_price;
@@ -61,14 +60,24 @@ export function getProductOriginalPrice(product: MedusaProduct): string | null {
   return null;
 }
 
-export function getProductDiscountPercent(product: MedusaProduct): number | null {
-  const variant = product.variants?.[0];
+export function getVariantDiscountPercent(variant?: MedusaProductVariant | null): number | null {
   if (!variant?.calculated_price) return null;
 
   const { original_amount, calculated_amount } = variant.calculated_price;
   if (original_amount <= calculated_amount || original_amount <= 0) return null;
 
   return Math.round(((original_amount - calculated_amount) / original_amount) * 100);
+}
+
+// Product-level helpers read the first variant — used by listing cards where
+// there is no selected variant. The PDP uses the variant-level helpers above so
+// the strike price and discount track the variant the shopper has selected.
+export function getProductOriginalPrice(product: MedusaProduct): string | null {
+  return getVariantOriginalPrice(product.variants?.[0]);
+}
+
+export function getProductDiscountPercent(product: MedusaProduct): number | null {
+  return getVariantDiscountPercent(product.variants?.[0]);
 }
 
 export function resolveProductImage(product: MedusaProduct): string | undefined {

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ProductDetail } from "@/components/product-detail";
 import { renderWithProviders } from "../test-utils";
 import { mockProduct } from "../fixtures";
+import { freeShippingThresholdLabel } from "@/lib/shipping";
 import type { MedusaProduct } from "@/types/medusa";
 
 const mockGetProductById = vi.fn();
@@ -240,5 +241,46 @@ describe("ProductDetail", () => {
     expect(screen.getByRole("button", { name: "M" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Red" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("shows the original price and discount when the selected variant is on sale", async () => {
+    const discounted: MedusaProduct = {
+      ...mockProduct,
+      variants: [
+        {
+          ...mockProduct.variants![0],
+          calculated_price: {
+            calculated_amount: 85000,
+            original_amount: 100000,
+            currency_code: "kes",
+          },
+        },
+        mockProduct.variants![1],
+      ],
+    };
+    mockGetProductById.mockResolvedValueOnce({ product: discounted });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    // Selected (first) variant is discounted 100,000 → 85,000.
+    expect(screen.getByText("KSh100,000.00")).toBeInTheDocument();
+    expect(screen.getByText("-15%")).toBeInTheDocument();
+  });
+
+  it("renders the buy-box trust row (delivery, M-Pesa, returns)", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(
+      screen.getByText(`Free delivery on orders over ${freeShippingThresholdLabel()}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Pay securely with M-Pesa")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /returns/i })).toHaveAttribute(
+      "href",
+      "/policies/returns",
+    );
   });
 });
