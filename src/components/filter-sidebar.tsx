@@ -275,7 +275,7 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             className="bg-foreground/20 absolute inset-0 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="bg-card relative ml-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl">
+          <div className="bg-card relative mr-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl">
             <button
               onClick={() => setMobileOpen(false)}
               aria-label="Close filters"
