@@ -3,7 +3,13 @@
 import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { MedusaProductCategory } from "@/types/medusa";
-import { toCategory, Category, TOP_LEVEL_HANDLES } from "@/lib/categories";
+import {
+  toCategory,
+  Category,
+  TOP_LEVEL_HANDLES,
+  parseCategoryParam,
+  serializeCategoryParam,
+} from "@/lib/categories";
 import { CategoryIcon } from "@/components/category-icon";
 
 type Filters = Record<string, string | number | undefined>;
@@ -31,25 +37,24 @@ function isSlugInTree(slug: string, cat: Category): boolean {
 function CategoryItem({
   cat,
   depth,
-  activeSlug,
-  onSelect,
+  selectedHandles,
+  onToggle,
 }: {
   cat: Category;
   depth: number;
-  activeSlug?: string;
-  onSelect: (slug: string | undefined) => void;
+  selectedHandles: string[];
+  onToggle: (slug: string) => void;
 }) {
-  const isActive = activeSlug === cat.slug;
+  const isChecked = selectedHandles.includes(cat.slug);
   const hasChildren = cat.children && cat.children.length > 0;
-  const containsActive = activeSlug ? isSlugInTree(activeSlug, cat) : false;
+  const containsSelected = selectedHandles.some((handle) => isSlugInTree(handle, cat));
 
-  const [open, setOpen] = useState(containsActive);
+  const [open, setOpen] = useState(containsSelected);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- sync open state with active category */
+  /* eslint-disable react-hooks/set-state-in-effect -- keep the tree expanded around a selected descendant */
   useEffect(() => {
-    if (containsActive) setOpen(true);
-    if (!containsActive && !isActive) setOpen(false);
-  }, [containsActive, isActive]);
+    if (containsSelected) setOpen(true);
+  }, [containsSelected]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const indent = depth === 0 ? 0 : depth * 20;
@@ -59,6 +64,7 @@ function CategoryItem({
       <div className="flex items-center" style={{ paddingLeft: `${indent}px` }}>
         {hasChildren ? (
           <button
+            type="button"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Collapse category" : "Expand category"}
@@ -73,24 +79,29 @@ function CategoryItem({
         ) : (
           <span className="w-7 shrink-0" />
         )}
-        <button
-          onClick={() => onSelect(isActive ? undefined : cat.slug)}
-          className={`flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-            isActive
+        <label
+          className={`flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm transition ${
+            isChecked
               ? "bg-foreground/[0.06] text-foreground font-semibold"
-              : containsActive
+              : containsSelected
                 ? "text-foreground font-medium"
                 : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
         >
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => onToggle(cat.slug)}
+            className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          />
           <CategoryIcon
             icon={cat.icon}
             size={depth === 0 ? 14 : 12}
-            colored={!isActive}
-            className={isActive ? "text-foreground" : ""}
+            colored={!isChecked}
+            className={isChecked ? "text-foreground" : ""}
           />
           <span>{cat.name}</span>
-        </button>
+        </label>
       </div>
       {hasChildren && open && (
         <div className="mt-0.5">
@@ -99,8 +110,8 @@ function CategoryItem({
               key={child.slug}
               cat={child}
               depth={depth + 1}
-              activeSlug={activeSlug}
-              onSelect={onSelect}
+              selectedHandles={selectedHandles}
+              onToggle={onToggle}
             />
           ))}
         </div>
@@ -123,6 +134,23 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const setFilter = useCallback(
     (key: string, value: string | number | undefined) => {
       onFilterChange({ ...filters, [key]: value });
+    },
+    [filters, onFilterChange],
+  );
+
+  const selectedHandles = parseCategoryParam(
+    typeof filters.category === "string" ? filters.category : undefined,
+  );
+
+  const toggleCategory = useCallback(
+    (slug: string) => {
+      const current = parseCategoryParam(
+        typeof filters.category === "string" ? filters.category : undefined,
+      );
+      const next = current.includes(slug)
+        ? current.filter((handle) => handle !== slug)
+        : [...current, slug];
+      onFilterChange({ ...filters, category: serializeCategoryParam(next) });
     },
     [filters, onFilterChange],
   );
@@ -159,9 +187,10 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
 
       <div className="space-y-0.5">
         <button
+          type="button"
           onClick={() => setFilter("category", undefined)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-            !filters.category
+          className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+            selectedHandles.length === 0
               ? "bg-foreground/[0.06] text-foreground font-semibold"
               : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
@@ -173,8 +202,8 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
             key={cat.slug}
             cat={cat}
             depth={0}
-            activeSlug={filters.category ? String(filters.category) : undefined}
-            onSelect={(slug) => setFilter("category", slug)}
+            selectedHandles={selectedHandles}
+            onToggle={toggleCategory}
           />
         ))}
       </div>

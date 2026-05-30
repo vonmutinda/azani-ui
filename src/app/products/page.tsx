@@ -3,14 +3,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
-import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
+import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { buttonVariants } from "@/components/ui/button";
 import { getProductPrice, getVariantAvailability } from "@/lib/formatters";
-import { MedusaProductCategory } from "@/types/medusa";
+import {
+  parseCategoryParam,
+  serializeCategoryParam,
+  resolveCategoryIds,
+  findMedusaCategory,
+} from "@/lib/categories";
 
 type Filters = Record<string, string | number | undefined>;
 
@@ -38,16 +43,6 @@ function matchesPriceBracket(amount: number, bracket: string): boolean {
   return true;
 }
 
-function collectCategoryIds(cat: MedusaProductCategory): string[] {
-  const ids = [cat.id];
-  if (cat.category_children) {
-    for (const child of cat.category_children) {
-      ids.push(...collectCategoryIds(child));
-    }
-  }
-  return ids;
-}
-
 function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -66,25 +61,33 @@ function ProductsContent() {
   const limit = 20;
   const offset = (page - 1) * limit;
 
-  const categoryHandle = filters.category ? String(filters.category) : undefined;
-  const categoryQuery = useQuery({
-    queryKey: ["category", categoryHandle],
-    queryFn: () => getCategoryByHandle(categoryHandle!),
-    enabled: !!categoryHandle,
+  const categoriesQuery = useQuery({
+    queryKey: ["categories-sidebar"],
+    queryFn: () => getCategories(),
+    staleTime: 5 * 60 * 1000,
   });
+  const categoryTree = useMemo(
+    () => categoriesQuery.data?.product_categories ?? [],
+    [categoriesQuery.data],
+  );
 
-  const categoryIds = useMemo(() => {
-    if (!categoryHandle) return undefined;
-    if (!categoryQuery.data) return [];
-    return collectCategoryIds(categoryQuery.data);
-  }, [categoryHandle, categoryQuery.data]);
+  // `category` is a comma-joined list of handles → server-side OR over the
+  // union of each selected handle's subtree ids (resolved from the loaded tree).
+  const categoryParam = filters.category ? String(filters.category) : undefined;
+  const categoryHandles = useMemo(() => parseCategoryParam(categoryParam), [categoryParam]);
+  const hasCategoryFilter = categoryHandles.length > 0;
+
+  const categoryIds = useMemo(
+    () => (hasCategoryFilter ? resolveCategoryIds(categoryTree, categoryHandles) : undefined),
+    [hasCategoryFilter, categoryTree, categoryHandles],
+  );
 
   const productsQuery = useQuery({
     queryKey: ["products", "list", { ...filters, sort, page, categoryIds }],
     queryFn: () => {
-      // A selected category that resolves to no ids yields no products — don't
+      // Selected categories that resolve to no ids yield no products — don't
       // fall back to fetching the whole catalogue.
-      if (categoryHandle && categoryIds && categoryIds.length === 0) {
+      if (hasCategoryFilter && categoryIds && categoryIds.length === 0) {
         return Promise.resolve({ products: [], count: 0, offset, limit });
       }
 
@@ -96,13 +99,8 @@ function ProductsContent() {
         ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
       });
     },
-    enabled: !categoryHandle || categoryQuery.isFetched || categoryQuery.isError,
-  });
-
-  const categoriesQuery = useQuery({
-    queryKey: ["categories-sidebar"],
-    queryFn: () => getCategories(),
-    staleTime: 5 * 60 * 1000,
+    // Wait for the category tree before filtering so the ids resolve correctly.
+    enabled: !hasCategoryFilter || categoriesQuery.isFetched || categoriesQuery.isError,
   });
 
   const products = useMemo(() => productsQuery.data?.products ?? [], [productsQuery.data]);
@@ -175,7 +173,7 @@ function ProductsContent() {
     [filters.category, filters.q, filters.availability, filters.price, router, sort],
   );
 
-  const isLoading = productsQuery.isLoading || (!!categoryHandle && categoryQuery.isLoading);
+  const isLoading = productsQuery.isLoading || (hasCategoryFilter && categoriesQuery.isLoading);
 
   const selectedProduct = selectedProductId
     ? products.find((p) => p.id === selectedProductId)
@@ -185,16 +183,20 @@ function ProductsContent() {
     (v) => v !== undefined && v !== "",
   ).length;
 
+  // When exactly one category is selected we still show its name/description and
+  // its children (the drill-in chips); multiple selections fall back to generic.
+  const singleCategory =
+    categoryHandles.length === 1 ? findMedusaCategory(categoryTree, categoryHandles[0]) : undefined;
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
-    : (categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
+    : (singleCategory?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
   const headerDescription = selectedProductId
     ? undefined
-    : categoryQuery.data?.description ||
+    : singleCategory?.description ||
       (filters.q
         ? "Search results across Azani products."
         : "Browse baby essentials, gear, clothing, toys, and care products.");
-  const categoryChildren = categoryQuery.data?.category_children ?? [];
+  const categoryChildren = singleCategory?.category_children ?? [];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -276,21 +278,31 @@ function ProductsContent() {
         <div className="min-w-0 flex-1">
           {activeFilterCount > 0 && !selectedProductId && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              {filters.category && (
-                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
-                  <Tag className="text-muted h-3 w-3" />
-                  <span className="text-foreground font-medium">
-                    {categoryQuery.data?.name ?? String(filters.category)}
-                  </span>
-                  <button
-                    onClick={() => updateQuery({ category: undefined })}
-                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
-                    aria-label="Remove category filter"
+              {categoryHandles.map((handle) => {
+                const name = findMedusaCategory(categoryTree, handle)?.name ?? handle;
+                return (
+                  <span
+                    key={handle}
+                    className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
+                    <Tag className="text-muted h-3 w-3" />
+                    <span className="text-foreground font-medium">{name}</span>
+                    <button
+                      onClick={() =>
+                        updateQuery({
+                          category: serializeCategoryParam(
+                            categoryHandles.filter((h) => h !== handle),
+                          ),
+                        })
+                      }
+                      className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                      aria-label={`Remove ${name} filter`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                );
+              })}
               {filters.q && (
                 <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
                   <Search className="text-muted h-3 w-3" />

@@ -55,6 +55,35 @@ describe("FilterSidebar", () => {
     expect(onFilterChange).toHaveBeenCalledWith({ category: undefined });
   });
 
+  it("renders category rows as checkboxes reflecting the current selection", () => {
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "bath-diapering" }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /Bath & Diapering/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Feeding/i })).not.toBeChecked();
+  });
+
+  it("adds a second category to the selection without replacing the first", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "bath-diapering" }}
+        onFilterChange={onFilterChange}
+        categories={mockCategories}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /Feeding/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering,feeding" });
+  });
+
   it("shows filter count badge when filters active", () => {
     renderWithProviders(
       <FilterSidebar
