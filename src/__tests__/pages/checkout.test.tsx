@@ -114,6 +114,7 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
 
     await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
     await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalled());
@@ -136,6 +137,7 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
 
     await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
     await waitFor(() => expect(mockInitializePaymentSession).toHaveBeenCalled());
@@ -176,6 +178,7 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
 
     await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
     await screen.findByText("Payment Request Sent");
@@ -198,6 +201,7 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
 
     await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
     await waitFor(() =>
@@ -206,5 +210,49 @@ describe("CheckoutPage", () => {
         data: { mpesa_phone: "+254712345678" },
       }),
     );
+  }, 30_000);
+
+  it("requires accepting the terms before the order can be placed", async () => {
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+
+    const placeOrder = screen.getByRole("button", { name: "Send M-Pesa Prompt" });
+    expect(placeOrder).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(placeOrder).toBeEnabled();
+    expect(mockInitializePaymentSession).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("returns to the review step from the pending screen instead of leaving checkout", async () => {
+    mockInitializePaymentSession.mockResolvedValue({
+      payment_collection: {
+        id: "pc_1",
+        payment_sessions: [{ id: "ps_1", provider_id: "pp_mpesa_mpesa", status: "pending" }],
+      },
+    });
+
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+    await screen.findByText("Review & Place Order");
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
+
+    await screen.findByText("Payment Request Sent");
+    fireEvent.click(screen.getByRole("button", { name: /Back to Review/i }));
+
+    expect(await screen.findByText("Review & Place Order")).toBeInTheDocument();
   }, 30_000);
 });

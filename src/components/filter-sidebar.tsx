@@ -8,6 +8,12 @@ import { CategoryIcon } from "@/components/category-icon";
 
 type Filters = Record<string, string | number | undefined>;
 
+const PRICE_BRACKETS = [
+  { value: "u1000", label: "Under KSh1,000" },
+  { value: "1000-5000", label: "KSh1,000 – KSh5,000" },
+  { value: "o5000", label: "Over KSh5,000" },
+];
+
 type Props = {
   filters: Filters;
   onFilterChange: (filters: Filters) => void;
@@ -136,8 +142,15 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         {activeFilterCount > 0 && (
           <button
             type="button"
-            onClick={() => onFilterChange({})}
-            className="text-muted hover:text-foreground rounded-full text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            onClick={() =>
+              onFilterChange({
+                category: undefined,
+                q: undefined,
+                availability: undefined,
+                price: undefined,
+              })
+            }
+            className="text-muted hover:text-foreground rounded-full px-1 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Clear all
           </button>
@@ -165,6 +178,50 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
           />
         ))}
       </div>
+
+      <div className="border-border/50 border-t pt-4">
+        <p className="text-foreground mb-1 text-sm font-semibold">Availability</p>
+        <label className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition">
+          <input
+            type="checkbox"
+            checked={filters.availability === "in_stock"}
+            onChange={(e) => setFilter("availability", e.target.checked ? "in_stock" : undefined)}
+            className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          />
+          <span className="text-foreground">In stock only</span>
+        </label>
+      </div>
+
+      <fieldset className="border-border/50 border-t pt-4">
+        <legend className="text-foreground mb-1 text-sm font-semibold">Price</legend>
+        <div className="space-y-0.5">
+          <label className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition">
+            <input
+              type="radio"
+              name="price"
+              checked={!filters.price}
+              onChange={() => setFilter("price", undefined)}
+              className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            />
+            <span className="text-muted">Any price</span>
+          </label>
+          {PRICE_BRACKETS.map((bracket) => (
+            <label
+              key={bracket.value}
+              className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
+            >
+              <input
+                type="radio"
+                name="price"
+                checked={filters.price === bracket.value}
+                onChange={() => setFilter("price", bracket.value)}
+                className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              />
+              <span className="text-foreground">{bracket.label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
     </div>
   );
 

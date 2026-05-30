@@ -63,6 +63,29 @@ describe("ProductCard", () => {
     expect(screen.queryByText("New")).not.toBeInTheDocument();
   });
 
+  it("shows the option count for a product with multiple variants", () => {
+    renderWithProviders(<ProductCard product={mockProduct} />);
+    expect(screen.getByText("2 options")).toBeInTheDocument();
+  });
+
+  it("shows the discount percentage for a product on sale", () => {
+    const discounted = {
+      ...mockProduct,
+      variants: [
+        {
+          ...mockProduct.variants![0],
+          calculated_price: {
+            calculated_amount: 85000,
+            original_amount: 100000,
+            currency_code: "kes",
+          },
+        },
+      ],
+    };
+    renderWithProviders(<ProductCard product={discounted} />);
+    expect(screen.getByText("-15%")).toBeInTheDocument();
+  });
+
   it("has add to cart button when variant exists", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
     expect(screen.getByTitle("Add to cart")).toBeInTheDocument();

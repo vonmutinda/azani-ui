@@ -92,6 +92,34 @@ describe("FilterSidebar", () => {
     );
 
     await user.click(screen.getByText("Clear all"));
-    expect(onFilterChange).toHaveBeenCalledWith({});
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ category: undefined, availability: undefined, price: undefined }),
+    );
+  });
+
+  it("renders the availability and price facets", () => {
+    renderWithProviders(<FilterSidebar {...defaultProps} />);
+    expect(screen.getByText("Availability")).toBeInTheDocument();
+    expect(screen.getByText("In stock only")).toBeInTheDocument();
+    expect(screen.getByText("Price")).toBeInTheDocument();
+    expect(screen.getByText("Under KSh1,000")).toBeInTheDocument();
+  });
+
+  it("calls onFilterChange when 'In stock only' is toggled", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    await user.click(screen.getByRole("checkbox", { name: /In stock only/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ availability: "in_stock" });
+  });
+
+  it("calls onFilterChange when a price bracket is selected", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    await user.click(screen.getByRole("radio", { name: /Under KSh1,000/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ price: "u1000" });
   });
 });
