@@ -11,6 +11,7 @@ const mockGetProductById = vi.fn();
 const mockAddToCart = vi.fn();
 const mockGetWishlistProductIds = vi.fn();
 const mockToggleWishlistProduct = vi.fn();
+const mockGetProducts = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getProductById: (...args: unknown[]) => mockGetProductById(...args),
@@ -18,12 +19,14 @@ vi.mock("@/lib/medusa-api", () => ({
   getCart: vi.fn().mockResolvedValue(null),
   getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
   toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
+  getProducts: (...args: unknown[]) => mockGetProducts(...args),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWishlistProductIds.mockResolvedValue([]);
   mockToggleWishlistProduct.mockResolvedValue(["prod_01"]);
+  mockGetProducts.mockResolvedValue({ products: [] });
 });
 
 describe("ProductDetail", () => {
@@ -282,5 +285,91 @@ describe("ProductDetail", () => {
       "href",
       "/policies/returns",
     );
+  });
+
+  it("shows the star rating and review count when the product has rating metadata", async () => {
+    const rated: MedusaProduct = {
+      ...mockProduct,
+      metadata: { rating: 4.5, review_count: 128 },
+    };
+    mockGetProductById.mockResolvedValueOnce({ product: rated });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(screen.getByText(/128 reviews/i)).toBeInTheDocument();
+    expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
+  });
+
+  it("shows a 'No reviews yet' empty state when there is no rating data", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(screen.getByText("No reviews yet")).toBeInTheDocument();
+  });
+
+  it("shows the description in an accordion section open by default", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(screen.getByRole("button", { name: "Description" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByText("Premium diapers for all-night comfort")).toBeInTheDocument();
+  });
+
+  it("expands a collapsed accordion section on click", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    const user = userEvent.setup();
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    const deliveryToggle = screen.getByRole("button", { name: /Delivery & returns/i });
+    expect(deliveryToggle).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(deliveryToggle);
+    expect(deliveryToggle).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("renders related products from the same category", async () => {
+    const related1 = {
+      ...mockProduct,
+      id: "prod_rel_1",
+      title: "Baby Wipes Sensitive",
+      handle: "baby-wipes-sensitive",
+    };
+    const related2 = {
+      ...mockProduct,
+      id: "prod_rel_2",
+      title: "Newborn Onesie",
+      handle: "newborn-onesie",
+    };
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    // Includes the current product, which must be filtered out of the row.
+    mockGetProducts.mockResolvedValue({ products: [related1, related2, mockProduct] });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(await screen.findByText("You may also like")).toBeInTheDocument();
+    expect(screen.getByText("Baby Wipes Sensitive")).toBeInTheDocument();
+    expect(screen.getByText("Newborn Onesie")).toBeInTheDocument();
+  });
+
+  it("hides the related section when there are no other products in the category", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    mockGetProducts.mockResolvedValue({ products: [mockProduct] });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+    await waitFor(() => expect(mockGetProducts).toHaveBeenCalled());
+
+    expect(screen.queryByText("You may also like")).not.toBeInTheDocument();
   });
 });

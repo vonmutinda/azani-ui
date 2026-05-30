@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronRight,
   Heart,
   Minus,
@@ -15,9 +16,10 @@ import {
   Smartphone,
   Truck,
 } from "lucide-react";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { type ReactNode, useState, useMemo, useCallback, useRef, useId } from "react";
 import {
   getProductById,
+  getProducts,
   addToCart,
   getCart,
   getWishlistProductIds,
@@ -32,12 +34,80 @@ import {
 } from "@/lib/formatters";
 import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
+import { ProductCard } from "@/components/product-card";
+import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
 
 type Props = {
   productId: string;
   onBack: () => void;
 };
+
+function AccordionSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
+  return (
+    <div className="border-border/50 border-b">
+      <h3>
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="text-foreground focus-visible:ring-primary/30 flex min-h-11 w-full items-center justify-between gap-4 py-3 text-left text-sm font-semibold focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {title}
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+      </h3>
+      <div id={panelId} hidden={!open} className="text-muted pb-4 text-sm leading-relaxed">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function RelatedProducts({
+  categoryId,
+  currentProductId,
+}: {
+  categoryId: string;
+  currentProductId: string;
+}) {
+  const { data } = useQuery({
+    queryKey: ["related-products", categoryId],
+    queryFn: () => getProducts({ category_id: categoryId, limit: 5 }),
+    enabled: !!categoryId,
+    staleTime: 60 * 1000,
+  });
+
+  const related = (data?.products ?? []).filter((p) => p.id !== currentProductId).slice(0, 4);
+  if (related.length === 0) return null;
+
+  return (
+    <section className="mt-12">
+      <h2 className="text-foreground mb-4 text-lg font-bold sm:text-xl">You may also like</h2>
+      <div className="hide-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
+        {related.map((relatedProduct) => (
+          <div key={relatedProduct.id} className="w-44 shrink-0 sm:w-auto">
+            <ProductCard product={relatedProduct} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export function ProductDetail({ productId, onBack }: Props) {
   const queryClient = useQueryClient();
@@ -238,6 +308,9 @@ export function ProductDetail({ productId, onBack }: Props) {
   const originalPrice = getVariantOriginalPrice(selectedVariant);
   const discountPercent = getVariantDiscountPercent(selectedVariant);
   const category = product.categories?.[0];
+  const ratingValue = typeof product.metadata?.rating === "number" ? product.metadata.rating : null;
+  const reviewCount =
+    typeof product.metadata?.review_count === "number" ? product.metadata.review_count : null;
 
   const handleAddToCart = () => {
     if (!selectedVariant || !availability.canPurchase) return;
@@ -324,8 +397,18 @@ export function ProductDetail({ productId, onBack }: Props) {
         {/* Details */}
         <div className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="space-y-1.5">
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
+              {ratingValue != null ? (
+                <div className="flex items-center gap-2">
+                  <StarRating rating={ratingValue} />
+                  <span className="text-muted text-sm">
+                    {ratingValue.toFixed(1)} ({reviewCount ?? 0} reviews)
+                  </span>
+                </div>
+              ) : (
+                <p className="text-muted text-sm">No reviews yet</p>
+              )}
             </div>
             <button
               type="button"
@@ -365,10 +448,6 @@ export function ProductDetail({ productId, onBack }: Props) {
           >
             {maxedOut ? "Max quantity in cart" : availability.label}
           </p>
-
-          {product.description && (
-            <p className="text-muted text-sm leading-relaxed">{stripHtml(product.description)}</p>
-          )}
 
           {/* Options */}
           {(product.options ?? []).map((option) => (
@@ -492,6 +571,61 @@ export function ProductDetail({ productId, onBack }: Props) {
           )}
         </div>
       </div>
+
+      <div className="mt-8 max-w-3xl">
+        <AccordionSection title="Description" defaultOpen>
+          {product.description ? (
+            <p>{stripHtml(product.description)}</p>
+          ) : (
+            <p>No description available for this product yet.</p>
+          )}
+        </AccordionSection>
+        <AccordionSection title="Specifications">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+            {selectedVariant?.sku && (
+              <div className="flex justify-between gap-4 sm:block">
+                <dt className="text-foreground font-medium">SKU</dt>
+                <dd>{selectedVariant.sku}</dd>
+              </div>
+            )}
+            {category && (
+              <div className="flex justify-between gap-4 sm:block">
+                <dt className="text-foreground font-medium">Category</dt>
+                <dd>{category.name}</dd>
+              </div>
+            )}
+            {product.weight && (
+              <div className="flex justify-between gap-4 sm:block">
+                <dt className="text-foreground font-medium">Weight</dt>
+                <dd>{product.weight} g</dd>
+              </div>
+            )}
+          </dl>
+        </AccordionSection>
+        <AccordionSection title="Delivery & returns">
+          <p>
+            Free delivery on orders over {freeShippingThresholdLabel()} across Kenya. See our{" "}
+            <Link
+              href="/policies/shipping"
+              className="text-primary hover:text-primary-hover underline underline-offset-2"
+            >
+              delivery
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/policies/returns"
+              className="text-primary hover:text-primary-hover underline underline-offset-2"
+            >
+              returns
+            </Link>{" "}
+            policies for the full details.
+          </p>
+        </AccordionSection>
+      </div>
+
+      {category && (
+        <RelatedProducts categoryId={category.id} currentProductId={product.id} />
+      )}
     </div>
   );
 }
