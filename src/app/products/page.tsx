@@ -4,14 +4,39 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, Suspense } from "react";
 import { getProducts, getCategories, getCategoryByHandle } from "@/lib/medusa-api";
-import { ArrowLeft, Search, ShoppingBag, Tag, X } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { buttonVariants } from "@/components/ui/button";
+import { getProductPrice, getVariantAvailability } from "@/lib/formatters";
 import { MedusaProductCategory } from "@/types/medusa";
 
 type Filters = Record<string, string | number | undefined>;
+
+const SORT_OPTIONS = [
+  { value: "featured", label: "Featured", order: undefined },
+  { value: "newest", label: "Newest", order: "-created_at" },
+  { value: "price_asc", label: "Price: Low to high", order: undefined },
+  { value: "price_desc", label: "Price: High to low", order: undefined },
+] as const;
+
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
+
+function isSortValue(value: string | null): value is SortValue {
+  return SORT_OPTIONS.some((option) => option.value === value);
+}
+
+function getSortOrder(sort: SortValue) {
+  return SORT_OPTIONS.find((option) => option.value === sort)?.order;
+}
+
+function matchesPriceBracket(amount: number, bracket: string): boolean {
+  if (bracket === "u1000") return amount < 1000;
+  if (bracket === "1000-5000") return amount >= 1000 && amount <= 5000;
+  if (bracket === "o5000") return amount > 5000;
+  return true;
+}
 
 function collectCategoryIds(cat: MedusaProductCategory): string[] {
   const ids = [cat.id];
@@ -31,7 +56,11 @@ function ProductsContent() {
   const filters: Filters = {
     category: searchParams.get("category") ?? undefined,
     q: searchParams.get("q") ?? undefined,
+    availability: searchParams.get("availability") ?? undefined,
+    price: searchParams.get("price") ?? undefined,
   };
+  const requestedSort = searchParams.get("sort");
+  const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
 
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = 20;
@@ -45,20 +74,29 @@ function ProductsContent() {
   });
 
   const categoryIds = useMemo(() => {
-    if (!categoryQuery.data) return undefined;
+    if (!categoryHandle) return undefined;
+    if (!categoryQuery.data) return [];
     return collectCategoryIds(categoryQuery.data);
-  }, [categoryQuery.data]);
+  }, [categoryHandle, categoryQuery.data]);
 
   const productsQuery = useQuery({
-    queryKey: ["products", "list", { ...filters, page, categoryIds }],
-    queryFn: () =>
-      getProducts({
+    queryKey: ["products", "list", { ...filters, sort, page, categoryIds }],
+    queryFn: () => {
+      // A selected category that resolves to no ids yields no products — don't
+      // fall back to fetching the whole catalogue.
+      if (categoryHandle && categoryIds && categoryIds.length === 0) {
+        return Promise.resolve({ products: [], count: 0, offset, limit });
+      }
+
+      return getProducts({
         limit,
         offset,
         ...(categoryIds && categoryIds.length > 0 ? { category_id: categoryIds } : {}),
         ...(filters.q ? { q: String(filters.q) } : {}),
-      }),
-    enabled: !categoryHandle || !!categoryIds || categoryQuery.isError,
+        ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
+      });
+    },
+    enabled: !categoryHandle || categoryQuery.isFetched || categoryQuery.isError,
   });
 
   const categoriesQuery = useQuery({
@@ -67,21 +105,74 @@ function ProductsContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const products = productsQuery.data?.products ?? [];
+  const products = useMemo(() => productsQuery.data?.products ?? [], [productsQuery.data]);
+  // Medusa can't order by calculated price, so price sorts happen client-side
+  // over the current page.
+  const sortedProducts = useMemo(() => {
+    const copy = [...products];
+    if (sort === "price_asc") {
+      return copy.sort(
+        (a, b) =>
+          (getProductPrice(a)?.amount ?? Number.MAX_SAFE_INTEGER) -
+          (getProductPrice(b)?.amount ?? Number.MAX_SAFE_INTEGER),
+      );
+    }
+    if (sort === "price_desc") {
+      return copy.sort((a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0));
+    }
+    if (sort === "newest") {
+      return copy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return products;
+  }, [products, sort]);
+
+  // Availability + price facets, applied client-side over the current page
+  // (category/sort already narrow the server query; full server-side faceting
+  // is the production follow-up).
+  const inStockOnly = filters.availability === "in_stock";
+  const priceBracket = filters.price ? String(filters.price) : undefined;
+  const visibleProducts = useMemo(() => {
+    if (!inStockOnly && !priceBracket) return sortedProducts;
+    return sortedProducts.filter((product) => {
+      if (inStockOnly && !(product.variants ?? []).some((v) => getVariantAvailability(v).inStock)) {
+        return false;
+      }
+      if (priceBracket) {
+        const amount = getProductPrice(product)?.amount;
+        if (amount == null || !matchesPriceBracket(amount, priceBracket)) return false;
+      }
+      return true;
+    });
+  }, [sortedProducts, inStockOnly, priceBracket]);
+  const hasClientFacets = inStockOnly || !!priceBracket;
+
   const total = productsQuery.data?.count ?? 0;
+  const shownCount = hasClientFacets ? visibleProducts.length : total;
   const totalPages = Math.ceil(total / limit);
 
-  const updateFilters = useCallback(
+  const updateQuery = useCallback(
     (newFilters: Filters) => {
       const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(newFilters)) {
+      const nextFilters: Filters = {
+        category: filters.category,
+        q: filters.q,
+        availability: filters.availability,
+        price: filters.price,
+        sort,
+        ...newFilters,
+      };
+      for (const [key, value] of Object.entries(nextFilters)) {
         if (value !== undefined && value !== "") {
           params.set(key, String(value));
         }
       }
-      router.push(`/products?${params.toString()}`);
+      // A new query always returns to page 1, and "featured" is the default (omit it).
+      params.delete("page");
+      if (params.get("sort") === "featured") params.delete("sort");
+      const query = params.toString();
+      router.push(query ? `/products?${query}` : "/products");
     },
-    [router],
+    [filters.category, filters.q, filters.availability, filters.price, router, sort],
   );
 
   const isLoading = productsQuery.isLoading || (!!categoryHandle && categoryQuery.isLoading);
@@ -97,26 +188,78 @@ function ProductsContent() {
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
     : (categoryQuery.data?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
+  const headerDescription = selectedProductId
+    ? undefined
+    : categoryQuery.data?.description ||
+      (filters.q
+        ? "Search results across Azani products."
+        : "Browse baby essentials, gear, clothing, toys, and care products.");
+  const categoryChildren = categoryQuery.data?.category_children ?? [];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-5">
-        <div className="flex items-center gap-2">
-          {selectedProductId && (
-            <button
-              onClick={() => setSelectedProductId(null)}
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
-              aria-label="Back to products"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+      <div className="mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              {selectedProductId && (
+                <button
+                  onClick={() => setSelectedProductId(null)}
+                  className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+                  aria-label="Back to products"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              )}
+              <h1 className="text-foreground text-2xl font-bold sm:text-3xl">{headingText}</h1>
+            </div>
+            {!selectedProductId && (
+              <>
+                {headerDescription && (
+                  <p className="text-muted mt-1 max-w-2xl text-sm">{headerDescription}</p>
+                )}
+                <p className="text-muted mt-2 text-sm">
+                  {shownCount} product{shownCount !== 1 ? "s" : ""} found
+                </p>
+              </>
+            )}
+          </div>
+
+          {!selectedProductId && (
+            <label className="text-muted flex w-full items-center gap-2 text-sm sm:w-auto">
+              <ArrowUpDown className="h-4 w-4 shrink-0" />
+              <span className="sr-only">Sort products</span>
+              <select
+                aria-label="Sort products"
+                value={sort}
+                onChange={(event) => updateQuery({ sort: event.target.value })}
+                className="border-border/60 bg-card text-foreground focus:border-secondary focus:ring-secondary/15 h-10 min-w-0 rounded-xl border px-3 text-sm transition outline-none focus:ring-2 sm:w-52"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
-          <h1 className="text-foreground text-2xl font-bold">{headingText}</h1>
         </div>
-        {!selectedProductId && (
-          <p className="text-muted mt-1 text-sm">
-            {total} product{total !== 1 ? "s" : ""} found
-          </p>
+
+        {/* Subcategory browser — drill into the current category's children */}
+        {!selectedProductId && categoryChildren.length > 0 && (
+          <div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1">
+            {categoryChildren.map((child) => (
+              <button
+                key={child.id}
+                type="button"
+                aria-label={`Browse ${child.name}`}
+                onClick={() => updateQuery({ category: child.handle })}
+                className="border-border/60 bg-card text-foreground hover:border-border-hover hover:bg-foreground/[0.04] focus-visible:ring-primary/30 shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {child.name}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -125,7 +268,7 @@ function ProductsContent() {
           filters={filters}
           onFilterChange={(newFilters) => {
             setSelectedProductId(null);
-            updateFilters(newFilters);
+            updateQuery(newFilters);
           }}
           categories={categoriesQuery.data?.product_categories ?? []}
         />
@@ -140,7 +283,7 @@ function ProductsContent() {
                     {categoryQuery.data?.name ?? String(filters.category)}
                   </span>
                   <button
-                    onClick={() => updateFilters({ ...filters, category: undefined })}
+                    onClick={() => updateQuery({ category: undefined })}
                     className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
                     aria-label="Remove category filter"
                   >
@@ -155,7 +298,7 @@ function ProductsContent() {
                     &ldquo;{String(filters.q)}&rdquo;
                   </span>
                   <button
-                    onClick={() => updateFilters({ ...filters, q: undefined })}
+                    onClick={() => updateQuery({ q: undefined })}
                     className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
                     aria-label="Remove search filter"
                   >
@@ -167,7 +310,7 @@ function ProductsContent() {
                 <button
                   onClick={() => {
                     setSelectedProductId(null);
-                    updateFilters({});
+                    updateQuery({ category: undefined, q: undefined });
                   }}
                   className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
                 >
@@ -188,28 +331,34 @@ function ProductsContent() {
                 <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : visibleProducts.length === 0 ? (
             <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
               <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
                 <ShoppingBag className="text-secondary h-8 w-8" />
               </div>
               <div>
                 <p className="text-foreground text-lg font-semibold">No products found</p>
-                <p className="text-muted mt-1 text-sm">
-                  Try adjusting your filters or search terms.
-                </p>
+                <p className="text-muted mt-1 text-sm">Try adjusting your filters or search terms.</p>
               </div>
               <button
-                onClick={() => updateFilters({})}
+                onClick={() =>
+                  updateQuery({
+                    category: undefined,
+                    q: undefined,
+                    sort: undefined,
+                    availability: undefined,
+                    price: undefined,
+                  })
+                }
                 className={buttonVariants()}
               >
-                Clear Filters
+                Clear filters
               </button>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                {products.map((product) => (
+                {visibleProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -218,7 +367,7 @@ function ProductsContent() {
                 ))}
               </div>
 
-              {totalPages > 1 && (
+              {totalPages > 1 && !hasClientFacets && (
                 <div className="mt-8 flex justify-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <button

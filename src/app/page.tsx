@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Baby,
-  ChevronLeft,
-  ChevronRight,
-  Package,
   ShieldCheck,
   Shirt,
+  Smartphone,
   Sparkles,
   Star,
   Truck,
@@ -24,137 +22,6 @@ import { CategoryIcon } from "@/components/category-icon";
 import { resolveProductImage, getProductPrice } from "@/lib/formatters";
 import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 import { freeShippingThresholdLabel } from "@/lib/shipping";
-
-const CAROUSEL_INTERVAL = 5000;
-
-function HeroCarousel({
-  products,
-}: {
-  products: { id: string; title: string; image?: string; price?: string }[];
-}) {
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const count = products.length;
-
-  const go = useCallback(
-    (idx: number) => {
-      setActive(((idx % count) + count) % count);
-    },
-    [count],
-  );
-
-  useEffect(() => {
-    if (paused || count <= 1) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % count), CAROUSEL_INTERVAL);
-    return () => clearInterval(id);
-  }, [paused, count]);
-
-  if (count === 0) return null;
-
-  const prev = (active - 1 + count) % count;
-  const next = (active + 1) % count;
-
-  const cards = [
-    { idx: prev, position: "left" as const },
-    { idx: active, position: "center" as const },
-    { idx: next, position: "right" as const },
-  ];
-
-  const positionStyles = {
-    left: "left-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[52%]",
-    right: "right-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-  };
-
-  return (
-    <div
-      className="relative w-full max-w-[460px]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <div className="relative h-[260px] w-full sm:h-[340px] lg:h-[420px]">
-        {cards.map(({ idx, position }) => {
-          const p = products[idx];
-          return (
-            <Link
-              key={`${idx}-${position}`}
-              href={`/products/${p.id}`}
-              tabIndex={position === "center" ? 0 : -1}
-              aria-hidden={position !== "center"}
-              className={`border-border/50 bg-card absolute overflow-hidden rounded-2xl border transition-all duration-500 ease-out ${positionStyles[position]}`}
-              onClick={(e) => {
-                if (position === "left") {
-                  e.preventDefault();
-                  go(active - 1);
-                }
-                if (position === "right") {
-                  e.preventDefault();
-                  go(active + 1);
-                }
-              }}
-            >
-              {p.image ? (
-                <Image
-                  src={p.image}
-                  alt={p.title}
-                  fill
-                  sizes="(max-width: 640px) 80vw, 300px"
-                  className="object-contain p-2"
-                />
-              ) : (
-                <div className="bg-secondary-light text-secondary flex h-full items-center justify-center">
-                  <Package className="h-12 w-12" />
-                </div>
-              )}
-              {position === "center" && (
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent px-4 pt-10 pb-4">
-                  <p className="truncate text-sm font-semibold text-white drop-shadow-sm">
-                    {p.title}
-                  </p>
-                  {p.price && (
-                    <p className="text-lg font-bold text-white drop-shadow-sm">{p.price}</p>
-                  )}
-                </div>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-
-      {count > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => go(active - 1)}
-            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
-            aria-label="Previous product"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div className="flex gap-1.5">
-            {products.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => go(i)}
-                aria-label={`Go to product ${i + 1}`}
-                className={`focus-visible:ring-primary/30 h-2 rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:outline-none ${i === active ? "bg-foreground w-6" : "bg-foreground/20 hover:bg-foreground/30 w-2"}`}
-              />
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => go(active + 1)}
-            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
-            aria-label="Next product"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Home() {
   const [productTab, setProductTab] = useState<"featured" | "new">("featured");
@@ -179,19 +46,22 @@ export default function Home() {
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toCategory);
 
-  const heroProducts = (featuredQuery.data?.products ?? []).slice(0, 8).map((p) => ({
-    id: p.id,
-    title: p.title,
-    image: resolveProductImage(p),
-    price: getProductPrice(p)?.formatted,
-  }));
+  const featuredProduct = featuredQuery.data?.products?.[0];
+  const heroProduct = featuredProduct
+    ? {
+        id: featuredProduct.id,
+        title: featuredProduct.title,
+        image: resolveProductImage(featuredProduct),
+        price: getProductPrice(featuredProduct)?.formatted,
+      }
+    : null;
 
   return (
     <div>
       {/* ── Hero ── */}
       <section className="bg-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-col-reverse items-center gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:flex-row lg:gap-10 lg:px-8 lg:py-12">
-          {/* Left — copy */}
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:flex-row lg:gap-12 lg:px-8 lg:py-16">
+          {/* Left — copy (leads on mobile) */}
           <div className="hero-fade-in flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
             <div className="text-primary bg-primary/[0.06] mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold">
               <Star className="h-3.5 w-3.5" fill="currentColor" />
@@ -202,7 +72,12 @@ export default function Home() {
               Everything Your{" "}
               <span className="text-primary relative">
                 Little One
-                <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
+                <svg
+                  className="absolute -bottom-1 left-0 w-full"
+                  viewBox="0 0 200 8"
+                  fill="none"
+                  aria-hidden="true"
+                >
                   <path
                     d="M2 6c40-4 80-4 196 0"
                     stroke="currentColor"
@@ -235,19 +110,88 @@ export default function Home() {
                 New Arrivals
               </Link>
             </div>
+
+            {/* Trust row — carries the visual's chips on mobile (chips are desktop-only) */}
+            <div className="text-muted mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-medium sm:hidden">
+              <span className="flex items-center gap-1.5">
+                <Truck className="text-secondary h-3.5 w-3.5" /> Free delivery over{" "}
+                {freeShippingThresholdLabel()}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Smartphone className="text-success-ink h-3.5 w-3.5" /> Pay with M-Pesa
+              </span>
+            </div>
           </div>
 
-          {/* Right — product carousel */}
-          <div className="hero-fade-in-delay flex flex-1 items-center justify-center">
-            {featuredQuery.isLoading ? (
-              <div className="relative h-[260px] w-full max-w-[460px] sm:h-[340px] lg:h-[420px]">
-                <div className="bg-border/40 absolute top-1/2 left-1/2 h-full w-[52%] -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-2xl" />
-                <div className="bg-border/20 absolute top-1/2 left-0 h-[65%] w-[38%] -translate-y-1/2 animate-pulse rounded-2xl" />
-                <div className="bg-border/20 absolute top-1/2 right-0 h-[65%] w-[38%] -translate-y-1/2 animate-pulse rounded-2xl" />
+          {/* Right — hero visual: brand gradient + featured product + floating chips.
+              Robust by design — the gradient and chips render even if the product
+              image is slow or unavailable. */}
+          <div className="hero-fade-in-delay flex w-full max-w-[440px] flex-1 items-center justify-center">
+            <div className="relative aspect-square w-full">
+              <div
+                aria-hidden="true"
+                className="from-primary-light via-secondary-light to-accent-yellow-light absolute inset-0 rounded-[2.5rem] bg-gradient-to-br"
+              />
+              <div
+                aria-hidden="true"
+                className="bg-primary/15 absolute top-8 -left-4 h-28 w-28 rounded-full blur-2xl"
+              />
+              <div
+                aria-hidden="true"
+                className="bg-secondary/15 absolute -right-4 bottom-10 h-32 w-32 rounded-full blur-2xl"
+              />
+
+              <div className="absolute inset-0 flex items-center justify-center p-7 sm:p-10">
+                {featuredQuery.isLoading ? (
+                  <div className="bg-card/70 h-full w-full animate-pulse rounded-3xl" />
+                ) : (
+                  <Link
+                    href={heroProduct ? `/products/${heroProduct.id}` : "/products"}
+                    className="group bg-card focus-visible:ring-primary/30 flex h-full w-full flex-col overflow-hidden rounded-3xl shadow-lg ring-1 ring-black/5 transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  >
+                    <div className="bg-background relative flex flex-1 items-center justify-center overflow-hidden">
+                      {heroProduct?.image ? (
+                        <Image
+                          src={heroProduct.image}
+                          alt={heroProduct.title}
+                          fill
+                          sizes="(max-width: 1024px) 80vw, 420px"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          priority
+                        />
+                      ) : (
+                        <div className="text-muted-light flex flex-col items-center gap-2">
+                          <Baby className="h-12 w-12" />
+                          <span className="text-xs font-medium">Featured pick</span>
+                        </div>
+                      )}
+                    </div>
+                    {heroProduct && (
+                      <div className="flex items-center justify-between gap-2 px-4 py-3">
+                        <span className="text-foreground line-clamp-1 text-sm font-semibold">
+                          {heroProduct.title}
+                        </span>
+                        {heroProduct.price && (
+                          <span className="text-primary shrink-0 text-sm font-bold">
+                            {heroProduct.price}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </Link>
+                )}
               </div>
-            ) : (
-              <HeroCarousel products={heroProducts} />
-            )}
+
+              {/* Floating chips — desktop accent, hidden on mobile (the trust row covers it) */}
+              <div className="border-border/50 bg-card absolute top-6 -left-3 hidden items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold shadow-md sm:flex">
+                <Truck className="text-secondary h-3.5 w-3.5" />
+                <span className="text-foreground">Free delivery over {freeShippingThresholdLabel()}</span>
+              </div>
+              <div className="border-border/50 bg-card absolute top-1/2 -right-3 hidden -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold shadow-md sm:flex">
+                <Smartphone className="text-success-ink h-3.5 w-3.5" />
+                <span className="text-foreground">Pay with M-Pesa</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -35,6 +35,8 @@
 | Trust/footer | Policies, social | **Payment logos, returns, size guides, store locator** | Footer present but **Shipping/Returns/Privacy disabled** |
 | Brand color use | Strong coral identity | Navy + red accents | **Brand pink barely used — chrome & CTAs read near-black** |
 
+> **Verified against the live sites (2026-05-29).** Peekaboo: "open 9am–7pm / download app → 10% off" bar; deep mega-menu (NEW IN · Feeding · Nursery · Travel · Toys · Diapering · Fashion · Bath & Skin · Sale 💥 · Gift Registry · School Supplies · Health & Safety · Books); homepage = hero carousel → 9-tile category grid → Best Sellers → brand spotlights (4M/Chicco/Momcozy) → New Arrivals → reviews band; cards show sale price + strikethrough (~31% off) + "Add To Cart". Kiabi /baby: "Shop 24/7 · Free delivery over 199 SAR" bar; left-sidebar facets — Availability · Gender · Price slider · Color ×18 · Size ×60+ · Product type ×45+ — plus Sort (Featured / Most relevant / Price ↑↓ / New); 4-up grid; dual-image-hover cards with "N Colors", New badge, wishlist; payment logos (Tabby · Tamara · Mada · Visa · Apple Pay). *Rendered visual previews of both sites were captured for reference (served each competitor's fetched HTML locally with `<script>` stripped + a `<base href>`, then screenshotted) — confirming the above. The structural breakdown remains the authoritative spec.*
+
 ---
 
 ## 3. Current-state critique (`design-critique`)
@@ -324,7 +326,32 @@ From develop's `feat/fix` commits, all currently living in its HeroUI `checkout/
 
 **E3 — policy & contact pages ✅** Brought develop's `store-info-pages.ts` content (real shipping/returns/privacy/terms + contact copy, already referencing KSh5,000) + its thin route pages (`/policies/{shipping,returns,privacy,terms}`, `/contact`) verbatim, but wrote our **own Tailwind `StoreInfoPage` renderer** (breadcrumb, raspberry eyebrow, quick-fact cards, bullet sections, contact-method cards) instead of develop's HeroUI one. Footer's dead Shipping/Returns/Privacy placeholders replaced with real links + Terms + Contact. Content test brought (2 tests). Verified: 271 tests · typecheck · lint · shipping policy page renders on-brand at 1280px. This closes the only E3 blocker (no invented policy terms — it's develop's real copy).
 
+**Shipped as PR [#45](https://github.com/vonmutinda/azani-ui/pull/45)** — everything above squash-merged to `main` (`0d3dd04`). Worktree reset onto the new `main` as a clean base for Phase 2.
+
+## Phase 2 — hero rebuild
+
+**E9 ✅ (on `main` base; not yet PR'd)** Replaced the fragile overlapping-card `HeroCarousel` (autoplay, image-dependent, truncating titles/prices, sat above the headline on mobile) with a **robust copy-led hero**: brand-gradient panel + soft blobs + a single featured-product card (object-cover image with a graceful `Baby` + "Featured pick" fallback) + floating "Free delivery" / "Pay with M-Pesa" chips on desktop, an inline trust row on mobile. Copy now leads on mobile (`flex-col`, not `flex-col-reverse`). Removed `HeroCarousel` + now-unused imports (`useEffect`, `useCallback`, `ChevronLeft/Right`, `Package`). Verified at 1280px + 390px; **271 tests** · typecheck · lint green.
+
+**E10 (optional/remaining):** merchandised promo row already exists (clothing/feeding banners); a "Shop by stage/age" entry and a reviews/social-proof band are still open.
+
+## Phase 3 — product discovery
+
+**Category browser + subcategory selection + sort ✅ (on `main` base, with E9; not yet PR'd)** — brought develop's "upgrade product listing browsing" (`b97211c` / `24125d9`, both pre-HeroUI Tailwind) onto our products page:
+- **Subcategory browser** — a horizontal chip row of the current category's `category_children`; clicking a chip drills into that subcategory (`updateQuery({ category: child.handle })`).
+- **Category description** header (from `category.description`) + a generic blurb for search/all.
+- **Sort** — Featured / Newest / Price (low→high, high→low) via a `?sort=` param; price sorts happen client-side because Medusa can't order by calculated price.
+- **Hardened category filtering** — a selected-but-unresolved category now yields no products instead of silently falling back to the whole catalogue; `enabled` keys off `categoryQuery.isFetched`.
+- Re-styled in our tokens (develop's `az-*` utility classes dropped); `products` memoized to keep the sort memo stable.
+
+Verified at 1280px: **Feeding → "2 products found"** + chips (Bottles & Sippy Cups / Baby Formula / Weaning Essentials) + sort + description; clicking **Bottles & Sippy Cups** drills to `/products?category=bottles-sippy-cups` (heading + active filter update). **271 tests · typecheck · lint green.**
+
 **Also available to pull from develop (non-checkout, optional):** `getProductDiscountPercent()` helper (`formatters.ts`) for E13 richer cards; `store-info-pages.ts` policy copy for **E3**.
+
+**E13 ✅ (richer product cards)** Wired the pulled `getProductDiscountPercent` into a **"-N%" discount tag** beside the struck-through original price, plus a **"N options"** variant-count line — the Peekaboo/Kiabi "sale price + color/variant count" pattern. New badge preserved (placement unchanged so existing badge tests hold). +2 tests (discount %, option count). Verified at 1280px: all 9 products show "-11%" + option counts. **275 tests · typecheck · lint green.**
+
+**Competitor research — re-verified live (2026-05-29).** Both sites fetched live and cross-checked against §2 (findings matched). **Rendered visual previews captured** — fetched each competitor's live HTML, injected `<base href>`, stripped `<script>` tags, served from the dev server's `public/`, and screenshotted. **Peekaboo** homepage: orange/teal brand · full mega-menu · "open 9am–7pm" bar · **"20k 5★ Reviews!"** Google-review band · category-icon shortcuts · Best Sellers. **Kiabi /baby**: navy brand · category-icon circles · **"798 products" + "Filter and sort"** · 4-up grid with New badge + SAR price + "N Colors". These confirm §2; temp files removed after capture. Our own pages were screenshotted throughout (hero, products, checkout, policies, filters).
+
+**E12 ✅ (faceted filters — Kiabi parity)** Added **Availability** ("In stock only" checkbox) + **Price brackets** (radio: Any / Under KSh1,000 / KSh1,000–5,000 / Over KSh5,000) to `FilterSidebar`, run through all five skills: *design-critique* (Kiabi benchmark), *ux-copy* (scannable labels), *accessibility-review* (native `<input>` wrapped in `<label>`, `<fieldset>/<legend>`, 44px rows, focus rings, `accent-primary`), *design-handoff* (tokens), *user-research* (parents filter by budget + stock). Facets are **URL-param-driven** (shareable, back-nav-safe), filter client-side over the loaded page; count, empty-state and pagination react accordingly. **Also fixed a latent bug** introduced in the Phase-3 `updateQuery` rewrite: the sidebar's "Clear all" (`onFilterChange({})`) had stopped clearing anything — now explicitly clears category + q + both facets. +3 tests. Verified at 1280px: "Over KSh5,000" → 2 products (KSh8,490 + KSh18,500), URL `?price=o5000`. **278 tests · typecheck · lint green.** *Server-side faceting across all pages is the production follow-up; color/size/age facets await product metadata.*
 
 ## 8. Validation & success metrics
 

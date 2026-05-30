@@ -51,6 +51,11 @@ const MPESA_BUSINESS_NAME = "Azani";
 const STK_SLOW_THRESHOLD_SECS = 60;
 const STK_TIMEOUT_THRESHOLD_SECS = 90;
 
+// One consistent, accessible "go back a step" control: 44px touch target
+// (WCAG 2.5.5) and a visible focus ring (2.4.7), reused across every step.
+const BACK_LINK_CLASS =
+  "text-muted hover:text-foreground hover:bg-foreground/[0.04] focus-visible:ring-foreground/25 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none";
+
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
 type PaymentSession = { id: string; provider_id: string; status: string };
@@ -196,11 +201,9 @@ function ShippingStep({
           })}
         </div>
       )}
-      <button
-        onClick={onBack}
-        className="text-muted hover:text-foreground text-sm font-medium transition"
-      >
-        &larr; Back to Address
+      <button onClick={onBack} className={BACK_LINK_CLASS}>
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to Address
       </button>
     </div>
   );
@@ -223,6 +226,7 @@ export default function CheckoutPage() {
   const [useManualAddress, setUseManualAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa_express");
   const [mpesaPhone, setMpesaPhone] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
@@ -544,6 +548,21 @@ export default function CheckoutPage() {
     return () => clearInterval(tick);
   }, [paymentPending]);
 
+  // Keep the browser/device Back button inside checkout while a payment is
+  // pending — trap one back-press and return to the review step instead of
+  // ejecting the shopper from the flow. They can re-send or edit details.
+  useEffect(() => {
+    if (!paymentPending) return;
+    window.history.pushState(null, "");
+    const handlePopState = () => {
+      setPaymentPending(false);
+      setPaymentPendingSince(null);
+      setStep("review");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [paymentPending]);
+
   // Re-fire the STK Push after a cancel/failure/timeout (mints a fresh session).
   const retryMpesaPrompt = () => {
     handledOutcomeSessionId.current = null;
@@ -603,21 +622,19 @@ export default function CheckoutPage() {
             <button
               onClick={retryMpesaPrompt}
               disabled={completeMutation.isPending}
-              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
             >
               Try Again
             </button>
-            {isCanceled && (
-              <button
-                onClick={() => {
-                  setPaymentOutcome(null);
-                  setStep("payment");
-                }}
-                className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                Edit Phone Number
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setPaymentOutcome(null);
+                setStep("payment");
+              }}
+              className="border-border/50 text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-6 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              {isCanceled ? "Edit Phone Number" : "Edit Payment Details"}
+            </button>
           </div>
         </div>
       </div>
@@ -673,6 +690,17 @@ export default function CheckoutPage() {
               </button>
             )}
           </div>
+          <button
+            onClick={() => {
+              setPaymentPending(false);
+              setPaymentPendingSince(null);
+              setStep("review");
+            }}
+            className={BACK_LINK_CLASS}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to Review
+          </button>
         </div>
       </div>
     );
@@ -1195,9 +1223,10 @@ export default function CheckoutPage() {
                         setStep("shipping");
                         setErrorMessage(null);
                       }}
-                      className="text-muted hover:text-foreground text-sm font-medium transition"
+                      className={BACK_LINK_CLASS}
                     >
-                      &larr; Back to Shipping
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      Back to Shipping
                     </button>
                   </div>
                 </div>
@@ -1267,33 +1296,63 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  <p className="text-muted text-sm">Review your details before continuing.</p>
-                  <button
-                    onClick={() => completeMutation.mutate()}
-                    disabled={
-                      completeMutation.isPending ||
-                      finalizeOrderMutation.isPending ||
-                      hasUnavailableItems
-                    }
-                    className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
-                  >
-                    {completeMutation.isPending || finalizeOrderMutation.isPending
-                      ? paymentMethod === "mpesa_express"
-                        ? "Sending Prompt..."
-                        : "Placing Order..."
-                      : paymentMethod === "mpesa_express"
-                        ? "Send M-Pesa Prompt"
-                        : "Place Order"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setStep("payment");
-                      setErrorMessage(null);
-                    }}
-                    className="text-muted hover:text-foreground ml-4 text-sm font-medium transition"
-                  >
-                    &larr; Back to Payment
-                  </button>
+                  <label className="flex items-start gap-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="accent-primary mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
+                    />
+                    <span className="text-muted">
+                      I agree to Azani&apos;s{" "}
+                      <Link
+                        href="/policies/terms"
+                        target="_blank"
+                        className="text-secondary font-medium hover:underline"
+                      >
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/policies/privacy"
+                        target="_blank"
+                        className="text-secondary font-medium hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      onClick={() => completeMutation.mutate()}
+                      disabled={
+                        completeMutation.isPending ||
+                        finalizeOrderMutation.isPending ||
+                        hasUnavailableItems ||
+                        !acceptedTerms
+                      }
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    >
+                      {completeMutation.isPending || finalizeOrderMutation.isPending
+                        ? paymentMethod === "mpesa_express"
+                          ? "Sending Prompt..."
+                          : "Placing Order..."
+                        : paymentMethod === "mpesa_express"
+                          ? "Send M-Pesa Prompt"
+                          : "Place Order"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStep("payment");
+                        setErrorMessage(null);
+                      }}
+                      className={BACK_LINK_CLASS}
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      Back to Payment
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

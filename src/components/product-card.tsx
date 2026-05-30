@@ -9,6 +9,7 @@ import { MedusaCart, MedusaProduct } from "@/types/medusa";
 import {
   getProductPrice,
   getProductOriginalPrice,
+  getProductDiscountPercent,
   getVariantAvailability,
   resolveProductImage,
 } from "@/lib/formatters";
@@ -27,6 +28,8 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const imageUrl = resolveProductImage(product);
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
+  const discountPercent = getProductDiscountPercent(product);
+  const optionCount = product.variants?.length ?? 0;
   const quickAddVariant =
     product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
     product.variants?.[0];
@@ -179,12 +182,19 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
+        {optionCount > 1 ? (
+          <p className="text-muted-light text-2xs">{optionCount} options</p>
+        ) : null}
+
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-baseline gap-1.5">
             <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
             {originalPrice && (
               <span className="text-muted text-2xs line-through">{originalPrice}</span>
             )}
+            {discountPercent ? (
+              <span className="text-primary text-2xs font-bold">-{discountPercent}%</span>
+            ) : null}
           </div>
 
           {quickAddVariant && (
