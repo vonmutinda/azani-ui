@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,6 +34,7 @@ import {
 import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { ProductCard } from "@/components/product-card";
+import { ProductGallery } from "@/components/product-gallery";
 import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
 
@@ -114,7 +114,6 @@ export function ProductDetail({ productId, onBack }: Props) {
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const productQuery = useQuery({
     queryKey: ["product", productId],
@@ -299,11 +298,6 @@ export function ProductDetail({ productId, onBack }: Props) {
     );
   }
 
-  const images = product.images ?? [];
-  const allImages = product.thumbnail
-    ? [{ url: product.thumbnail }, ...images.filter((img) => img.url !== product.thumbnail)]
-    : images;
-
   const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
   const originalPrice = getVariantOriginalPrice(selectedVariant);
   const discountPercent = getVariantDiscountPercent(selectedVariant);
@@ -351,48 +345,13 @@ export function ProductDetail({ productId, onBack }: Props) {
         </span>
       </nav>
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Images */}
-        <div className="space-y-3">
-          <div className="border-border/50 bg-background relative aspect-square overflow-hidden rounded-2xl border">
-            {allImages[activeImageIndex] ? (
-              <Image
-                src={allImages[activeImageIndex].url}
-                alt={product.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="text-muted flex h-full items-center justify-center">
-                <ShoppingBag className="h-16 w-16" />
-              </div>
-            )}
-          </div>
-          {allImages.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {allImages.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImageIndex(i)}
-                  className={`focus-visible:ring-primary/30 bg-card relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                    i === activeImageIndex
-                      ? "border-foreground"
-                      : "border-border/50 hover:border-foreground/30"
-                  }`}
-                >
-                  <Image
-                    src={img.url}
-                    alt={`${product.title} thumbnail ${i + 1}`}
-                    fill
-                    sizes="56px"
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Images — keyed by product id so the active image resets on change */}
+        <ProductGallery
+          key={product.id}
+          thumbnail={product.thumbnail}
+          images={product.images}
+          title={product.title}
+        />
 
         {/* Details */}
         <div className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6">
