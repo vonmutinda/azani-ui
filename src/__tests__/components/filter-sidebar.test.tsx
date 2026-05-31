@@ -55,7 +55,7 @@ describe("FilterSidebar", () => {
     expect(onFilterChange).toHaveBeenCalledWith({ category: undefined });
   });
 
-  it("renders category rows as checkboxes reflecting the current selection", () => {
+  it("renders category rows as pressed buttons without category checkboxes", () => {
     renderWithProviders(
       <FilterSidebar
         filters={{ category: "bath-diapering" }}
@@ -64,8 +64,15 @@ describe("FilterSidebar", () => {
       />,
     );
 
-    expect(screen.getByRole("checkbox", { name: /Bath & Diapering/i })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /Feeding/i })).not.toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: /Bath & Diapering/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bath & Diapering" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Feeding" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   it("adds a second category to the selection without replacing the first", async () => {
@@ -80,8 +87,24 @@ describe("FilterSidebar", () => {
       />,
     );
 
-    await user.click(screen.getByRole("checkbox", { name: /Feeding/i }));
+    await user.click(screen.getByRole("button", { name: "Feeding" }));
     expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering,feeding" });
+  });
+
+  it("opens active child categories and marks the active child button", () => {
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "diapers-pull-ups" }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+      />,
+    );
+
+    expect(screen.getByText("Diapers & Pull-Ups")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diapers & Pull-Ups" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("shows filter count badge when filters active", () => {
@@ -96,6 +119,18 @@ describe("FilterSidebar", () => {
     expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("counts each selected category in the filter badge", () => {
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "bath-diapering,feeding" }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+      />,
+    );
+
+    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("shows 'Clear all' button when filters are active", () => {
     renderWithProviders(
       <FilterSidebar
@@ -106,6 +141,49 @@ describe("FilterSidebar", () => {
     );
 
     expect(screen.getByText("Clear all")).toBeInTheDocument();
+  });
+
+  it("renders the mobile drawer without a close button and closes from the backdrop", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "bath-diapering" }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Filters/i }));
+
+    expect(screen.queryByRole("button", { name: "Close filters" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("filters-drawer-backdrop")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("filters-drawer-backdrop"));
+
+    expect(screen.queryByTestId("filters-drawer-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("treats the mobile drawer as a dismissible dialog", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <FilterSidebar
+        filters={{ category: "bath-diapering" }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Filters/i }));
+
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog", { name: "Filters" })).not.toBeInTheDocument();
   });
 
   it("clears all filters when 'Clear all' is clicked", async () => {

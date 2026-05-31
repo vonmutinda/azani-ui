@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MedusaProductCategory } from "@/types/medusa";
 import {
   toCategory,
@@ -45,16 +45,17 @@ function CategoryItem({
   selectedHandles: string[];
   onToggle: (slug: string) => void;
 }) {
-  const isChecked = selectedHandles.includes(cat.slug);
+  const isActive = selectedHandles.includes(cat.slug);
   const hasChildren = cat.children && cat.children.length > 0;
   const containsSelected = selectedHandles.some((handle) => isSlugInTree(handle, cat));
 
   const [open, setOpen] = useState(containsSelected);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- keep the tree expanded around a selected descendant */
+  /* eslint-disable react-hooks/set-state-in-effect -- sync open state with the selected category path */
   useEffect(() => {
     if (containsSelected) setOpen(true);
-  }, [containsSelected]);
+    if (!containsSelected && !isActive) setOpen(false);
+  }, [containsSelected, isActive]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const indent = depth === 0 ? 0 : depth * 20;
@@ -67,7 +68,7 @@ function CategoryItem({
             type="button"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            aria-label={open ? "Collapse category" : "Expand category"}
+            aria-label={`${open ? "Collapse" : "Expand"} ${cat.name}`}
             className="text-muted hover:text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition"
           >
             {open ? (
@@ -79,29 +80,26 @@ function CategoryItem({
         ) : (
           <span className="w-7 shrink-0" />
         )}
-        <label
-          className={`flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm transition ${
-            isChecked
-              ? "bg-foreground/[0.06] text-foreground font-semibold"
+        <button
+          type="button"
+          onClick={() => onToggle(cat.slug)}
+          aria-pressed={isActive}
+          className={`flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+            isActive
+              ? "bg-primary-light text-primary font-semibold"
               : containsSelected
-                ? "text-foreground font-medium"
-                : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                ? "text-secondary font-medium"
+                : "text-muted hover:bg-secondary-light hover:text-foreground"
           }`}
         >
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => onToggle(cat.slug)}
-            className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          />
           <CategoryIcon
             icon={cat.icon}
             size={depth === 0 ? 14 : 12}
-            colored={!isChecked}
-            className={isChecked ? "text-foreground" : ""}
+            colored={!isActive}
+            className={isActive ? "text-foreground" : ""}
           />
           <span>{cat.name}</span>
-        </label>
+        </button>
       </div>
       {hasChildren && open && (
         <div className="mt-0.5">
@@ -122,24 +120,28 @@ function CategoryItem({
 
 export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
 
   const topCategories = categories
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toCategory);
 
-  const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== undefined && v !== "",
-  ).length;
+  const selectedHandles = parseCategoryParam(
+    typeof filters.category === "string" ? filters.category : undefined,
+  );
+
+  const activeFilterCount =
+    selectedHandles.length +
+    Object.entries(filters).filter(([key, value]) => {
+      if (key === "category") return false;
+      return value !== undefined && value !== "";
+    }).length;
 
   const setFilter = useCallback(
     (key: string, value: string | number | undefined) => {
       onFilterChange({ ...filters, [key]: value });
     },
     [filters, onFilterChange],
-  );
-
-  const selectedHandles = parseCategoryParam(
-    typeof filters.category === "string" ? filters.category : undefined,
   );
 
   const toggleCategory = useCallback(
@@ -154,6 +156,19 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
     },
     [filters, onFilterChange],
   );
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    mobileDrawerRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen]);
 
   const content = (
     <div className="space-y-5">
@@ -272,17 +287,18 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div
+            data-testid="filters-drawer-backdrop"
             className="bg-foreground/20 absolute inset-0 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="bg-card relative mr-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl">
-            <button
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close filters"
-              className="text-muted hover:text-foreground absolute top-4 right-4 rounded-lg p-2 transition focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          <div
+            ref={mobileDrawerRef}
+            role="dialog"
+            aria-label="Filters"
+            aria-modal="true"
+            tabIndex={-1}
+            className="bg-card relative mr-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl focus-visible:outline-none"
+          >
             {content}
           </div>
         </div>

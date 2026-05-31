@@ -60,6 +60,19 @@ describe("Home Page", () => {
     expect(screen.getByText("Little One")).toBeInTheDocument();
   });
 
+  it("gives the hero product carousel more desktop presence", () => {
+    renderWithProviders(<Home />);
+
+    expect(screen.getByTestId("home-hero-layout")).toHaveClass("lg:gap-8");
+    expect(screen.getByTestId("home-hero-carousel")).toHaveClass("xl:max-w-[520px]");
+  });
+
+  it("aligns the hero copy with the visual on desktop", () => {
+    renderWithProviders(<Home />);
+
+    expect(screen.getByTestId("home-hero-copy")).toHaveClass("lg:self-start");
+  });
+
   it("renders 'Shop Now' link", () => {
     renderWithProviders(<Home />);
     const shopNow = screen.getByText("Shop Now");

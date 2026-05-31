@@ -116,10 +116,14 @@ function ProductsContent() {
       );
     }
     if (sort === "price_desc") {
-      return copy.sort((a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0));
+      return copy.sort(
+        (a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0),
+      );
     }
     if (sort === "newest") {
-      return copy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return copy.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     }
     return products;
   }, [products, sort]);
@@ -179,9 +183,12 @@ function ProductsContent() {
     ? products.find((p) => p.id === selectedProductId)
     : null;
 
-  const activeFilterCount = Object.values(filters).filter(
-    (v) => v !== undefined && v !== "",
-  ).length;
+  const activeFilterCount =
+    categoryHandles.length +
+    Object.entries(filters).filter(([key, value]) => {
+      if (key === "category") return false;
+      return value !== undefined && value !== "";
+    }).length;
 
   // When exactly one category is selected we still show its name/description and
   // its children (the drill-in chips); multiple selections fall back to generic.
@@ -189,13 +196,20 @@ function ProductsContent() {
     categoryHandles.length === 1 ? findMedusaCategory(categoryTree, categoryHandles[0]) : undefined;
   const headingText = selectedProductId
     ? (selectedProduct?.title ?? "Product Details")
-    : (singleCategory?.name ?? (filters.q ? `Search: "${filters.q}"` : "All Products"));
+    : (singleCategory?.name ??
+      (filters.q
+        ? `Search: "${filters.q}"`
+        : categoryHandles.length > 1
+          ? "Selected categories"
+          : "All Products"));
   const headerDescription = selectedProductId
     ? undefined
     : singleCategory?.description ||
       (filters.q
         ? "Search results across Azani products."
-        : "Browse baby essentials, gear, clothing, toys, and care products.");
+        : categoryHandles.length > 1
+          ? "Showing products across your selected baby boutique categories."
+          : "Browse baby essentials, gear, clothing, toys, and care products.");
   const categoryChildren = singleCategory?.category_children ?? [];
 
   return (
@@ -255,7 +269,12 @@ function ProductsContent() {
                 key={child.id}
                 type="button"
                 aria-label={`Browse ${child.name}`}
-                onClick={() => updateQuery({ category: child.handle })}
+                onClick={() => {
+                  const nextHandles = categoryHandles.includes(child.handle)
+                    ? categoryHandles
+                    : [...categoryHandles, child.handle];
+                  updateQuery({ category: serializeCategoryParam(nextHandles) });
+                }}
                 className="border-border/60 bg-card text-foreground hover:border-border-hover hover:bg-foreground/[0.04] focus-visible:ring-primary/30 shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 {child.name}
@@ -322,7 +341,12 @@ function ProductsContent() {
                 <button
                   onClick={() => {
                     setSelectedProductId(null);
-                    updateQuery({ category: undefined, q: undefined });
+                    updateQuery({
+                      category: undefined,
+                      q: undefined,
+                      availability: undefined,
+                      price: undefined,
+                    });
                   }}
                   className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
                 >
@@ -350,7 +374,9 @@ function ProductsContent() {
               </div>
               <div>
                 <p className="text-foreground text-lg font-semibold">No products found</p>
-                <p className="text-muted mt-1 text-sm">Try adjusting your filters or search terms.</p>
+                <p className="text-muted mt-1 text-sm">
+                  Try adjusting your filters or search terms.
+                </p>
               </div>
               <button
                 onClick={() =>
