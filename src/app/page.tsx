@@ -60,9 +60,15 @@ export default function Home() {
     <div>
       {/* ── Hero ── */}
       <section className="bg-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:flex-row lg:gap-12 lg:px-8 lg:py-16">
+        <div
+          data-testid="home-hero-layout"
+          className="mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:flex-row lg:gap-8 lg:px-8 lg:py-16 xl:gap-10"
+        >
           {/* Left — copy (leads on mobile) */}
-          <div className="hero-fade-in flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
+          <div
+            data-testid="home-hero-copy"
+            className="hero-fade-in flex flex-1 flex-col items-center text-center lg:items-start lg:self-start lg:text-left"
+          >
             <div className="text-primary bg-primary/[0.06] mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold">
               <Star className="h-3.5 w-3.5" fill="currentColor" />
               Trusted by 10,000+ parents
@@ -126,7 +132,10 @@ export default function Home() {
           {/* Right — hero visual: brand gradient + featured product + floating chips.
               Robust by design — the gradient and chips render even if the product
               image is slow or unavailable. */}
-          <div className="hero-fade-in-delay flex w-full max-w-[440px] flex-1 items-center justify-center">
+          <div
+            data-testid="home-hero-carousel"
+            className="hero-fade-in-delay flex w-full max-w-[440px] flex-1 items-center justify-center xl:max-w-[520px]"
+          >
             <div className="relative aspect-square w-full">
               <div
                 aria-hidden="true"
@@ -185,7 +194,9 @@ export default function Home() {
               {/* Floating chips — desktop accent, hidden on mobile (the trust row covers it) */}
               <div className="border-border/50 bg-card absolute top-6 -left-3 hidden items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold shadow-md sm:flex">
                 <Truck className="text-secondary h-3.5 w-3.5" />
-                <span className="text-foreground">Free delivery over {freeShippingThresholdLabel()}</span>
+                <span className="text-foreground">
+                  Free delivery over {freeShippingThresholdLabel()}
+                </span>
               </div>
               <div className="border-border/50 bg-card absolute top-1/2 -right-3 hidden -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold shadow-md sm:flex">
                 <Smartphone className="text-success-ink h-3.5 w-3.5" />
