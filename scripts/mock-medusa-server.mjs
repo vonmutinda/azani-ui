@@ -102,6 +102,7 @@ function product({
   price,
   variants = [],
   createdDaysAgo = 10,
+  metadata = {},
 }) {
   const cats = categoryHandles.map((handle) => categoryByHandle.get(handle)).filter(Boolean);
   const option = {
@@ -134,12 +135,13 @@ function product({
     discountable: true,
     images: [
       { id: `img_${id}_1`, url: image },
-      { id: `img_${id}_2`, url: `${image}&sat=-15` },
+      { id: `img_${id}_2`, url: image.startsWith("http") ? `${image}&sat=-15` : image },
     ],
     options: variants.length > 0 ? [option] : [],
     variants: productVariants,
     categories: cats,
     tags: cats.map((cat) => ({ id: `tag_${cat.handle}`, value: cat.name })),
+    metadata,
     created_at: new Date(Date.now() - createdDaysAgo * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: now(),
   };
@@ -152,9 +154,16 @@ const products = [
     handle: "pampers-premium-care-diapers",
     description:
       "Soft overnight diapers with breathable layers, stretchy sides, and wetness indicators for everyday use.",
-    image:
-      "https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/diapers.svg",
     categoryHandles: ["bath-diapering", "diapers-pull-ups"],
+    metadata: {
+      brand: "Pampers",
+      age_stage: "Newborn+",
+      rating: 4.8,
+      review_count: 214,
+      badge: "Bestseller",
+      color_count: 3,
+    },
     variants: [
       { title: "Size 2 - 36 Count", price: 1890, inventory: 8 },
       { title: "Size 3 - 48 Count", price: 2590, inventory: 3 },
@@ -167,9 +176,15 @@ const products = [
     title: "WaterWipes Sensitive Baby Wipes",
     handle: "waterwipes-sensitive-baby-wipes",
     description: "Fragrance-free wipes for sensitive newborn skin, packed for nursery and travel.",
-    image:
-      "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/wipes.svg",
     categoryHandles: ["bath-diapering", "wipes"],
+    metadata: {
+      brand: "WaterWipes",
+      age_stage: "Newborn+",
+      rating: 4.7,
+      review_count: 88,
+      badge: "Gentle pick",
+    },
     variants: [
       { title: "Single Pack", price: 420, inventory: 18 },
       { title: "6 Pack Bundle", price: 2190, inventory: 9 },
@@ -181,9 +196,15 @@ const products = [
     title: "Anti-Colic Feeding Bottle Set",
     handle: "anti-colic-feeding-bottle-set",
     description: "A starter bottle set with slow-flow nipples and easy-clean anti-colic valves.",
-    image:
-      "https://images.unsplash.com/photo-1615486511484-92e172cc4fe0?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/bottles.svg",
     categoryHandles: ["feeding", "bottles-sippy-cups"],
+    metadata: {
+      brand: "Azani Baby",
+      age_stage: "0-6 months",
+      rating: 4.6,
+      review_count: 65,
+      color_count: 2,
+    },
     variants: [
       { title: "2 Bottles", price: 1450, inventory: 14 },
       { title: "4 Bottles", price: 2690, inventory: 6 },
@@ -196,9 +217,15 @@ const products = [
     handle: "foldable-baby-high-chair",
     description:
       "Compact high chair with wipe-clean tray, adjustable footrest, and sturdy harness.",
-    image:
-      "https://images.unsplash.com/photo-1569530593440-eab003a255b8?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/high-chair.svg",
     categoryHandles: ["feeding", "weaning-essentials"],
+    metadata: {
+      brand: "Chicco",
+      age_stage: "6-12 months",
+      rating: 4.5,
+      review_count: 42,
+      badge: "Space saver",
+    },
     price: 8490,
     createdDaysAgo: 42,
   }),
@@ -208,9 +235,16 @@ const products = [
     handle: "convertible-infant-car-seat",
     description:
       "Rear-facing infant seat with cushioned newborn insert and side impact protection.",
-    image:
-      "https://images.unsplash.com/photo-1591348278999-ee1d0c06ed7b?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/car-seat.svg",
     categoryHandles: ["baby-gear", "car-seats"],
+    metadata: {
+      brand: "Chicco",
+      age_stage: "Newborn+",
+      rating: 4.9,
+      review_count: 39,
+      badge: "Safety pick",
+      color_count: 2,
+    },
     price: 18500,
     createdDaysAgo: 22,
   }),
@@ -219,9 +253,16 @@ const products = [
     title: "Organic Cotton Swaddle Blankets",
     handle: "organic-cotton-swaddle-blankets",
     description: "A breathable four-pack of cotton muslin swaddles in soft neutral prints.",
-    image:
-      "https://images.unsplash.com/photo-1546015720-b8b30df5aa27?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/swaddles.svg",
     categoryHandles: ["nursery", "mattresses-bedding"],
+    metadata: {
+      brand: "Azani Baby",
+      age_stage: "Newborn+",
+      rating: 4.8,
+      review_count: 119,
+      badge: "Giftable",
+      color_count: 2,
+    },
     variants: [
       { title: "Neutral Pack", price: 2390, inventory: 10 },
       { title: "Safari Pack", price: 2490, inventory: 4 },
@@ -233,9 +274,16 @@ const products = [
     title: "Newborn Onesies Gift Set",
     handle: "newborn-onesies-gift-set",
     description: "Five cotton bodysuits with envelope necklines and easy snap closures.",
-    image:
-      "https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/onesies.svg",
     categoryHandles: ["clothing", "bodysuits-onesies"],
+    metadata: {
+      brand: "Azani Baby",
+      age_stage: "0-6 months",
+      rating: 4.7,
+      review_count: 75,
+      badge: "New arrival",
+      color_count: 3,
+    },
     variants: [
       { title: "0-3 Months", price: 1990, inventory: 11 },
       { title: "3-6 Months", price: 1990, inventory: 7 },
@@ -248,9 +296,15 @@ const products = [
     title: "Wooden Rainbow Stacker",
     handle: "wooden-rainbow-stacker",
     description: "Smooth wooden stacking toy for sorting, balancing, and open-ended play.",
-    image:
-      "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/rainbow-stacker.svg",
     categoryHandles: ["toys-books", "building-stacking-toys"],
+    metadata: {
+      brand: "Azani Baby",
+      age_stage: "Toddler",
+      rating: 4.6,
+      review_count: 52,
+      color_count: 6,
+    },
     price: 1750,
     createdDaysAgo: 31,
   }),
@@ -259,9 +313,16 @@ const products = [
     title: "Ergonomic Nursing Pillow",
     handle: "ergonomic-nursing-pillow",
     description: "Firm support pillow with washable cover for feeding and tummy-time support.",
-    image:
-      "https://images.unsplash.com/photo-1590649880765-91b1956b8276?auto=format&fit=crop&w=900&q=80",
+    image: "/mock-products/nursing-pillow.svg",
     categoryHandles: ["mom-maternity", "nursing-pillows"],
+    metadata: {
+      brand: "Momcozy",
+      age_stage: "Parent care",
+      rating: 4.4,
+      review_count: 31,
+      badge: "Mum care",
+      color_count: 2,
+    },
     price: 3490,
     createdDaysAgo: 12,
   }),

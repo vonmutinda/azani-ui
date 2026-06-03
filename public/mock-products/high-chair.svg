@@ -1,0 +1,12 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#FFF8E6"/>
+  <circle cx="132" cy="124" r="84" fill="#DDF6EE"/>
+  <circle cx="516" cy="510" r="74" fill="#FFE5F0"/>
+  <rect x="216" y="150" width="208" height="214" rx="32" fill="#FFFFFF" stroke="#F4C35A" stroke-width="8"/>
+  <rect x="190" y="286" width="260" height="54" rx="27" fill="#FBE7A6" stroke="#E0AE3E" stroke-width="8"/>
+  <path d="M246 360L206 514M394 360L434 514" stroke="#7BC9B5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M238 514H214M402 514H426" stroke="#7BC9B5" stroke-width="16" stroke-linecap="round"/>
+  <path d="M266 206H374" stroke="#E74F8A" stroke-width="12" stroke-linecap="round" opacity=".6"/>
+  <path d="M274 246H366" stroke="#E74F8A" stroke-width="10" stroke-linecap="round" opacity=".35"/>
+  <text x="320" y="584" text-anchor="middle" fill="#6A5620" font-family="Arial, sans-serif" font-size="28" font-weight="700">Foldable High Chair</text>
+</svg>

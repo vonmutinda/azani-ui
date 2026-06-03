@@ -1,0 +1,10 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#F7FBFF"/>
+  <circle cx="120" cy="122" r="78" fill="#FFF2C5"/>
+  <circle cx="520" cy="510" r="84" fill="#DDF6EE"/>
+  <path d="M178 418C178 338 242 274 320 274C398 274 462 338 462 418" stroke="#E74F8A" stroke-width="42" stroke-linecap="round"/>
+  <path d="M226 418C226 365 268 322 320 322C372 322 414 365 414 418" stroke="#F4C35A" stroke-width="42" stroke-linecap="round"/>
+  <path d="M274 418C274 393 294 372 320 372C346 372 366 393 366 418" stroke="#7BC9B5" stroke-width="42" stroke-linecap="round"/>
+  <rect x="178" y="436" width="284" height="34" rx="17" fill="#8DAFE8"/>
+  <text x="320" y="552" text-anchor="middle" fill="#35506F" font-family="Arial, sans-serif" font-size="28" font-weight="700">Rainbow Stacker</text>
+</svg>

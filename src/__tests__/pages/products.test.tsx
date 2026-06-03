@@ -176,4 +176,51 @@ describe("ProductsPage", () => {
       "/products?category=bath-diapering%2Cdiapers-pull-ups",
     );
   });
+
+  it("filters the current product page by brand metadata", async () => {
+    const otherProduct = {
+      ...mockProduct,
+      id: "prod_02",
+      title: "WaterWipes Baby Wipes",
+      metadata: { ...mockProduct.metadata, brand: "WaterWipes", age_stage: "Newborn+" },
+    };
+    searchParamsRef.current = new URLSearchParams("brand=Pampers");
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct, otherProduct],
+      count: 2,
+      offset: 0,
+      limit: 20,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
+      expect(screen.queryByText("WaterWipes Baby Wipes")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Brand: Pampers")).toBeInTheDocument();
+  });
+
+  it("writes brand and stage facets into the product query string", async () => {
+    mockGetProducts.mockResolvedValue({ products: [mockProduct], count: 1, offset: 0, limit: 20 });
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await screen.findByText("Pampers Baby Dry Diapers");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Pampers/i }));
+
+    expect(mockRouterPush).toHaveBeenCalledWith("/products?brand=Pampers");
+  });
 });

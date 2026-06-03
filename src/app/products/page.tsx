@@ -16,6 +16,7 @@ import {
   resolveCategoryIds,
   findMedusaCategory,
 } from "@/lib/categories";
+import { matchesMetadataFacet } from "@/lib/product-metadata";
 
 type Filters = Record<string, string | number | undefined>;
 
@@ -43,6 +44,13 @@ function matchesPriceBracket(amount: number, bracket: string): boolean {
   return true;
 }
 
+function getPriceBracketLabel(bracket: string): string {
+  if (bracket === "u1000") return "Under KSh1,000";
+  if (bracket === "1000-5000") return "KSh1,000 - KSh5,000";
+  if (bracket === "o5000") return "Over KSh5,000";
+  return bracket;
+}
+
 function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -53,6 +61,8 @@ function ProductsContent() {
     q: searchParams.get("q") ?? undefined,
     availability: searchParams.get("availability") ?? undefined,
     price: searchParams.get("price") ?? undefined,
+    brand: searchParams.get("brand") ?? undefined,
+    age_stage: searchParams.get("age_stage") ?? undefined,
   };
   const requestedSort = searchParams.get("sort");
   const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
@@ -128,13 +138,15 @@ function ProductsContent() {
     return products;
   }, [products, sort]);
 
-  // Availability + price facets, applied client-side over the current page
+  // Availability, price, brand, and stage facets, applied client-side over the current page
   // (category/sort already narrow the server query; full server-side faceting
   // is the production follow-up).
   const inStockOnly = filters.availability === "in_stock";
   const priceBracket = filters.price ? String(filters.price) : undefined;
+  const brandFilter = filters.brand ? String(filters.brand) : undefined;
+  const ageStageFilter = filters.age_stage ? String(filters.age_stage) : undefined;
   const visibleProducts = useMemo(() => {
-    if (!inStockOnly && !priceBracket) return sortedProducts;
+    if (!inStockOnly && !priceBracket && !brandFilter && !ageStageFilter) return sortedProducts;
     return sortedProducts.filter((product) => {
       if (inStockOnly && !(product.variants ?? []).some((v) => getVariantAvailability(v).inStock)) {
         return false;
@@ -143,10 +155,12 @@ function ProductsContent() {
         const amount = getProductPrice(product)?.amount;
         if (amount == null || !matchesPriceBracket(amount, priceBracket)) return false;
       }
+      if (!matchesMetadataFacet(product, "brand", brandFilter)) return false;
+      if (!matchesMetadataFacet(product, "age_stage", ageStageFilter)) return false;
       return true;
     });
-  }, [sortedProducts, inStockOnly, priceBracket]);
-  const hasClientFacets = inStockOnly || !!priceBracket;
+  }, [sortedProducts, inStockOnly, priceBracket, brandFilter, ageStageFilter]);
+  const hasClientFacets = inStockOnly || !!priceBracket || !!brandFilter || !!ageStageFilter;
 
   const total = productsQuery.data?.count ?? 0;
   const shownCount = hasClientFacets ? visibleProducts.length : total;
@@ -160,6 +174,8 @@ function ProductsContent() {
         q: filters.q,
         availability: filters.availability,
         price: filters.price,
+        brand: filters.brand,
+        age_stage: filters.age_stage,
         sort,
         ...newFilters,
       };
@@ -174,7 +190,16 @@ function ProductsContent() {
       const query = params.toString();
       router.push(query ? `/products?${query}` : "/products");
     },
-    [filters.category, filters.q, filters.availability, filters.price, router, sort],
+    [
+      filters.category,
+      filters.q,
+      filters.availability,
+      filters.price,
+      filters.brand,
+      filters.age_stage,
+      router,
+      sort,
+    ],
   );
 
   const isLoading = productsQuery.isLoading || (hasCategoryFilter && categoriesQuery.isLoading);
@@ -337,6 +362,60 @@ function ProductsContent() {
                   </button>
                 </span>
               )}
+              {brandFilter && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Tag className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">Brand: {brandFilter}</span>
+                  <button
+                    onClick={() => updateQuery({ brand: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label={`Remove ${brandFilter} brand filter`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {ageStageFilter && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Tag className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">Stage: {ageStageFilter}</span>
+                  <button
+                    onClick={() => updateQuery({ age_stage: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label={`Remove ${ageStageFilter} stage filter`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {inStockOnly && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Tag className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">In stock</span>
+                  <button
+                    onClick={() => updateQuery({ availability: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label="Remove availability filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {priceBracket && (
+                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+                  <Tag className="text-muted h-3 w-3" />
+                  <span className="text-foreground font-medium">
+                    Price: {getPriceBracketLabel(priceBracket)}
+                  </span>
+                  <button
+                    onClick={() => updateQuery({ price: undefined })}
+                    className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
+                    aria-label="Remove price filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
               {activeFilterCount > 1 && (
                 <button
                   onClick={() => {
@@ -346,6 +425,8 @@ function ProductsContent() {
                       q: undefined,
                       availability: undefined,
                       price: undefined,
+                      brand: undefined,
+                      age_stage: undefined,
                     });
                   }}
                   className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
@@ -386,6 +467,8 @@ function ProductsContent() {
                     sort: undefined,
                     availability: undefined,
                     price: undefined,
+                    brand: undefined,
+                    age_stage: undefined,
                   })
                 }
                 className={buttonVariants()}

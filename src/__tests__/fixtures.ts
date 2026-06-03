@@ -17,6 +17,14 @@ export const mockProduct: MedusaProduct = {
   discountable: true,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  metadata: {
+    brand: "Pampers",
+    age_stage: "Newborn+",
+    rating: 4.8,
+    review_count: 128,
+    badge: "Bestseller",
+    color_count: 2,
+  },
   images: [{ id: "img_01", url: "https://example.com/pampers.jpg" }],
   options: [
     {

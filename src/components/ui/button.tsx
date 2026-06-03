@@ -12,7 +12,7 @@ export type ButtonVariantOptions = {
 };
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary/30",
@@ -30,7 +30,7 @@ const SIZES: Record<ButtonSize, string> = {
 /**
  * The single source of truth for button styling. Returns a Tailwind class
  * string, so it works equally on a real `<button>`, a Next `<Link>`, or an `<a>`.
- * Touch-target height lives here (one place to enforce 44px AA later).
+ * Touch-target height lives here so shared actions meet 44px AA by default.
  */
 export function buttonVariants({
   variant = "primary",

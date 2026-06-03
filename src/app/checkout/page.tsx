@@ -39,6 +39,7 @@ import {
 } from "@/lib/formatters";
 import { clearStoredCartId } from "@/lib/http";
 import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
+import { PaymentBadges } from "@/components/payment-badges";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
 // Lipa na M-Pesa Paybill (Business No.), sourced from env. Falls back to an
@@ -50,6 +51,7 @@ const MPESA_BUSINESS_NAME = "Azani";
 // copy escalates and "Try Again" lets the shopper re-fire the prompt.
 const STK_SLOW_THRESHOLD_SECS = 60;
 const STK_TIMEOUT_THRESHOLD_SECS = 90;
+const KENYAN_MOBILE_NUMBER_ERROR = "Enter a valid Kenyan mobile number, for example +254712345678.";
 
 // One consistent, accessible "go back a step" control: 44px touch target
 // (WCAG 2.5.5) and a visible focus ring (2.4.7), reused across every step.
@@ -75,6 +77,14 @@ function toCheckoutAddress(address: Partial<MedusaAddress>) {
     country_code: address.country_code ?? "ke",
     phone: address.phone ?? "+254",
   };
+}
+
+function normalizeKenyanMobileNumber(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (/^254[17]\d{8}$/.test(digits)) return `+${digits}`;
+  if (/^0[17]\d{8}$/.test(digits)) return `+254${digits.slice(1)}`;
+  if (/^[17]\d{8}$/.test(digits)) return `+254${digits}`;
+  return null;
 }
 
 const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string; note?: string }> =
@@ -226,6 +236,7 @@ export default function CheckoutPage() {
   const [useManualAddress, setUseManualAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa_express");
   const [mpesaPhone, setMpesaPhone] = useState("");
+  const [mpesaPhoneError, setMpesaPhoneError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [form, setForm] = useState({
@@ -386,6 +397,8 @@ export default function CheckoutPage() {
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
+      setMpesaPhoneError(null);
+      setErrorMessage(null);
       // Persist the customer's chosen payment method on the cart so the
       // backend / ops team can route the order to the right reconciliation
       // flow (STK callback vs manual Paybill verification).
@@ -394,7 +407,13 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
       };
       if (paymentMethod === "mpesa_express") {
-        metadata.mpesa_phone = mpesaPhone;
+        const normalizedPhone = normalizeKenyanMobileNumber(mpesaPhone);
+        if (!normalizedPhone) {
+          setMpesaPhoneError(KENYAN_MOBILE_NUMBER_ERROR);
+          throw new Error(KENYAN_MOBILE_NUMBER_ERROR);
+        }
+        metadata.mpesa_phone = normalizedPhone;
+        setMpesaPhone(normalizedPhone);
       }
       return updateCart({ metadata });
     },
@@ -404,6 +423,10 @@ export default function CheckoutPage() {
       setStep("review");
     },
     onError: (err: Error) => {
+      if (err.message === KENYAN_MOBILE_NUMBER_ERROR) {
+        setErrorMessage(null);
+        return;
+      }
       setErrorMessage(err.message || "Failed to initialize payment.");
     },
   });
@@ -446,11 +469,16 @@ export default function CheckoutPage() {
   const completeMutation = useMutation({
     mutationFn: async (): Promise<CheckoutPaymentResult> => {
       if (paymentMethod === "mpesa_express") {
+        const normalizedPhone = normalizeKenyanMobileNumber(mpesaPhone);
+        if (!normalizedPhone) {
+          setMpesaPhoneError(KENYAN_MOBILE_NUMBER_ERROR);
+          throw new Error(KENYAN_MOBILE_NUMBER_ERROR);
+        }
         // Route to the M-Pesa provider and pass the payer's phone so the backend
         // can fire an STK Push to it (vs. the system default, which takes no data).
         const payment = await initializePaymentSession({
           providerId: "pp_mpesa_mpesa",
-          data: { mpesa_phone: mpesaPhone },
+          data: { mpesa_phone: normalizedPhone },
         });
         if (!hasCapturedPayment(payment.payment_collection.payment_sessions)) {
           return { type: "payment_pending" };
@@ -904,6 +932,7 @@ export default function CheckoutPage() {
                   className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6"
                 >
                   <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
+                  <PaymentBadges />
                   {customerQuery.data && (
                     <div className="border-secondary/15 bg-secondary-light/40 rounded-2xl border p-4">
                       <p className="text-foreground text-sm font-medium">
@@ -1109,7 +1138,11 @@ export default function CheckoutPage() {
                       name="payment-method"
                       value="mpesa_express"
                       checked={paymentMethod === "mpesa_express"}
-                      onChange={() => setPaymentMethod("mpesa_express")}
+                      onChange={() => {
+                        setPaymentMethod("mpesa_express");
+                        setMpesaPhoneError(null);
+                        setErrorMessage(null);
+                      }}
                       className="accent-foreground mt-1.5"
                     />
                     <Smartphone className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
@@ -1125,17 +1158,36 @@ export default function CheckoutPage() {
                       </p>
                       {paymentMethod === "mpesa_express" && (
                         <div className="mt-3 space-y-1.5">
-                          <label className="text-muted block text-xs font-medium">
+                          <label
+                            htmlFor="mpesa-phone"
+                            className="text-muted block text-xs font-medium"
+                          >
                             M-Pesa Phone Number <span className="text-danger">*</span>
                           </label>
                           <input
+                            id="mpesa-phone"
                             type="tel"
                             required
                             placeholder="+254 7XX XXX XXX"
                             value={mpesaPhone}
-                            onChange={(e) => setMpesaPhone(e.target.value)}
-                            className={inputClass}
+                            onChange={(e) => {
+                              setMpesaPhone(e.target.value);
+                              setMpesaPhoneError(null);
+                              setErrorMessage(null);
+                            }}
+                            aria-invalid={!!mpesaPhoneError}
+                            aria-describedby={mpesaPhoneError ? "mpesa-phone-error" : undefined}
+                            className={`${inputClass} ${
+                              mpesaPhoneError
+                                ? "border-danger focus:border-danger focus:ring-danger/15"
+                                : ""
+                            }`}
                           />
+                          {mpesaPhoneError && (
+                            <p id="mpesa-phone-error" className="text-danger text-xs font-medium">
+                              {mpesaPhoneError}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1154,7 +1206,11 @@ export default function CheckoutPage() {
                       name="payment-method"
                       value="mpesa_paybill"
                       checked={paymentMethod === "mpesa_paybill"}
-                      onChange={() => setPaymentMethod("mpesa_paybill")}
+                      onChange={() => {
+                        setPaymentMethod("mpesa_paybill");
+                        setMpesaPhoneError(null);
+                        setErrorMessage(null);
+                      }}
                       className="accent-foreground mt-1.5"
                     />
                     <Receipt className="text-secondary mt-0.5 h-5 w-5 shrink-0" />

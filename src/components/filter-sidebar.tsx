@@ -10,6 +10,7 @@ import {
   parseCategoryParam,
   serializeCategoryParam,
 } from "@/lib/categories";
+import { AGE_STAGE_FILTERS, BRAND_FILTERS } from "@/lib/product-metadata";
 import { CategoryIcon } from "@/components/category-icon";
 
 type Filters = Record<string, string | number | undefined>;
@@ -191,6 +192,8 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
                 q: undefined,
                 availability: undefined,
                 price: undefined,
+                brand: undefined,
+                age_stage: undefined,
               })
             }
             className="text-muted hover:text-foreground rounded-full px-1 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -235,6 +238,46 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
           <span className="text-foreground">In stock only</span>
         </label>
       </div>
+
+      <fieldset className="border-border/50 border-t pt-4">
+        <legend className="text-foreground mb-1 text-sm font-semibold">Brand</legend>
+        <div className="space-y-0.5">
+          {BRAND_FILTERS.map((brand) => (
+            <label
+              key={brand}
+              className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
+            >
+              <input
+                type="checkbox"
+                checked={filters.brand === brand}
+                onChange={(e) => setFilter("brand", e.target.checked ? brand : undefined)}
+                className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              />
+              <span className="text-foreground">{brand}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="border-border/50 border-t pt-4">
+        <legend className="text-foreground mb-1 text-sm font-semibold">Age & stage</legend>
+        <div className="space-y-0.5">
+          {AGE_STAGE_FILTERS.map((stage) => (
+            <label
+              key={stage}
+              className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
+            >
+              <input
+                type="checkbox"
+                checked={filters.age_stage === stage}
+                onChange={(e) => setFilter("age_stage", e.target.checked ? stage : undefined)}
+                className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              />
+              <span className="text-foreground">{stage}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className="border-border/50 border-t pt-4">
         <legend className="text-foreground mb-1 text-sm font-semibold">Price</legend>

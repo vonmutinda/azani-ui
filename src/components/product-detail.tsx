@@ -35,8 +35,10 @@ import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
+import { PaymentBadges } from "@/components/payment-badges";
 import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
+import { getProductAgeStage, getProductBrand, getProductRating } from "@/lib/product-metadata";
 
 type Props = {
   productId: string;
@@ -197,7 +199,9 @@ export function ProductDetail({ productId, onBack }: Props) {
       const vars = product?.variants ?? [];
       return vars.some((v) => {
         if (!v.options || !getVariantAvailability(v).inStock) return false;
-        const carriesValue = v.options.some((vo) => vo.option_id === optionId && vo.value === value);
+        const carriesValue = v.options.some(
+          (vo) => vo.option_id === optionId && vo.value === value,
+        );
         if (!carriesValue) return false;
         return opts.every((opt) => {
           if (opt.id === optionId) return true;
@@ -230,7 +234,9 @@ export function ProductDetail({ productId, onBack }: Props) {
           if (opt.id === optionId) continue;
           const held = next[opt.id];
           if (held && isValueAvailableGiven(next, opt.id, held)) continue;
-          const firstAvailable = opt.values.find((v) => isValueAvailableGiven(next, opt.id, v.value));
+          const firstAvailable = opt.values.find((v) =>
+            isValueAvailableGiven(next, opt.id, v.value),
+          );
           if (firstAvailable) next[opt.id] = firstAvailable.value;
         }
         return next;
@@ -302,9 +308,9 @@ export function ProductDetail({ productId, onBack }: Props) {
   const originalPrice = getVariantOriginalPrice(selectedVariant);
   const discountPercent = getVariantDiscountPercent(selectedVariant);
   const category = product.categories?.[0];
-  const ratingValue = typeof product.metadata?.rating === "number" ? product.metadata.rating : null;
-  const reviewCount =
-    typeof product.metadata?.review_count === "number" ? product.metadata.review_count : null;
+  const brand = getProductBrand(product);
+  const ageStage = getProductAgeStage(product);
+  const rating = getProductRating(product);
 
   const handleAddToCart = () => {
     if (!selectedVariant || !availability.canPurchase) return;
@@ -358,15 +364,34 @@ export function ProductDetail({ productId, onBack }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1.5">
               <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
-              {ratingValue != null ? (
+              {(brand || ageStage) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {brand && (
+                    <span className="bg-foreground/[0.04] text-muted rounded-full px-2.5 py-1 text-xs font-semibold">
+                      {brand}
+                    </span>
+                  )}
+                  {ageStage && (
+                    <span className="bg-secondary-light text-secondary rounded-full px-2.5 py-1 text-xs font-semibold">
+                      {ageStage}
+                    </span>
+                  )}
+                </div>
+              )}
+              {rating ? (
                 <div className="flex items-center gap-2">
-                  <StarRating rating={ratingValue} />
+                  <StarRating rating={rating.rating} />
                   <span className="text-muted text-sm">
-                    {ratingValue.toFixed(1)} ({reviewCount ?? 0} reviews)
+                    {rating.rating.toFixed(1)} ({rating.reviewCount} reviews)
                   </span>
                 </div>
               ) : (
-                <p className="text-muted text-sm">No reviews yet</p>
+                <div className="bg-background/70 border-border/50 rounded-xl border px-3 py-2">
+                  <p className="text-foreground text-sm font-medium">No reviews yet</p>
+                  <p className="text-muted mt-0.5 text-xs">
+                    Be the first parent to review this product.
+                  </p>
+                </div>
               )}
             </div>
             <button
@@ -523,6 +548,8 @@ export function ProductDetail({ productId, onBack }: Props) {
             </li>
           </ul>
 
+          <PaymentBadges compact />
+
           {cartMutation.isError && (
             <p className="text-danger text-sm font-medium">
               Failed to add to cart. Please try again.
@@ -551,6 +578,18 @@ export function ProductDetail({ productId, onBack }: Props) {
               <div className="flex justify-between gap-4 sm:block">
                 <dt className="text-foreground font-medium">Category</dt>
                 <dd>{category.name}</dd>
+              </div>
+            )}
+            {brand && (
+              <div className="flex justify-between gap-4 sm:block">
+                <dt className="text-foreground font-medium">Brand</dt>
+                <dd>{brand}</dd>
+              </div>
+            )}
+            {ageStage && (
+              <div className="flex justify-between gap-4 sm:block">
+                <dt className="text-foreground font-medium">Age & stage</dt>
+                <dd>{ageStage}</dd>
               </div>
             )}
             {product.weight && (
@@ -582,9 +621,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </AccordionSection>
       </div>
 
-      {category && (
-        <RelatedProducts categoryId={category.id} currentProductId={product.id} />
-      )}
+      {category && <RelatedProducts categoryId={category.id} currentProductId={product.id} />}
     </div>
   );
 }

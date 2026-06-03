@@ -287,6 +287,20 @@ describe("ProductDetail", () => {
     );
   });
 
+  it("surfaces brand, age stage, and M-Pesa payment reassurance in the buy box", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
+
+    expect(screen.getAllByText("Pampers").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Newborn+").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("M-Pesa accepted")).toBeInTheDocument();
+    expect(screen.queryByText("Visa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mastercard")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cash on delivery")).not.toBeInTheDocument();
+  });
+
   it("shows the star rating and review count when the product has rating metadata", async () => {
     const rated: MedusaProduct = {
       ...mockProduct,
@@ -302,7 +316,9 @@ describe("ProductDetail", () => {
   });
 
   it("shows a 'No reviews yet' empty state when there is no rating data", async () => {
-    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    mockGetProductById.mockResolvedValueOnce({
+      product: { ...mockProduct, metadata: undefined },
+    });
 
     renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
     await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });

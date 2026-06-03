@@ -1,0 +1,9 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#F6F2FF"/>
+  <circle cx="520" cy="126" r="84" fill="#FFE5F0"/>
+  <circle cx="118" cy="500" r="82" fill="#DDF6EE"/>
+  <path d="M190 356C190 262 248 194 320 194C392 194 450 262 450 356C450 418 398 466 320 466C242 466 190 418 190 356Z" fill="#FFFFFF" stroke="#C5B5F5" stroke-width="8"/>
+  <path d="M246 358C246 309 279 274 320 274C361 274 394 309 394 358C394 392 363 418 320 418C277 418 246 392 246 358Z" fill="#F6F2FF" stroke="#C5B5F5" stroke-width="8"/>
+  <path d="M230 308C254 258 286 232 320 232C354 232 386 258 410 308" stroke="#E74F8A" stroke-width="12" stroke-linecap="round" opacity=".35"/>
+  <text x="320" y="548" text-anchor="middle" fill="#594976" font-family="Arial, sans-serif" font-size="28" font-weight="700">Nursing Pillow</text>
+</svg>

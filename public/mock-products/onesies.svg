@@ -1,0 +1,11 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#FDF2F8"/>
+  <circle cx="514" cy="130" r="82" fill="#DDF6EE"/>
+  <circle cx="118" cy="510" r="82" fill="#FFE7A3"/>
+  <path d="M236 144H404L464 212L416 274V470C416 494 396 514 372 514H268C244 514 224 494 224 470V274L176 212L236 144Z" fill="#FFFFFF" stroke="#F2B8CA" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M278 146C282 170 300 188 320 188C340 188 358 170 362 146" stroke="#F2B8CA" stroke-width="8"/>
+  <path d="M276 286H364M276 342H364M276 398H364" stroke="#E74F8A" stroke-width="10" stroke-linecap="round" opacity=".4"/>
+  <circle cx="300" cy="456" r="8" fill="#A8DCCB"/>
+  <circle cx="340" cy="456" r="8" fill="#A8DCCB"/>
+  <text x="320" y="574" text-anchor="middle" fill="#8F506B" font-family="Arial, sans-serif" font-size="28" font-weight="700">Onesies Set</text>
+</svg>

@@ -99,6 +99,17 @@ describe("CheckoutPage", () => {
     });
   }, 30_000);
 
+  it("shows M-Pesa-only payment reassurance before payment selection", async () => {
+    renderWithProviders(<CheckoutPage />);
+
+    await screen.findByText("Shipping Address");
+
+    expect(screen.getByText("M-Pesa accepted")).toBeInTheDocument();
+    expect(screen.queryByText("Visa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mastercard")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cash on delivery")).not.toBeInTheDocument();
+  }, 30_000);
+
   it("does not create an order for M-Pesa Express while payment is only authorized", async () => {
     mockInitializePaymentSession.mockResolvedValue({
       payment_collection: {
@@ -210,6 +221,22 @@ describe("CheckoutPage", () => {
         data: { mpesa_phone: "+254712345678" },
       }),
     );
+  }, 30_000);
+
+  it("blocks review when the M-Pesa phone is not a valid Kenyan mobile number", async () => {
+    renderWithProviders(<CheckoutPage />);
+
+    await continueToPayment();
+    const callsBeforePayment = mockUpdateCart.mock.calls.length;
+
+    fireEvent.change(screen.getByPlaceholderText("+254 7XX XXX XXX"), {
+      target: { value: "+2543" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Review" }));
+
+    expect(await screen.findByText(/Enter a valid Kenyan mobile number/i)).toBeInTheDocument();
+    expect(screen.queryByText("Review & Place Order")).not.toBeInTheDocument();
+    expect(mockUpdateCart).toHaveBeenCalledTimes(callsBeforePayment);
   }, 30_000);
 
   it("requires accepting the terms before the order can be placed", async () => {

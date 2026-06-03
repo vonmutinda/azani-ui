@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ChevronDown,
+  ChevronRight,
   Heart,
   LayoutGrid,
   Menu,
@@ -29,31 +30,53 @@ const TRUST_SIGNALS = [
   { icon: Shield, text: "Safe & certified products" },
 ];
 
+const CATEGORIES_MENU_ID = "categories";
+
 const subscribeToClientSnapshot = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
-function MegaMenu({ category, onClose }: { category: Category; onClose: () => void }) {
-  const children = category.children ?? [];
+function CategoriesMegaMenu({
+  categories,
+  activeMainSlug,
+  onClose,
+}: {
+  categories: Category[];
+  activeMainSlug?: string;
+  onClose: () => void;
+}) {
   return (
     <div className="absolute inset-x-0 top-full z-50 hidden lg:block">
       <div className="bg-card/98 border-border/40 border-t shadow-xl backdrop-blur-xl">
         <div className="mx-auto w-full max-w-7xl px-6 py-6 lg:px-8">
-          <p className="text-foreground mb-4 text-base font-semibold">{category.name}</p>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <p className="text-foreground text-base font-semibold">Shop Categories</p>
+            <Link
+              href="/products"
+              onClick={onClose}
+              className="text-secondary hover:text-secondary-hover text-sm font-semibold transition"
+            >
+              Shop all
+            </Link>
+          </div>
           <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
-            {children.map((sub) => (
-              <div key={sub.slug}>
+            {categories.map((cat) => (
+              <div key={cat.slug}>
                 <Link
-                  href={`/products?category=${sub.slug}`}
+                  href={`/products?category=${cat.slug}`}
                   onClick={onClose}
-                  className="text-foreground hover:text-secondary mb-2 flex items-center gap-2 text-sm font-semibold transition"
+                  className={`mb-2 flex items-center gap-2 text-sm font-semibold transition ${
+                    activeMainSlug === cat.slug
+                      ? "text-primary"
+                      : "text-foreground hover:text-secondary"
+                  }`}
                 >
-                  <CategoryIcon icon={sub.icon} size={15} colored />
-                  {sub.name}
+                  <CategoryIcon icon={cat.icon} size={15} colored />
+                  {cat.name}
                 </Link>
-                {sub.children && sub.children.length > 0 && (
+                {cat.children && cat.children.length > 0 && (
                   <ul className="space-y-0.5">
-                    {sub.children.map((child) => (
+                    {cat.children.slice(0, 5).map((child) => (
                       <li key={child.slug}>
                         <Link
                           href={`/products?category=${child.slug}`}
@@ -80,6 +103,7 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMega, setActiveMega] = useState<string | null>(null);
+  const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
   const [trustIdx, setTrustIdx] = useState(0);
   const hasHydrated = useSyncExternalStore(
     subscribeToClientSnapshot,
@@ -165,7 +189,6 @@ export function SiteHeader() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeCategory = topCategories.find((c) => c.slug === activeMega);
   const TrustIcon = TRUST_SIGNALS[trustIdx].icon;
 
   return (
@@ -190,7 +213,7 @@ export function SiteHeader() {
 
       {/* Main header */}
       <div className="border-border/50 border-b">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:gap-5 lg:px-8">
+        <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:gap-4 lg:px-8">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -209,60 +232,71 @@ export function SiteHeader() {
               alt="Azani"
               width={320}
               height={100}
-              className="h-14 w-auto sm:h-16"
+              className="h-12 w-auto sm:h-14"
               priority
             />
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
-            <div className="flex items-center gap-0.5">
-              <Link
-                href="/products"
-                aria-label="All Products"
-                title="All Products"
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
-                  isProductsPage && !currentCategorySlug
+          <nav className="hidden shrink-0 items-center gap-1 lg:flex">
+            <Link
+              href="/products"
+              className={`rounded-full px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                isProductsPage && !currentCategorySlug
+                  ? "bg-foreground text-white"
+                  : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+              }`}
+            >
+              Shop all
+            </Link>
+            <div
+              className="relative"
+              onMouseEnter={() => openMega(CATEGORIES_MENU_ID)}
+              onMouseLeave={closeMega}
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveMega((current) =>
+                    current === CATEGORIES_MENU_ID ? null : CATEGORIES_MENU_ID,
+                  )
+                }
+                aria-expanded={activeMega === CATEGORIES_MENU_ID}
+                aria-label="Browse categories"
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                  activeMega === CATEGORIES_MENU_ID || activeMainSlug
                     ? "bg-foreground/[0.06] text-foreground"
                     : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
                 }`}
               >
-                <LayoutGrid className="h-[15px] w-[15px]" />
-              </Link>
-              {topCategories.map((cat) => {
-                const isNavActive = activeMainSlug === cat.slug;
-                return (
-                  <div
-                    key={cat.slug}
-                    className="relative"
-                    onMouseEnter={() => openMega(cat.slug)}
-                    onMouseLeave={closeMega}
-                  >
-                    <Link
-                      href={`/products?category=${cat.slug}`}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
-                        activeMega === cat.slug || isNavActive
-                          ? "bg-foreground/[0.06] text-foreground"
-                          : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
-                      }`}
-                    >
-                      {cat.name}
-                      <ChevronDown
-                        className={`h-3 w-3 shrink-0 opacity-50 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
-                      />
-                    </Link>
-                  </div>
-                );
-              })}
+                <LayoutGrid className="h-4 w-4" />
+                Categories
+                <ChevronDown
+                  className={`h-3.5 w-3.5 shrink-0 opacity-55 transition-transform ${
+                    activeMega === CATEGORIES_MENU_ID ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
             </div>
           </nav>
+
+          <form onSubmit={handleSearch} className="relative hidden min-w-0 flex-1 lg:block">
+            <Search className="text-muted absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search baby essentials"
+              aria-label="Search products"
+              className="border-border/60 bg-background placeholder:text-muted-light focus:border-secondary focus:ring-secondary/10 h-10 w-full rounded-full border pr-4 pl-10 text-sm transition outline-none focus:ring-2"
+            />
+          </form>
 
           {/* Actions */}
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={toggleSearch}
               aria-label="Search"
-              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
+              className="text-muted hover:bg-foreground/[0.04] hover:text-foreground hidden h-9 w-9 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:inline-flex lg:hidden"
             >
               {searchOpen ? (
                 <X className="h-[17px] w-[17px]" />
@@ -305,13 +339,17 @@ export function SiteHeader() {
       </div>
 
       {/* Mega menu */}
-      {activeCategory && (
+      {activeMega === CATEGORIES_MENU_ID && (
         <div
           className="relative hidden lg:block"
-          onMouseEnter={() => openMega(activeCategory.slug)}
+          onMouseEnter={() => openMega(CATEGORIES_MENU_ID)}
           onMouseLeave={closeMega}
         >
-          <MegaMenu category={activeCategory} onClose={() => setActiveMega(null)} />
+          <CategoriesMegaMenu
+            categories={topCategories}
+            activeMainSlug={activeMainSlug}
+            onClose={() => setActiveMega(null)}
+          />
         </div>
       )}
 
@@ -336,7 +374,10 @@ export function SiteHeader() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <nav className="bg-card/98 border-border/40 border-t backdrop-blur-xl lg:hidden">
+        <nav
+          aria-label="Mobile menu"
+          className="bg-card/98 border-border/40 border-t backdrop-blur-xl lg:hidden"
+        >
           <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
             <form onSubmit={handleSearch} className="mb-3">
               <div className="relative">
@@ -360,15 +401,36 @@ export function SiteHeader() {
               </Link>
               {topCategories.map((cat) => (
                 <div key={cat.slug}>
-                  <Link
-                    href={`/products?category=${cat.slug}`}
-                    onClick={() => setMobileOpen(false)}
-                    className="text-foreground hover:bg-foreground/[0.04] flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition"
-                  >
-                    <CategoryIcon icon={cat.icon} size={15} colored />
-                    {cat.name}
-                  </Link>
-                  {cat.children && (
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/products?category=${cat.slug}`}
+                      onClick={() => setMobileOpen(false)}
+                      className="text-foreground hover:bg-foreground/[0.04] flex min-h-11 flex-1 items-center gap-2.5 rounded-lg px-3 text-sm font-semibold transition"
+                    >
+                      <CategoryIcon icon={cat.icon} size={15} colored />
+                      {cat.name}
+                    </Link>
+                    {cat.children && cat.children.length > 0 && (
+                      <button
+                        type="button"
+                        aria-expanded={expandedMobileCategory === cat.slug}
+                        aria-label={`${expandedMobileCategory === cat.slug ? "Collapse" : "Expand"} ${cat.name}`}
+                        onClick={() =>
+                          setExpandedMobileCategory((current) =>
+                            current === cat.slug ? null : cat.slug,
+                          )
+                        }
+                        className="text-muted hover:bg-foreground/[0.04] hover:text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                      >
+                        {expandedMobileCategory === cat.slug ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {cat.children && expandedMobileCategory === cat.slug && (
                     <div className="ml-8 space-y-0.5">
                       {cat.children.slice(0, 5).map((sub) => (
                         <Link

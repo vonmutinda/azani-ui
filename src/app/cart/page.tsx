@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import {
   getCart,
+  getProducts,
   getProductsByIds,
   updateLineItem,
   removeLineItem,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/medusa-api";
 import { formatPrice, getVariantAvailability, resolveOrderItemImage } from "@/lib/formatters";
 import { freeShippingRemaining, freeShippingProgress } from "@/lib/shipping";
+import { PaymentBadges } from "@/components/payment-badges";
+import { ProductCard } from "@/components/product-card";
 import type { MedusaLineItem, MedusaProduct } from "@/types/medusa";
 
 function variantLabel(item: MedusaLineItem): string | null {
@@ -105,6 +108,19 @@ export default function CartPage() {
   const cartProductsById = useMemo(
     () => new Map((cartProductsQuery.data ?? []).map((product) => [product.id, product])),
     [cartProductsQuery.data],
+  );
+  const recommendationsQuery = useQuery({
+    queryKey: ["cart-recommendations", cartProductIds],
+    queryFn: () => getProducts({ limit: 6 }),
+    enabled: items.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const recommendations = useMemo(
+    () =>
+      (recommendationsQuery.data?.products ?? [])
+        .filter((product) => !cartProductIds.includes(product.id))
+        .slice(0, 4),
+    [recommendationsQuery.data, cartProductIds],
   );
   const hasUnavailableItems =
     cartProductsQuery.isFetched &&
@@ -290,6 +306,10 @@ export default function CartPage() {
                 <span className="text-foreground font-medium">within 24 hours</span>
               </span>
             </div>
+
+            <div className="mt-4">
+              <PaymentBadges compact />
+            </div>
           </div>
 
           {/* Promo Code */}
@@ -352,6 +372,29 @@ export default function CartPage() {
           )}
         </div>
       </div>
+
+      {recommendations.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-foreground text-lg font-bold">Add these too</h2>
+              <p className="text-muted mt-1 text-sm">
+                Small essentials parents often remember at the last minute.
+              </p>
+            </div>
+            <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
+              Keep shopping
+            </Link>
+          </div>
+          <div className="hide-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+            {recommendations.map((product) => (
+              <div key={product.id} className="w-48 shrink-0 sm:w-auto">
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
