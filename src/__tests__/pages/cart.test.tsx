@@ -1,14 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import CartPage from "@/app/cart/page";
 import { renderWithProviders } from "../test-utils";
-import { mockCart, mockEmptyCart } from "../fixtures";
+import { mockCart, mockEmptyCart, mockProduct } from "../fixtures";
 
 const mockGetCart = vi.fn();
+const mockGetProducts = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: (...args: unknown[]) => mockGetCart(...args),
+  getProducts: (...args: unknown[]) => mockGetProducts(...args),
   getProductsByIds: vi.fn().mockResolvedValue([]),
+  getWishlistProductIds: vi.fn().mockResolvedValue([]),
+  toggleWishlistProduct: vi.fn().mockResolvedValue([]),
+  addToCart: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
   updateLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
   removeLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
   addPromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
@@ -16,6 +21,11 @@ vi.mock("@/lib/medusa-api", () => ({
 }));
 
 describe("CartPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 6 });
+  });
+
   it("renders empty cart state when no items", async () => {
     mockGetCart.mockResolvedValueOnce(mockEmptyCart);
 
@@ -89,6 +99,32 @@ describe("CartPage", () => {
     renderWithProviders(<CartPage />);
     await waitFor(() => {
       expect(screen.getAllByText("KSh3,000.00").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows cross-sell product cards after cart items", async () => {
+    mockGetCart.mockResolvedValueOnce(mockCart);
+    mockGetProducts.mockResolvedValueOnce({
+      products: [
+        mockProduct,
+        {
+          ...mockProduct,
+          id: "prod_cross_01",
+          title: "WaterWipes Baby Wipes",
+          handle: "waterwipes-baby-wipes",
+          metadata: { ...mockProduct.metadata, brand: "WaterWipes", badge: "Add-on" },
+        },
+      ],
+      count: 2,
+      offset: 0,
+      limit: 6,
+    });
+
+    renderWithProviders(<CartPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Add these too")).toBeInTheDocument();
+      expect(screen.getByText("WaterWipes Baby Wipes")).toBeInTheDocument();
     });
   });
 });

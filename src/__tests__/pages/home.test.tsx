@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import Home from "@/app/page";
 import { renderWithProviders } from "../test-utils";
 
@@ -25,6 +25,24 @@ vi.mock("@/lib/medusa-api", () => ({
             id: "variant_01",
             title: "24 Count",
             prices: [{ id: "p1", amount: 1500, currency_code: "usd" }],
+          },
+        ],
+      },
+      {
+        id: "prod_02",
+        title: "Organic Cotton Swaddle Blankets",
+        handle: "organic-cotton-swaddle-blankets",
+        status: "published",
+        is_giftcard: false,
+        discountable: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        thumbnail: "https://example.com/swaddles.jpg",
+        variants: [
+          {
+            id: "variant_02",
+            title: "3 Pack",
+            prices: [{ id: "p2", amount: 2390, currency_code: "usd" }],
           },
         ],
       },
@@ -67,6 +85,38 @@ describe("Home Page", () => {
     expect(screen.getByTestId("home-hero-carousel")).toHaveClass("xl:max-w-[520px]");
   });
 
+  it("rotates the hero product every 6 seconds", async () => {
+    let rotateHeroProduct: (() => void) | undefined;
+    let intervalMs: number | undefined;
+    const setIntervalSpy = vi
+      .spyOn(window, "setInterval")
+      .mockImplementation((handler, timeout) => {
+        if (Number(timeout) === 6_000) {
+          intervalMs = Number(timeout);
+          rotateHeroProduct = typeof handler === "function" ? handler : undefined;
+        }
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      });
+
+    try {
+      renderWithProviders(<Home />);
+      const hero = screen.getByTestId("home-hero-carousel");
+
+      await waitFor(() =>
+        expect(within(hero).getByText("Pampers Baby Dry Diapers")).toBeInTheDocument(),
+      );
+      expect(intervalMs).toBe(6_000);
+
+      await act(async () => {
+        rotateHeroProduct?.();
+      });
+
+      expect(within(hero).getByText("Organic Cotton Swaddle Blankets")).toBeInTheDocument();
+    } finally {
+      setIntervalSpy.mockRestore();
+    }
+  });
+
   it("aligns the hero copy with the visual on desktop", () => {
     renderWithProviders(<Home />);
 
@@ -87,6 +137,17 @@ describe("Home Page", () => {
   it("renders shop by category section heading", () => {
     renderWithProviders(<Home />);
     expect(screen.getByText("Shop by Category")).toBeInTheDocument();
+  });
+
+  it("renders the redesigned parent proof section", () => {
+    renderWithProviders(<Home />);
+
+    expect(
+      screen.getByRole("heading", { name: "Made for the small things parents need fast." }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("M-Pesa checkout")).toBeInTheDocument();
+    expect(screen.getByText("Nairobi dispatch")).toBeInTheDocument();
+    expect(screen.getByTestId("home-parent-proof").className).toContain("bg-[linear-gradient");
   });
 
   it("renders feature bar items", () => {

@@ -21,6 +21,10 @@ describe("buttonVariants", () => {
     expect(buttonVariants()).toContain("focus-visible:ring-2");
   });
 
+  it("enforces the shared 44px minimum touch target", () => {
+    expect(buttonVariants()).toContain("min-h-11");
+  });
+
   it("applies full width only when requested", () => {
     expect(buttonVariants()).not.toContain("w-full");
     expect(buttonVariants({ fullWidth: true })).toContain("w-full");

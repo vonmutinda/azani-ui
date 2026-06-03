@@ -1,0 +1,12 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#EFFAF7"/>
+  <circle cx="515" cy="136" r="86" fill="#DDEBFF"/>
+  <circle cx="118" cy="503" r="88" fill="#FFE5F0"/>
+  <rect x="142" y="214" width="356" height="232" rx="34" fill="#FFFFFF" stroke="#9BD8C9" stroke-width="8"/>
+  <rect x="190" y="178" width="260" height="104" rx="28" fill="#DDF6EE" stroke="#9BD8C9" stroke-width="8"/>
+  <path d="M234 230C263 207 296 196 332 198C365 200 394 212 420 234" stroke="#63B8A5" stroke-width="16" stroke-linecap="round"/>
+  <rect x="196" y="314" width="248" height="36" rx="18" fill="#F4F9FF"/>
+  <rect x="222" y="370" width="196" height="22" rx="11" fill="#DDEBFF"/>
+  <text x="320" y="154" text-anchor="middle" fill="#355B52" font-family="Arial, sans-serif" font-size="34" font-weight="700">Sensitive</text>
+  <text x="320" y="504" text-anchor="middle" fill="#4E897D" font-family="Arial, sans-serif" font-size="26" font-weight="700">Baby Wipes</text>
+</svg>

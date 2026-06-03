@@ -192,7 +192,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "bath-diapering", brand: "Pampers", age_stage: "Newborn+" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
@@ -200,14 +200,24 @@ describe("FilterSidebar", () => {
 
     await user.click(screen.getByText("Clear all"));
     expect(onFilterChange).toHaveBeenCalledWith(
-      expect.objectContaining({ category: undefined, availability: undefined, price: undefined }),
+      expect.objectContaining({
+        category: undefined,
+        availability: undefined,
+        price: undefined,
+        brand: undefined,
+        age_stage: undefined,
+      }),
     );
   });
 
-  it("renders the availability and price facets", () => {
+  it("renders the availability, brand, age stage, and price facets", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} />);
     expect(screen.getByText("Availability")).toBeInTheDocument();
     expect(screen.getByText("In stock only")).toBeInTheDocument();
+    expect(screen.getByText("Brand")).toBeInTheDocument();
+    expect(screen.getByText("Pampers")).toBeInTheDocument();
+    expect(screen.getByText("Age & stage")).toBeInTheDocument();
+    expect(screen.getByText("Newborn+")).toBeInTheDocument();
     expect(screen.getByText("Price")).toBeInTheDocument();
     expect(screen.getByText("Under KSh1,000")).toBeInTheDocument();
   });
@@ -228,5 +238,23 @@ describe("FilterSidebar", () => {
 
     await user.click(screen.getByRole("radio", { name: /Under KSh1,000/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ price: "u1000" });
+  });
+
+  it("calls onFilterChange when a brand facet is selected", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    await user.click(screen.getByRole("checkbox", { name: /Pampers/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ brand: "Pampers" });
+  });
+
+  it("calls onFilterChange when an age and stage facet is selected", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
+
+    await user.click(screen.getByRole("checkbox", { name: /Newborn\+/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ age_stage: "Newborn+" });
   });
 });

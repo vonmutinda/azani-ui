@@ -49,6 +49,7 @@ describe("ProductCard", () => {
     const recentProduct = {
       ...mockProduct,
       created_at: new Date().toISOString(),
+      metadata: undefined,
     };
     renderWithProviders(<ProductCard product={recentProduct} />);
     expect(screen.getByText("New")).toBeInTheDocument();
@@ -58,6 +59,7 @@ describe("ProductCard", () => {
     const oldProduct = {
       ...mockProduct,
       created_at: "2023-01-01T00:00:00Z",
+      metadata: undefined,
     };
     renderWithProviders(<ProductCard product={oldProduct} />);
     expect(screen.queryByText("New")).not.toBeInTheDocument();
@@ -71,6 +73,7 @@ describe("ProductCard", () => {
   it("shows the discount percentage for a product on sale", () => {
     const discounted = {
       ...mockProduct,
+      metadata: undefined,
       variants: [
         {
           ...mockProduct.variants![0],
@@ -86,9 +89,29 @@ describe("ProductCard", () => {
     expect(screen.getByText("-15%")).toBeInTheDocument();
   });
 
+  it("renders merchandising metadata for a template-grade product card", () => {
+    renderWithProviders(<ProductCard product={mockProduct} />);
+
+    expect(screen.getByText("Pampers")).toBeInTheDocument();
+    expect(screen.getByText("Newborn+")).toBeInTheDocument();
+    expect(screen.getByText("4.8")).toBeInTheDocument();
+    expect(screen.getByText("(128)")).toBeInTheDocument();
+    expect(screen.getByText("2 colours")).toBeInTheDocument();
+  });
+
+  it("prefers a merchandised badge over the generic new badge", () => {
+    renderWithProviders(<ProductCard product={mockProduct} />);
+
+    expect(screen.getByText("Bestseller")).toBeInTheDocument();
+    expect(screen.queryByText("New")).not.toBeInTheDocument();
+  });
+
   it("has add to cart button when variant exists", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
-    expect(screen.getByTitle("Add to cart")).toBeInTheDocument();
+    const addButton = screen.getByRole("button", { name: "Add to cart" });
+    expect(addButton).toBeInTheDocument();
+    expect(addButton.className).toContain("min-h-11");
+    expect(addButton.className).toContain("min-w-11");
   });
 
   it("does not show add-to-cart when no variant", () => {

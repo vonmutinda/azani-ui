@@ -14,6 +14,15 @@ import {
   resolveProductImage,
 } from "@/lib/formatters";
 import { addToCart, getCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import {
+  getProductAgeStage,
+  getProductBadge,
+  getProductBrand,
+  getProductColorCount,
+  getProductRating,
+  isRecentlyCreated,
+} from "@/lib/product-metadata";
+import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
 
 type Props = {
@@ -30,6 +39,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const originalPrice = getProductOriginalPrice(product);
   const discountPercent = getProductDiscountPercent(product);
   const optionCount = product.variants?.length ?? 0;
+  const brand = getProductBrand(product);
+  const ageStage = getProductAgeStage(product);
+  const rating = getProductRating(product);
+  const colorCount = getProductColorCount(product);
   const quickAddVariant =
     product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
     product.variants?.[0];
@@ -107,18 +120,20 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   };
 
   const productHref = `/products/${product.id}`;
-  const [isNew] = useState(() =>
-    product.created_at
-      ? Date.now() - new Date(product.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
-      : false,
-  );
+  const [isNew] = useState(() => isRecentlyCreated(product));
+  const merchBadge = getProductBadge(product);
+  const displayBadge = merchBadge ?? (discountPercent ? "Sale" : isNew ? "New" : null);
 
   return (
     <article className="group border-border/50 bg-card hover:border-border relative flex flex-col overflow-hidden rounded-2xl border transition duration-300">
-      {isNew && (
+      {displayBadge && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase">
-            New
+          <span
+            className={`text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase ${
+              displayBadge === "Sale" ? "bg-primary-light text-primary" : "bg-accent-yellow"
+            }`}
+          >
+            {displayBadge}
           </span>
         </div>
       )}
@@ -159,7 +174,10 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-1 px-3 pt-2.5 pb-3">
+      <div className="flex flex-1 flex-col gap-1.5 px-3 pt-3 pb-3">
+        {brand && (
+          <p className="text-muted-light text-2xs font-bold tracking-widest uppercase">{brand}</p>
+        )}
         <Link
           href={productHref}
           onClick={handleClick}
@@ -167,6 +185,13 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         >
           {product.title}
         </Link>
+
+        {rating && (
+          <div className="flex items-center gap-1.5">
+            <StarRating rating={rating.rating} total={rating.reviewCount} size={11} />
+            <span className="text-muted text-2xs font-semibold">{rating.rating.toFixed(1)}</span>
+          </div>
+        )}
 
         <p
           className={`text-sm font-medium ${
@@ -186,6 +211,21 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           <p className="text-muted-light text-2xs">{optionCount} options</p>
         ) : null}
 
+        {(ageStage || colorCount) && (
+          <div className="flex flex-wrap gap-1.5">
+            {ageStage && (
+              <span className="bg-secondary-light text-secondary rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                {ageStage}
+              </span>
+            )}
+            {colorCount && colorCount > 1 && (
+              <span className="bg-foreground/[0.04] text-muted rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                {colorCount} colours
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-baseline gap-1.5">
             <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
@@ -202,7 +242,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               type="button"
               onClick={handleAddToCart}
               disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+              className={`flex h-11 min-h-11 w-11 min-w-11 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                 justAdded
                   ? "bg-accent-green-bold scale-110"
                   : maxedOut

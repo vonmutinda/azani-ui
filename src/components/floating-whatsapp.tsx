@@ -1,6 +1,11 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site-config";
 
 export function FloatingWhatsApp() {
+  const pathname = usePathname();
+  const compactCommerceFlow = pathname === "/cart" || pathname?.startsWith("/checkout");
   const href = `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(
     siteConfig.whatsapp.prefillMessage,
   )}`;
@@ -11,16 +16,16 @@ export function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="focus-visible:ring-whatsapp fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
+      className={`focus-visible:ring-whatsapp fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6 ${
+        compactCommerceFlow ? "hidden sm:flex" : "flex"
+      }`}
     >
       <span className="relative flex h-14 w-14 items-center justify-center">
         <span
           aria-hidden="true"
           className="bg-whatsapp/40 absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping"
         />
-        <span
-          className="bg-whatsapp relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105"
-        >
+        <span className="bg-whatsapp relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105">
           <svg
             viewBox="0 0 24 24"
             className="h-7 w-7 fill-white"

@@ -1,0 +1,11 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" rx="56" fill="#F2F7FF"/>
+  <circle cx="512" cy="120" r="84" fill="#FFE5F0"/>
+  <circle cx="134" cy="512" r="82" fill="#DDF6EE"/>
+  <path d="M230 154H386C429 154 464 189 464 232V422C464 459 434 489 397 489H243C206 489 176 459 176 422V208C176 178 200 154 230 154Z" fill="#FFFFFF" stroke="#83B6E8" stroke-width="8"/>
+  <path d="M232 200H390C409 200 424 215 424 234V334C393 360 357 373 319 373C281 373 246 360 216 335V216C216 207 223 200 232 200Z" fill="#DDEBFF"/>
+  <path d="M238 390H402C402 428 371 458 333 458H307C269 458 238 428 238 390Z" fill="#F9D9E4"/>
+  <path d="M274 258L320 326L366 258" stroke="#2F6FAE" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="284" y="310" width="72" height="46" rx="18" fill="#2F6FAE"/>
+  <text x="320" y="560" text-anchor="middle" fill="#274A70" font-family="Arial, sans-serif" font-size="28" font-weight="700">Infant Car Seat</text>
+</svg>

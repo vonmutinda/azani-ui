@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Baby,
@@ -23,8 +23,11 @@ import { resolveProductImage, getProductPrice } from "@/lib/formatters";
 import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 import { freeShippingThresholdLabel } from "@/lib/shipping";
 
+const HERO_PRODUCT_ROTATION_MS = 6_000;
+
 export default function Home() {
   const [productTab, setProductTab] = useState<"featured" | "new">("featured");
+  const [heroProductIndex, setHeroProductIndex] = useState(0);
 
   const featuredQuery = useQuery({
     queryKey: ["products", "featured"],
@@ -46,7 +49,21 @@ export default function Home() {
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
     .map(toCategory);
 
-  const featuredProduct = featuredQuery.data?.products?.[0];
+  const featuredProducts = featuredQuery.data?.products ?? [];
+
+  useEffect(() => {
+    if (featuredProducts.length <= 1) return;
+
+    const interval = window.setInterval(() => {
+      setHeroProductIndex((currentIndex) => (currentIndex + 1) % featuredProducts.length);
+    }, HERO_PRODUCT_ROTATION_MS);
+
+    return () => window.clearInterval(interval);
+  }, [featuredProducts.length]);
+
+  const activeHeroProductIndex =
+    featuredProducts.length > 0 ? heroProductIndex % featuredProducts.length : 0;
+  const featuredProduct = featuredProducts[activeHeroProductIndex];
   const heroProduct = featuredProduct
     ? {
         id: featuredProduct.id,
@@ -235,6 +252,69 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Shop by Stage ── */}
+      <section className="bg-background border-border/40 border-y">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-foreground text-2xl font-bold sm:text-3xl">Shop by Stage</h2>
+              <p className="text-muted mt-1 text-sm">
+                Curated shortcuts for the moment you are shopping for.
+              </p>
+            </div>
+            <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
+              Browse all stages <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                icon: Baby,
+                title: "Newborn ready",
+                desc: "Diapers, wipes, swaddles and first-week basics.",
+                href: "/products?age_stage=Newborn%2B",
+                tint: "bg-primary-light text-primary",
+              },
+              {
+                icon: UtensilsCrossed,
+                title: "Feeding rhythm",
+                desc: "Bottles, pumps, bibs, puree and weaning tools.",
+                href: "/products?category=feeding",
+                tint: "bg-accent-yellow-light text-accent-yellow-ink",
+              },
+              {
+                icon: Truck,
+                title: "On the move",
+                desc: "Car seats, strollers, carriers and travel extras.",
+                href: "/products?category=baby-gear",
+                tint: "bg-secondary-light text-secondary",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Daily care",
+                desc: "Bath, diapering, skin care and safety essentials.",
+                href: "/products?category=bath-diapering",
+                tint: "bg-accent-green-light text-success-ink",
+              },
+            ].map((stage) => (
+              <Link
+                key={stage.title}
+                href={stage.href}
+                className="border-border/50 bg-card hover:border-border group rounded-2xl border p-5 transition hover:-translate-y-0.5 hover:shadow-sm"
+              >
+                <div
+                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stage.tint}`}
+                >
+                  <stage.icon className="h-5 w-5" />
+                </div>
+                <h3 className="text-foreground text-base font-bold">{stage.title}</h3>
+                <p className="text-muted mt-1 text-sm leading-relaxed">{stage.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Explore Our Collection (tabbed) ── */}
       <section className="bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -304,6 +384,88 @@ export default function Home() {
               </div>
             );
           })()}
+        </div>
+      </section>
+
+      {/* ── Parent Proof ── */}
+      <section
+        data-testid="home-parent-proof"
+        className="border-primary/10 border-y bg-[linear-gradient(135deg,#fff7fb_0%,#ffffff_48%,#eff8ff_100%)]"
+      >
+        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { icon: ShieldCheck, label: "Real baby brands", tone: "text-success-ink" },
+                { icon: Smartphone, label: "M-Pesa checkout", tone: "text-primary" },
+                { icon: Truck, label: "Nairobi dispatch", tone: "text-secondary" },
+              ].map((item) => (
+                <span
+                  key={item.label}
+                  className="border-border/50 text-foreground inline-flex items-center gap-1.5 rounded-full border bg-white/70 px-3 py-1.5 text-xs font-semibold shadow-sm"
+                >
+                  <item.icon className={`h-3.5 w-3.5 ${item.tone}`} aria-hidden="true" />
+                  {item.label}
+                </span>
+              ))}
+            </div>
+
+            <h2 className="text-foreground mt-5 max-w-2xl text-3xl leading-tight font-extrabold sm:text-4xl">
+              Made for the small things parents need fast.
+            </h2>
+            <p className="text-muted mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
+              From diapers and wipes to the spare onesie you forgot, Azani keeps everyday baby
+              shopping quick, local, and easy to pay for.
+            </p>
+
+            <blockquote className="border-primary/25 text-foreground mt-6 max-w-2xl border-l-4 pl-4 text-lg leading-relaxed font-semibold">
+              “I can top up the essentials before bedtime and still feel like I chose carefully.”
+            </blockquote>
+          </div>
+
+          <div className="grid gap-3 self-center sm:grid-cols-3 lg:grid-cols-1">
+            {[
+              {
+                icon: Star,
+                value: "10k+",
+                label: "parent baskets",
+                desc: "Curated for repeat weekly shops",
+                tone: "text-primary bg-primary-light",
+              },
+              {
+                icon: Truck,
+                value: "24h",
+                label: "Nairobi delivery",
+                desc: "Quick dispatch for urgent top-ups",
+                tone: "text-secondary bg-secondary-light",
+              },
+              {
+                icon: ShieldCheck,
+                value: "4.8",
+                label: "average rating",
+                desc: "Trusted picks across baby stages",
+                tone: "text-success-ink bg-accent-green-light",
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="border-border/60 flex items-center gap-4 rounded-2xl border bg-white/80 p-4 shadow-sm"
+              >
+                <span
+                  className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${stat.tone}`}
+                >
+                  <stat.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-foreground text-2xl font-extrabold">{stat.value}</p>
+                    <p className="text-foreground text-sm font-semibold">{stat.label}</p>
+                  </div>
+                  <p className="text-muted mt-0.5 text-xs leading-relaxed">{stat.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
