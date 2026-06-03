@@ -109,9 +109,25 @@ export default function CartPage() {
     () => new Map((cartProductsQuery.data ?? []).map((product) => [product.id, product])),
     [cartProductsQuery.data],
   );
+  // Cross-sell from the categories already in the cart when we know them (cart
+  // products carry categories in dev/mock and any env that returns them); fall
+  // back to a generic pull so the section still populates.
+  const cartCategoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const product of cartProductsById.values()) {
+      for (const category of product.categories ?? []) {
+        if (category?.id) ids.add(category.id);
+      }
+    }
+    return Array.from(ids);
+  }, [cartProductsById]);
   const recommendationsQuery = useQuery({
-    queryKey: ["cart-recommendations", cartProductIds],
-    queryFn: () => getProducts({ limit: 6 }),
+    queryKey: ["cart-recommendations", cartCategoryIds],
+    queryFn: () =>
+      getProducts({
+        limit: 8,
+        ...(cartCategoryIds.length > 0 ? { category_id: cartCategoryIds } : {}),
+      }),
     enabled: items.length > 0,
     staleTime: 5 * 60 * 1000,
   });

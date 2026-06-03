@@ -6,11 +6,12 @@ import { mockCart, mockEmptyCart, mockProduct } from "../fixtures";
 
 const mockGetCart = vi.fn();
 const mockGetProducts = vi.fn();
+const mockGetProductsByIds = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: (...args: unknown[]) => mockGetCart(...args),
   getProducts: (...args: unknown[]) => mockGetProducts(...args),
-  getProductsByIds: vi.fn().mockResolvedValue([]),
+  getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
   getWishlistProductIds: vi.fn().mockResolvedValue([]),
   toggleWishlistProduct: vi.fn().mockResolvedValue([]),
   addToCart: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
@@ -24,6 +25,7 @@ describe("CartPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 6 });
+    mockGetProductsByIds.mockResolvedValue([]);
   });
 
   it("renders empty cart state when no items", async () => {
@@ -125,6 +127,21 @@ describe("CartPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Add these too")).toBeInTheDocument();
       expect(screen.getByText("WaterWipes Baby Wipes")).toBeInTheDocument();
+    });
+  });
+
+  it("requests cross-sell from the categories already in the cart", async () => {
+    mockGetCart.mockResolvedValue(mockCart);
+    // The cart product carries categories: [{ id: "pcat_01" }].
+    mockGetProductsByIds.mockResolvedValue([mockProduct]);
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 8 });
+
+    renderWithProviders(<CartPage />);
+
+    await waitFor(() => {
+      expect(mockGetProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ category_id: expect.arrayContaining(["pcat_01"]) }),
+      );
     });
   });
 });

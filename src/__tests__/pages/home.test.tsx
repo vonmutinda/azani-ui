@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
 import { renderWithProviders } from "../test-utils";
 
@@ -115,6 +116,19 @@ describe("Home Page", () => {
     } finally {
       setIntervalSpy.mockRestore();
     }
+  });
+
+  it("lets shoppers pause the auto-rotating hero (WCAG 2.2.2)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Home />);
+
+    const pauseButton = await screen.findByRole("button", { name: "Pause product rotation" });
+    await user.click(pauseButton);
+
+    expect(screen.getByRole("button", { name: "Resume product rotation" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Pause product rotation" }),
+    ).not.toBeInTheDocument();
   });
 
   it("aligns the hero copy with the visual on desktop", () => {

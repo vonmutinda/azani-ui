@@ -188,8 +188,13 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
 
         {rating && (
           <div className="flex items-center gap-1.5">
-            <StarRating rating={rating.rating} total={rating.reviewCount} size={11} />
-            <span className="text-muted text-2xs font-semibold">{rating.rating.toFixed(1)}</span>
+            <span className="text-foreground text-2xs font-semibold">
+              {rating.rating.toFixed(1)}
+            </span>
+            <StarRating rating={rating.rating} size={11} />
+            {rating.reviewCount > 0 && (
+              <span className="text-muted text-2xs font-semibold">({rating.reviewCount})</span>
+            )}
           </div>
         )}
 

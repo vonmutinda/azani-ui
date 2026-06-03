@@ -257,4 +257,51 @@ describe("FilterSidebar", () => {
     await user.click(screen.getByRole("checkbox", { name: /Newborn\+/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ age_stage: "Newborn+" });
   });
+
+  it("keeps the first brand selected when a second brand is checked (multi-select)", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(
+      <FilterSidebar
+        {...defaultProps}
+        filters={{ brand: "Pampers" }}
+        onFilterChange={onFilterChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /WaterWipes/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ brand: "Pampers,WaterWipes" });
+  });
+
+  it("removes a single brand when its checkbox is unchecked", async () => {
+    const user = userEvent.setup();
+    const onFilterChange = vi.fn();
+    renderWithProviders(
+      <FilterSidebar
+        {...defaultProps}
+        filters={{ brand: "Pampers,WaterWipes" }}
+        onFilterChange={onFilterChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /Pampers/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ brand: "WaterWipes" });
+  });
+
+  it("marks every already-selected brand checkbox as checked", () => {
+    renderWithProviders(
+      <FilterSidebar {...defaultProps} filters={{ brand: "Pampers,Chicco" }} />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /Pampers/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Chicco/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /WaterWipes/i })).not.toBeChecked();
+  });
+
+  it("renders only the brand options it is given", () => {
+    renderWithProviders(<FilterSidebar {...defaultProps} brandOptions={["Pampers"]} />);
+
+    expect(screen.getByRole("checkbox", { name: /Pampers/i })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Chicco/i })).not.toBeInTheDocument();
+  });
 });
