@@ -10,7 +10,12 @@ import {
   parseCategoryParam,
   serializeCategoryParam,
 } from "@/lib/categories";
-import { AGE_STAGE_FILTERS, BRAND_FILTERS } from "@/lib/product-metadata";
+import {
+  AGE_STAGE_FILTERS,
+  BRAND_FILTERS,
+  parseFacetParam,
+  serializeFacetParam,
+} from "@/lib/product-metadata";
 import { CategoryIcon } from "@/components/category-icon";
 
 type Filters = Record<string, string | number | undefined>;
@@ -25,6 +30,9 @@ type Props = {
   filters: Filters;
   onFilterChange: (filters: Filters) => void;
   categories: MedusaProductCategory[];
+  /** Options derived from the loaded products; falls back to the canonical lists. */
+  brandOptions?: string[];
+  ageStageOptions?: string[];
 };
 
 function isSlugInTree(slug: string, cat: Category): boolean {
@@ -119,7 +127,13 @@ function CategoryItem({
   );
 }
 
-export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
+export function FilterSidebar({
+  filters,
+  onFilterChange,
+  categories,
+  brandOptions = BRAND_FILTERS,
+  ageStageOptions = AGE_STAGE_FILTERS,
+}: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
 
@@ -130,17 +144,35 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
   const selectedHandles = parseCategoryParam(
     typeof filters.category === "string" ? filters.category : undefined,
   );
+  const selectedBrands = parseFacetParam(filters.brand);
+  const selectedStages = parseFacetParam(filters.age_stage);
 
+  // Count each selected value (a CSV of two brands counts as two).
   const activeFilterCount =
     selectedHandles.length +
+    selectedBrands.length +
+    selectedStages.length +
     Object.entries(filters).filter(([key, value]) => {
-      if (key === "category") return false;
+      if (key === "category" || key === "brand" || key === "age_stage") return false;
       return value !== undefined && value !== "";
     }).length;
 
   const setFilter = useCallback(
     (key: string, value: string | number | undefined) => {
       onFilterChange({ ...filters, [key]: value });
+    },
+    [filters, onFilterChange],
+  );
+
+  // Multi-select facets (brand / age & stage): toggle a value in/out of the CSV,
+  // mirroring how multi-category selection works.
+  const toggleFacet = useCallback(
+    (key: "brand" | "age_stage", value: string) => {
+      const current = parseFacetParam(filters[key]);
+      const next = current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value];
+      onFilterChange({ ...filters, [key]: serializeFacetParam(next) });
     },
     [filters, onFilterChange],
   );
@@ -239,45 +271,49 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         </label>
       </div>
 
-      <fieldset className="border-border/50 border-t pt-4">
-        <legend className="text-foreground mb-1 text-sm font-semibold">Brand</legend>
-        <div className="space-y-0.5">
-          {BRAND_FILTERS.map((brand) => (
-            <label
-              key={brand}
-              className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
-            >
-              <input
-                type="checkbox"
-                checked={filters.brand === brand}
-                onChange={(e) => setFilter("brand", e.target.checked ? brand : undefined)}
-                className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              />
-              <span className="text-foreground">{brand}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {brandOptions.length > 0 && (
+        <fieldset className="border-border/50 border-t pt-4">
+          <legend className="text-foreground mb-1 text-sm font-semibold">Brand</legend>
+          <div className="space-y-0.5">
+            {brandOptions.map((brand) => (
+              <label
+                key={brand}
+                className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedBrands.includes(brand)}
+                  onChange={() => toggleFacet("brand", brand)}
+                  className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                />
+                <span className="text-foreground">{brand}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
-      <fieldset className="border-border/50 border-t pt-4">
-        <legend className="text-foreground mb-1 text-sm font-semibold">Age & stage</legend>
-        <div className="space-y-0.5">
-          {AGE_STAGE_FILTERS.map((stage) => (
-            <label
-              key={stage}
-              className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
-            >
-              <input
-                type="checkbox"
-                checked={filters.age_stage === stage}
-                onChange={(e) => setFilter("age_stage", e.target.checked ? stage : undefined)}
-                className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              />
-              <span className="text-foreground">{stage}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {ageStageOptions.length > 0 && (
+        <fieldset className="border-border/50 border-t pt-4">
+          <legend className="text-foreground mb-1 text-sm font-semibold">Age & stage</legend>
+          <div className="space-y-0.5">
+            {ageStageOptions.map((stage) => (
+              <label
+                key={stage}
+                className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedStages.includes(stage)}
+                  onChange={() => toggleFacet("age_stage", stage)}
+                  className="accent-primary focus-visible:ring-primary/30 h-4 w-4 shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                />
+                <span className="text-foreground">{stage}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset className="border-border/50 border-t pt-4">
         <legend className="text-foreground mb-1 text-sm font-semibold">Price</legend>

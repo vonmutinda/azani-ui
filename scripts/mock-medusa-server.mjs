@@ -133,10 +133,14 @@ function product({
     status: "published",
     is_giftcard: false,
     discountable: true,
-    images: [
-      { id: `img_${id}_1`, url: image },
-      { id: `img_${id}_2`, url: image.startsWith("http") ? `${image}&sat=-15` : image },
-    ],
+    // Remote (Unsplash) images get a second, tinted variant for the gallery; the
+    // local SVG mocks have no such trick, so we don't fake a duplicate thumbnail.
+    images: image.startsWith("http")
+      ? [
+          { id: `img_${id}_1`, url: image },
+          { id: `img_${id}_2`, url: `${image}&sat=-15` },
+        ]
+      : [{ id: `img_${id}_1`, url: image }],
     options: variants.length > 0 ? [option] : [],
     variants: productVariants,
     categories: cats,

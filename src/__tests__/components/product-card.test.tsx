@@ -106,6 +106,17 @@ describe("ProductCard", () => {
     expect(screen.queryByText("New")).not.toBeInTheDocument();
   });
 
+  it("shows the rating but omits the count when there are no reviews yet", () => {
+    const noReviews = {
+      ...mockProduct,
+      metadata: { ...mockProduct.metadata, rating: 4.5, review_count: 0 },
+    };
+    renderWithProviders(<ProductCard product={noReviews} />);
+
+    expect(screen.getByText("4.5")).toBeInTheDocument();
+    expect(screen.queryByText("(0)")).not.toBeInTheDocument();
+  });
+
   it("has add to cart button when variant exists", () => {
     renderWithProviders(<ProductCard product={mockProduct} />);
     const addButton = screen.getByRole("button", { name: "Add to cart" });

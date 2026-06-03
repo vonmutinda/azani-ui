@@ -223,4 +223,74 @@ describe("ProductsPage", () => {
 
     expect(mockRouterPush).toHaveBeenCalledWith("/products?brand=Pampers");
   });
+
+  it("filters by multiple brands as an OR over the window", async () => {
+    const waterwipes = {
+      ...mockProduct,
+      id: "prod_ww",
+      title: "WaterWipes Baby Wipes",
+      metadata: { ...mockProduct.metadata, brand: "WaterWipes" },
+    };
+    const chicco = {
+      ...mockProduct,
+      id: "prod_ch",
+      title: "Chicco Convertible Car Seat",
+      metadata: { ...mockProduct.metadata, brand: "Chicco" },
+    };
+    searchParamsRef.current = new URLSearchParams("brand=Pampers,WaterWipes");
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct, waterwipes, chicco],
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
+      expect(screen.getByText("WaterWipes Baby Wipes")).toBeInTheDocument();
+    });
+    // Chicco is excluded — its brand isn't in the selection.
+    expect(screen.queryByText("Chicco Convertible Car Seat")).not.toBeInTheDocument();
+    // One removable chip per selected brand value.
+    expect(screen.getByText("Brand: Pampers")).toBeInTheDocument();
+    expect(screen.getByText("Brand: WaterWipes")).toBeInTheDocument();
+  });
+
+  it("adds a second brand to the query string as a comma-joined list", async () => {
+    const waterwipes = {
+      ...mockProduct,
+      id: "prod_ww",
+      title: "WaterWipes Baby Wipes",
+      metadata: { ...mockProduct.metadata, brand: "WaterWipes" },
+    };
+    searchParamsRef.current = new URLSearchParams("brand=Pampers");
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct, waterwipes],
+      count: 2,
+      offset: 0,
+      limit: 100,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    await screen.findByText("Pampers Baby Dry Diapers");
+    // The WaterWipes option stays available even though it's filtered out of the grid.
+    await userEvent.click(screen.getByRole("checkbox", { name: /WaterWipes/i }));
+
+    expect(mockRouterPush).toHaveBeenCalledWith("/products?brand=Pampers%2CWaterWipes");
+  });
 });

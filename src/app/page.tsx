@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Baby,
+  Pause,
+  Play,
   ShieldCheck,
   Shirt,
   Smartphone,
@@ -28,6 +30,11 @@ const HERO_PRODUCT_ROTATION_MS = 6_000;
 export default function Home() {
   const [productTab, setProductTab] = useState<"featured" | "new">("featured");
   const [heroProductIndex, setHeroProductIndex] = useState(0);
+  // WCAG 2.2.2: the hero auto-advances, so give users a way to stop it. A manual
+  // toggle is the explicit control; hover/focus pauses while they read.
+  const [heroManuallyPaused, setHeroManuallyPaused] = useState(false);
+  const [heroHovered, setHeroHovered] = useState(false);
+  const heroRotationPaused = heroManuallyPaused || heroHovered;
 
   const featuredQuery = useQuery({
     queryKey: ["products", "featured"],
@@ -53,13 +60,22 @@ export default function Home() {
 
   useEffect(() => {
     if (featuredProducts.length <= 1) return;
+    if (heroRotationPaused) return;
+
+    // Respect reduced-motion preferences (guarded for jsdom/SSR where matchMedia
+    // may be unavailable).
+    const reducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
+    if (reducedMotion) return;
 
     const interval = window.setInterval(() => {
       setHeroProductIndex((currentIndex) => (currentIndex + 1) % featuredProducts.length);
     }, HERO_PRODUCT_ROTATION_MS);
 
     return () => window.clearInterval(interval);
-  }, [featuredProducts.length]);
+  }, [featuredProducts.length, heroRotationPaused]);
 
   const activeHeroProductIndex =
     featuredProducts.length > 0 ? heroProductIndex % featuredProducts.length : 0;
@@ -152,6 +168,10 @@ export default function Home() {
           <div
             data-testid="home-hero-carousel"
             className="hero-fade-in-delay flex w-full max-w-[440px] flex-1 items-center justify-center xl:max-w-[520px]"
+            onMouseEnter={() => setHeroHovered(true)}
+            onMouseLeave={() => setHeroHovered(false)}
+            onFocus={() => setHeroHovered(true)}
+            onBlur={() => setHeroHovered(false)}
           >
             <div className="relative aspect-square w-full">
               <div
@@ -219,6 +239,24 @@ export default function Home() {
                 <Smartphone className="text-success-ink h-3.5 w-3.5" />
                 <span className="text-foreground">Pay with M-Pesa</span>
               </div>
+
+              {featuredProducts.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setHeroManuallyPaused((paused) => !paused)}
+                  aria-pressed={heroManuallyPaused}
+                  aria-label={
+                    heroManuallyPaused ? "Resume product rotation" : "Pause product rotation"
+                  }
+                  className="text-foreground/70 hover:text-foreground focus-visible:ring-primary/30 absolute right-3 bottom-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
+                  {heroManuallyPaused ? (
+                    <Play className="h-4 w-4" fill="currentColor" />
+                  ) : (
+                    <Pause className="h-4 w-4" fill="currentColor" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

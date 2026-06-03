@@ -16,9 +16,21 @@ import {
   resolveCategoryIds,
   findMedusaCategory,
 } from "@/lib/categories";
-import { matchesMetadataFacet } from "@/lib/product-metadata";
+import {
+  matchesMetadataFacet,
+  parseFacetParam,
+  serializeFacetParam,
+  collectFacetOptions,
+} from "@/lib/product-metadata";
 
 type Filters = Record<string, string | number | undefined>;
+
+// When client-side facets (availability/price/brand/stage) or client-side sort
+// are in play we work over an in-memory window of the category/search context
+// rather than a single server page — so faceting, sorting, and pagination all
+// agree. Catalogues larger than this window surface a "showing first N" note.
+const CATALOG_WINDOW = 100;
+const PAGE_SIZE = 20;
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured", order: undefined },
@@ -68,8 +80,15 @@ function ProductsContent() {
   const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
 
   const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = 20;
-  const offset = (page - 1) * limit;
+
+  // Client-side facets — parsed up front. They no longer narrow the server query
+  // (that would only see one page); instead they filter the in-memory window.
+  const brandFilters = useMemo(() => parseFacetParam(filters.brand), [filters.brand]);
+  const ageStageFilters = useMemo(() => parseFacetParam(filters.age_stage), [filters.age_stage]);
+  const inStockOnly = filters.availability === "in_stock";
+  const priceBracket = filters.price ? String(filters.price) : undefined;
+  const hasClientFacets =
+    inStockOnly || !!priceBracket || brandFilters.length > 0 || ageStageFilters.length > 0;
 
   const categoriesQuery = useQuery({
     queryKey: ["categories-sidebar"],
@@ -92,21 +111,25 @@ function ProductsContent() {
     [hasCategoryFilter, categoryTree, categoryHandles],
   );
 
+  // The data query depends only on what the *server* narrows by (category /
+  // search / sort order) — facets, sort ties, and pagination are resolved
+  // client-side over the returned window, so changing them never refetches.
+  const sortOrder = getSortOrder(sort);
   const productsQuery = useQuery({
-    queryKey: ["products", "list", { ...filters, sort, page, categoryIds }],
+    queryKey: ["products", "list", { categoryIds, q: filters.q, order: sortOrder }],
     queryFn: () => {
       // Selected categories that resolve to no ids yield no products — don't
       // fall back to fetching the whole catalogue.
       if (hasCategoryFilter && categoryIds && categoryIds.length === 0) {
-        return Promise.resolve({ products: [], count: 0, offset, limit });
+        return Promise.resolve({ products: [], count: 0, offset: 0, limit: CATALOG_WINDOW });
       }
 
       return getProducts({
-        limit,
-        offset,
+        limit: CATALOG_WINDOW,
+        offset: 0,
         ...(categoryIds && categoryIds.length > 0 ? { category_id: categoryIds } : {}),
         ...(filters.q ? { q: String(filters.q) } : {}),
-        ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
+        ...(sortOrder ? { order: sortOrder } : {}),
       });
     },
     // Wait for the category tree before filtering so the ids resolve correctly.
@@ -114,8 +137,10 @@ function ProductsContent() {
   });
 
   const products = useMemo(() => productsQuery.data?.products ?? [], [productsQuery.data]);
-  // Medusa can't order by calculated price, so price sorts happen client-side
-  // over the current page.
+  const serverCount = productsQuery.data?.count ?? products.length;
+
+  // Medusa can't order by calculated price, so price/newest sorts are resolved
+  // client-side — now across the whole window, not just one page.
   const sortedProducts = useMemo(() => {
     const copy = [...products];
     if (sort === "price_asc") {
@@ -138,15 +163,22 @@ function ProductsContent() {
     return products;
   }, [products, sort]);
 
-  // Availability, price, brand, and stage facets, applied client-side over the current page
-  // (category/sort already narrow the server query; full server-side faceting
-  // is the production follow-up).
-  const inStockOnly = filters.availability === "in_stock";
-  const priceBracket = filters.price ? String(filters.price) : undefined;
-  const brandFilter = filters.brand ? String(filters.brand) : undefined;
-  const ageStageFilter = filters.age_stage ? String(filters.age_stage) : undefined;
-  const visibleProducts = useMemo(() => {
-    if (!inStockOnly && !priceBracket && !brandFilter && !ageStageFilter) return sortedProducts;
+  // Facet options come from the window (the real catalogue for this context), so
+  // we never offer a brand/stage with no matching product; selected values stay
+  // visible even when nothing in the current set carries them.
+  const brandOptions = useMemo(
+    () => collectFacetOptions(products, "brand", brandFilters),
+    [products, brandFilters],
+  );
+  const ageStageOptions = useMemo(
+    () => collectFacetOptions(products, "age_stage", ageStageFilters),
+    [products, ageStageFilters],
+  );
+
+  // Availability/price/brand/stage facets — OR within a facet, AND across them —
+  // applied over the whole window so results are complete, not per-page.
+  const filteredProducts = useMemo(() => {
+    if (!hasClientFacets) return sortedProducts;
     return sortedProducts.filter((product) => {
       if (inStockOnly && !(product.variants ?? []).some((v) => getVariantAvailability(v).inStock)) {
         return false;
@@ -155,16 +187,23 @@ function ProductsContent() {
         const amount = getProductPrice(product)?.amount;
         if (amount == null || !matchesPriceBracket(amount, priceBracket)) return false;
       }
-      if (!matchesMetadataFacet(product, "brand", brandFilter)) return false;
-      if (!matchesMetadataFacet(product, "age_stage", ageStageFilter)) return false;
+      if (!matchesMetadataFacet(product, "brand", brandFilters)) return false;
+      if (!matchesMetadataFacet(product, "age_stage", ageStageFilters)) return false;
       return true;
     });
-  }, [sortedProducts, inStockOnly, priceBracket, brandFilter, ageStageFilter]);
-  const hasClientFacets = inStockOnly || !!priceBracket || !!brandFilter || !!ageStageFilter;
+  }, [sortedProducts, hasClientFacets, inStockOnly, priceBracket, brandFilters, ageStageFilters]);
 
-  const total = productsQuery.data?.count ?? 0;
-  const shownCount = hasClientFacets ? visibleProducts.length : total;
-  const totalPages = Math.ceil(total / limit);
+  // Pagination is client-side over the filtered window, so the page count always
+  // matches what the facets actually return (no more orphaned pages).
+  const matchedCount = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(matchedCount / PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const visibleProducts = filteredProducts.slice(pageStart, pageStart + PAGE_SIZE);
+  const shownCount = matchedCount;
+  // The window bounds how much we hold in memory — surface it rather than
+  // silently dropping the tail of a very large context.
+  const isWindowTruncated = serverCount > products.length;
 
   const updateQuery = useCallback(
     (newFilters: Filters) => {
@@ -210,10 +249,11 @@ function ProductsContent() {
 
   const activeFilterCount =
     categoryHandles.length +
-    Object.entries(filters).filter(([key, value]) => {
-      if (key === "category") return false;
-      return value !== undefined && value !== "";
-    }).length;
+    brandFilters.length +
+    ageStageFilters.length +
+    (filters.q ? 1 : 0) +
+    (inStockOnly ? 1 : 0) +
+    (priceBracket ? 1 : 0);
 
   // When exactly one category is selected we still show its name/description and
   // its children (the drill-in chips); multiple selections fall back to generic.
@@ -262,6 +302,12 @@ function ProductsContent() {
                 <p className="text-muted mt-2 text-sm">
                   {shownCount} product{shownCount !== 1 ? "s" : ""} found
                 </p>
+                {isWindowTruncated && (
+                  <p className="text-muted-light mt-1 text-xs">
+                    Showing the first {products.length} of {serverCount} — narrow with filters or a
+                    category to see the rest.
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -317,6 +363,8 @@ function ProductsContent() {
             updateQuery(newFilters);
           }}
           categories={categoriesQuery.data?.product_categories ?? []}
+          brandOptions={brandOptions}
+          ageStageOptions={ageStageOptions}
         />
 
         <div className="min-w-0 flex-1">
@@ -362,32 +410,48 @@ function ProductsContent() {
                   </button>
                 </span>
               )}
-              {brandFilter && (
-                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+              {brandFilters.map((brand) => (
+                <span
+                  key={`brand-${brand}`}
+                  className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm"
+                >
                   <Tag className="text-muted h-3 w-3" />
-                  <span className="text-foreground font-medium">Brand: {brandFilter}</span>
+                  <span className="text-foreground font-medium">Brand: {brand}</span>
                   <button
-                    onClick={() => updateQuery({ brand: undefined })}
+                    onClick={() =>
+                      updateQuery({
+                        brand: serializeFacetParam(brandFilters.filter((b) => b !== brand)),
+                      })
+                    }
                     className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
-                    aria-label={`Remove ${brandFilter} brand filter`}
+                    aria-label={`Remove ${brand} brand filter`}
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </span>
-              )}
-              {ageStageFilter && (
-                <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
+              ))}
+              {ageStageFilters.map((stage) => (
+                <span
+                  key={`stage-${stage}`}
+                  className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm"
+                >
                   <Tag className="text-muted h-3 w-3" />
-                  <span className="text-foreground font-medium">Stage: {ageStageFilter}</span>
+                  <span className="text-foreground font-medium">Stage: {stage}</span>
                   <button
-                    onClick={() => updateQuery({ age_stage: undefined })}
+                    onClick={() =>
+                      updateQuery({
+                        age_stage: serializeFacetParam(
+                          ageStageFilters.filter((s) => s !== stage),
+                        ),
+                      })
+                    }
                     className="text-muted hover:bg-foreground/[0.06] hover:text-foreground ml-0.5 flex h-5 w-5 items-center justify-center rounded-full transition"
-                    aria-label={`Remove ${ageStageFilter} stage filter`}
+                    aria-label={`Remove ${stage} stage filter`}
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </span>
-              )}
+              ))}
               {inStockOnly && (
                 <span className="border-border/50 bg-card inline-flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-sm">
                   <Tag className="text-muted h-3 w-3" />
@@ -488,7 +552,7 @@ function ProductsContent() {
                 ))}
               </div>
 
-              {totalPages > 1 && !hasClientFacets && (
+              {totalPages > 1 && (
                 <div className="mt-8 flex justify-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <button
@@ -499,7 +563,7 @@ function ProductsContent() {
                         router.push(`/products?${params.toString()}`);
                       }}
                       className={`focus-visible:ring-primary/30 flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                        p === page
+                        p === safePage
                           ? "bg-foreground text-white"
                           : "border-border/50 text-muted hover:border-border hover:text-foreground border bg-white"
                       }`}
