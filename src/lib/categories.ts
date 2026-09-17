@@ -97,12 +97,12 @@ export function isRetiredCategoryHandle(handle: string): boolean {
 /** Icon mapping for the canonical garment handles. */
 const CATEGORY_ICONS: Record<string, string> = {
   tops: "shirt",
-  bottoms: "layout",
-  "dresses-jumpsuits": "sparkles",
-  "sets-outfits": "gift",
-  "knitwear-outerwear": "cloud",
+  bottoms: "trousers",
+  "dresses-jumpsuits": "dress",
+  "sets-outfits": "outfit",
+  "knitwear-outerwear": "jacket",
   sleepwear: "moon",
-  "underwear-socks": "footprints",
+  "underwear-socks": "socks",
 };
 
 /** Compatibility name used by existing category-tree consumers. */

@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
-import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
+import { Nunito, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
-import { FloatingWhatsApp } from "@/components/floating-whatsapp";
+import { StoreShell } from "@/components/store-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +14,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
@@ -50,19 +47,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} antialiased`}
       >
         <Providers>
-          <div className="bg-background text-foreground flex min-h-screen flex-col">
-            <Suspense>
-              <SiteHeader />
-            </Suspense>
-            <main className="flex-1">{children}</main>
-            <SiteFooter />
-            <FloatingWhatsApp />
-          </div>
+          <StoreShell>{children}</StoreShell>
         </Providers>
       </body>
     </html>

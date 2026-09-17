@@ -27,6 +27,7 @@ import {
   Thermometer,
   UtensilsCrossed,
 } from "lucide-react";
+import { GarmentIcon } from "@/components/garment-icon";
 
 const iconMap: Record<string, React.ElementType> = {
   baby: Baby,
@@ -97,9 +98,23 @@ type Props = {
 };
 
 export function CategoryIcon({ icon, className, size = 20, colored }: Props) {
+  if (["dress", "trousers", "jacket", "outfit", "socks"].includes(icon)) {
+    return (
+      <GarmentIcon
+        name={icon}
+        className={`${colored ? "text-secondary" : ""} ${className ?? ""}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   const Icon = iconMap[icon] ?? Baby;
   const colorClass = colored ? (ICON_COLORS[icon] ?? "") : "";
   return (
-    <Icon className={`${colorClass} ${className ?? ""}`} style={{ width: size, height: size }} />
+    <Icon
+      aria-hidden="true"
+      strokeWidth={1.5}
+      className={`${colorClass} ${className ?? ""}`}
+      style={{ width: size, height: size }}
+    />
   );
 }

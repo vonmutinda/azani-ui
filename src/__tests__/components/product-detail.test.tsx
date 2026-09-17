@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { ProductDetail } from "@/components/product-detail";
 import { renderWithProviders } from "../test-utils";
 import { mockProduct } from "../fixtures";
-import { freeShippingThresholdLabel } from "@/lib/shipping";
 import type { MedusaProduct } from "@/types/medusa";
 
 const mockGetProductById = vi.fn();
@@ -46,6 +45,51 @@ describe("ProductDetail", () => {
       expect(screen.getByRole("heading", { name: "Pampers Baby Dry Diapers" })).toBeInTheDocument();
     });
     expect(screen.getByText("KSh85,000.00")).toBeInTheDocument();
+  });
+
+  it("uses the page heading for a standalone product", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} headingLevel={1} />);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: mockProduct.title }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps embedded product headings below the page heading", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    expect(
+      await screen.findByRole("heading", { level: 2, name: mockProduct.title }),
+    ).toBeInTheDocument();
+  });
+
+  it("groups product options under their accessible option name", async () => {
+    mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    const options = await screen.findByRole("group", { name: "Pack Size" });
+    expect(within(options).getByRole("button", { name: "24 Count" })).toBeInTheDocument();
+    expect(within(options).getByRole("button", { name: "50 Count" })).toBeInTheDocument();
+  });
+
+  it("names quantity controls and prevents going below one or above available stock", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        variants: [{ ...mockProduct.variants![0], manage_inventory: true, inventory_quantity: 2 }],
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    const decrease = await screen.findByRole("button", { name: "Decrease quantity" });
+    const increase = screen.getByRole("button", { name: "Increase quantity" });
+    expect(decrease).toBeDisabled();
+    await user.click(increase);
+    expect(screen.getByLabelText("Selected quantity")).toHaveTextContent("2");
+    expect(increase).toBeDisabled();
+    expect(decrease).toBeEnabled();
+    await user.click(decrease);
+    expect(screen.getByLabelText("Selected quantity")).toHaveTextContent("1");
+    expect(decrease).toBeDisabled();
   });
 
   it("renders product description", async () => {
@@ -275,15 +319,17 @@ describe("ProductDetail", () => {
     expect(screen.getByText("-15%")).toBeInTheDocument();
   });
 
-  it("renders the buy-box trust row (delivery, M-Pesa, returns)", async () => {
+  it("links to delivery and returns policies without promising universal free delivery", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 
     renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
     await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
 
-    expect(
-      screen.getByText(`Free delivery on orders over ${freeShippingThresholdLabel()}`),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Delivery policy" })).toHaveAttribute(
+      "href",
+      "/policies/shipping",
+    );
+    expect(screen.queryByText(/Free delivery on orders/i)).not.toBeInTheDocument();
     expect(screen.getByText("Pay securely with M-Pesa")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /returns/i })).toHaveAttribute(
       "href",
@@ -305,13 +351,22 @@ describe("ProductDetail", () => {
     expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
   });
 
-  it("shows a 'No reviews yet' empty state when there is no rating data", async () => {
+  it("omits ratings when there is no actual review data", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 
     renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
     await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
 
-    expect(screen.getByText("No reviews yet")).toBeInTheDocument();
+    expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
+  });
+
+  it("does not present a rating without a positive review count", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: { ...mockProduct, metadata: { rating: 4.5, review_count: 0 } },
+    });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: mockProduct.title });
+    expect(screen.queryByText(/0 reviews/i)).not.toBeInTheDocument();
   });
 
   it("shows the description in an accordion section open by default", async () => {

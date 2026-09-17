@@ -62,8 +62,10 @@ export function ProductGallery({ thumbnail, images = [], title }: Props) {
               onClick={() => showImageAt(i)}
               aria-label={`Show image ${i + 1} of ${title}`}
               aria-current={i === safeIndex ? "true" : undefined}
-              className={`bg-background focus-visible:ring-primary/30 relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                i === safeIndex ? "border-foreground" : "border-border/50 hover:border-foreground/30"
+              className={`bg-background focus-visible:ring-primary/30 relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                i === safeIndex
+                  ? "border-foreground"
+                  : "border-foreground/30 hover:border-foreground/60"
               }`}
             >
               {failed.has(image.url) ? (
@@ -86,11 +88,14 @@ export function ProductGallery({ thumbnail, images = [], title }: Props) {
       )}
 
       <div className="order-1 flex-1 lg:order-2">
-        <div className="border-border/50 bg-background relative aspect-square overflow-hidden rounded-2xl border">
+        <div className="bg-background relative aspect-square overflow-hidden rounded-xl">
           {active && !activeFailed ? (
             <>
               {activeLoading && (
-                <div className="bg-border/40 absolute inset-0 z-10 animate-pulse" aria-hidden="true" />
+                <div
+                  className="bg-border/40 absolute inset-0 z-10 animate-pulse"
+                  aria-hidden="true"
+                />
               )}
               <Image
                 src={active.url}
@@ -116,7 +121,7 @@ export function ProductGallery({ thumbnail, images = [], title }: Props) {
                 type="button"
                 onClick={() => showImageAt(safeIndex - 1)}
                 aria-label="Show previous image"
-                className="border-border/60 bg-card/90 text-foreground hover:bg-card focus-visible:ring-primary/30 absolute top-1/2 left-3 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm backdrop-blur transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="border-border/60 bg-card/90 text-foreground hover:bg-card focus-visible:ring-primary/30 absolute top-1/2 left-3 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border shadow-sm backdrop-blur transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -124,11 +129,11 @@ export function ProductGallery({ thumbnail, images = [], title }: Props) {
                 type="button"
                 onClick={() => showImageAt(safeIndex + 1)}
                 aria-label="Show next image"
-                className="border-border/60 bg-card/90 text-foreground hover:bg-card focus-visible:ring-primary/30 absolute top-1/2 right-3 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm backdrop-blur transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="border-border/60 bg-card/90 text-foreground hover:bg-card focus-visible:ring-primary/30 absolute top-1/2 right-3 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border shadow-sm backdrop-blur transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
-              <div className="text-foreground border-border/60 bg-card/90 absolute right-3 bottom-3 z-20 rounded-full border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur">
+              <div className="text-foreground border-border/60 bg-card/90 absolute right-3 bottom-3 z-20 rounded-lg border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur">
                 {safeIndex + 1} / {allImages.length}
               </div>
             </>

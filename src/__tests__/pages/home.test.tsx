@@ -63,21 +63,29 @@ describe("Home Page", () => {
 
   it("introduces clothing for kids ages 2–12", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Clothing for Every Kid")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Little clothes. Big adventures." }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/ages 2–12/i).length).toBeGreaterThan(0);
   });
 
-  it("gives the hero product carousel more desktop presence", () => {
+  it("links each age group to the matching catalogue filter", () => {
     renderWithProviders(<Home />);
-
-    expect(screen.getByTestId("home-hero-layout")).toHaveClass("lg:gap-8");
-    expect(screen.getByTestId("home-hero-carousel")).toHaveClass("xl:max-w-[520px]");
+    for (const [label, age] of [
+      ["2–4 years", "2-4"],
+      ["5–8 years", "5-8"],
+      ["9–12 years", "9-12"],
+    ]) {
+      expect(screen.getByRole("link", { name: new RegExp(label) })).toHaveAttribute(
+        "href",
+        `/products?age=${age}`,
+      );
+    }
   });
 
-  it("aligns the hero copy with the visual on desktop", () => {
+  it("requests new arrivals in newest order", async () => {
     renderWithProviders(<Home />);
-
-    expect(screen.getByTestId("home-hero-copy")).toHaveClass("lg:self-start");
+    await waitFor(() => expect(getProducts).toHaveBeenCalledWith({ limit: 8, sort: "newest" }));
   });
 
   it("renders 'Shop Now' link", () => {
@@ -88,20 +96,20 @@ describe("Home Page", () => {
 
   it("renders explore collection section heading", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Explore Our Collection")).toBeInTheDocument();
+    expect(screen.getByText("New arrivals")).toBeInTheDocument();
   });
 
-  it("renders shop by category section heading", () => {
+  it("renders shop by category section heading", async () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Shop by Category")).toBeInTheDocument();
+    expect(await screen.findByText("Shop by Category")).toBeInTheDocument();
   });
 
   it("renders feature bar items", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Free Shipping")).toBeInTheDocument();
-    expect(screen.getByText("Same-Day Express")).toBeInTheDocument();
-    expect(screen.getByText("Ages 2–12")).toBeInTheDocument();
-    expect(screen.getByText("Sizing Help")).toBeInTheDocument();
+    expect(screen.getByText("See delivery options and costs at checkout.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Check the size guide on each product before choosing."),
+    ).toBeInTheDocument();
   });
 
   it("loads and renders product cards", async () => {

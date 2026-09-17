@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { MedusaProductCategory } from "@/types/medusa";
 import {
   toCategory,
@@ -25,6 +25,8 @@ type Props = {
   onFilterChange: (filters: Filters) => void;
   categories: MedusaProductCategory[];
   facets?: { sizes: string[]; colours: string[] };
+  resultCount?: number;
+  isUpdating?: boolean;
 };
 
 function isSlugInTree(slug: string, cat: Category): boolean {
@@ -70,7 +72,7 @@ function CategoryItem({
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={`${open ? "Collapse" : "Expand"} ${cat.name}`}
-            className="text-muted hover:text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition"
+            className="text-muted hover:text-foreground focus-visible:ring-primary flex h-11 w-8 shrink-0 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none"
           >
             {open ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -119,9 +121,18 @@ function CategoryItem({
   );
 }
 
-export function FilterSidebar({ filters, onFilterChange, categories, facets }: Props) {
+export function FilterSidebar({
+  filters,
+  onFilterChange,
+  categories,
+  facets,
+  resultCount,
+  isUpdating = false,
+}: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerId = useId();
 
   const topCategories = categories
     .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
@@ -161,14 +172,56 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
   useEffect(() => {
     if (!mobileOpen) return;
 
-    mobileDrawerRef.current?.focus();
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const focusableElements = () =>
+      Array.from(
+        mobileDrawerRef.current?.querySelectorAll<HTMLElement>(
+          ':is(button, select, input, a[href], [tabindex="0"]):not(:disabled)',
+        ) ?? [],
+      );
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileOpen(false);
+      }
+      if (event.key !== "Tab") return;
+      const controls = focusableElements();
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    const keepFocusInDrawer = (event: FocusEvent) => {
+      if (event.target instanceof Node && !mobileDrawerRef.current?.contains(event.target)) {
+        closeButtonRef.current?.focus();
+      }
+    };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const handleViewportChange = () => {
+      if (desktop.matches) setMobileOpen(false);
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("focusin", keepFocusInDrawer);
+    desktop.addEventListener("change", handleViewportChange);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("focusin", keepFocusInDrawer);
+      desktop.removeEventListener("change", handleViewportChange);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
   }, [mobileOpen]);
 
   const content = (
@@ -176,7 +229,7 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
       <div className="flex items-center justify-between">
         <h3 className="text-foreground flex items-center gap-2 text-sm font-semibold">
           <SlidersHorizontal className="h-3.5 w-3.5" />
-          Browse
+          Filters
           {activeFilterCount > 0 && (
             <span className="bg-foreground rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
               {activeFilterCount}
@@ -199,7 +252,7 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
                 sale: undefined,
               })
             }
-            className="text-muted hover:text-foreground rounded-full px-1 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="text-muted hover:text-foreground min-h-11 rounded-lg px-1 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Clear all
           </button>
@@ -265,7 +318,7 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
               aria-label={label}
               value={String(filters[key] ?? "")}
               onChange={(event) => setFilter(key, event.target.value || undefined)}
-              className="mt-1 block w-full rounded-lg border bg-white p-2"
+              className="border-border focus-visible:ring-primary mt-1 block min-h-11 w-full rounded-lg border bg-white px-2.5 py-2 focus-visible:ring-2 focus-visible:outline-none"
             >
               <option value="">
                 All {label === "Shop for" ? "children" : label.toLowerCase() + "s"}
@@ -336,8 +389,11 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
   return (
     <>
       <button
+        type="button"
         onClick={() => setMobileOpen(true)}
-        className="border-border text-foreground hover:bg-foreground/[0.04] flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
+        aria-expanded={mobileOpen}
+        aria-controls={mobileOpen ? drawerId : undefined}
+        className="border-border text-foreground hover:bg-foreground/[0.04] flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border bg-white px-3 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:hidden"
       >
         <SlidersHorizontal className="h-4 w-4" />
         Filters
@@ -349,7 +405,7 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
       </button>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-[70] flex lg:hidden">
           <div
             data-testid="filters-drawer-backdrop"
             className="bg-foreground/20 absolute inset-0 backdrop-blur-sm"
@@ -357,20 +413,58 @@ export function FilterSidebar({ filters, onFilterChange, categories, facets }: P
           />
           <div
             ref={mobileDrawerRef}
+            id={drawerId}
             role="dialog"
             aria-label="Filters"
             aria-modal="true"
+            aria-describedby={`${drawerId}-description`}
             tabIndex={-1}
-            className="bg-card relative mr-auto h-full w-80 max-w-[85vw] overflow-y-auto p-6 shadow-xl focus-visible:outline-none"
+            className="bg-card relative mr-auto flex h-dvh w-96 max-w-[92vw] flex-col shadow-xl focus-visible:outline-none"
           >
-            {content}
+            <div className="border-border flex shrink-0 items-center justify-between border-b px-5 py-3">
+              <h2 className="text-lg font-semibold">Refine your selection</h2>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                aria-label="Close filters"
+                onClick={() => setMobileOpen(false)}
+                className="text-muted hover:text-foreground focus-visible:ring-primary flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <X className="h-4 w-4" /> Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+              <p id={`${drawerId}-description`} className="text-muted mb-4 text-xs">
+                Filters update as you choose. Show items to return to the collection.
+              </p>
+              {content}
+            </div>
+            <div className="border-border shrink-0 border-t bg-white px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                disabled={isUpdating}
+                onClick={() => setMobileOpen(false)}
+                className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait disabled:opacity-70"
+              >
+                {isUpdating
+                  ? "Updating items…"
+                  : resultCount === undefined
+                    ? "Show items"
+                    : `Show ${resultCount} item${resultCount === 1 ? "" : "s"}`}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <aside className="hidden w-[280px] shrink-0 lg:block">
-        <div className="hide-scrollbar sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          {content}
+      <aside
+        aria-label="Product filters"
+        aria-hidden={mobileOpen || undefined}
+        inert={mobileOpen}
+        className="hidden w-52 shrink-0 lg:row-span-2 lg:block"
+      >
+        <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-2">
+          {!mobileOpen && content}
         </div>
       </aside>
     </>

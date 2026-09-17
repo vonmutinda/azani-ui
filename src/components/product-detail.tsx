@@ -31,7 +31,6 @@ import {
   getVariantPrice,
   stripHtml,
 } from "@/lib/formatters";
-import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { ClothingFit } from "@/components/clothing-fit";
 import { ProductCard } from "@/components/product-card";
@@ -42,6 +41,7 @@ import { useToast } from "@/components/toast";
 type Props = {
   productId: string;
   onBack: () => void;
+  headingLevel?: 1 | 2;
 };
 
 function AccordionSection({
@@ -110,11 +110,12 @@ function RelatedProducts({
   );
 }
 
-export function ProductDetail({ productId, onBack }: Props) {
+export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const Title = headingLevel === 1 ? "h1" : "h2";
 
   const productQuery = useQuery({
     queryKey: ["product", productId],
@@ -225,7 +226,8 @@ export function ProductDetail({ productId, onBack }: Props) {
 
   // Selecting a value can strand another option on a now-unavailable value
   // (e.g. a size the chosen colour doesn't come in). Repair each other option
-  // to its first still-available value so the selection never hits a dead end.
+  // by clearing incompatible clothing choices so replacements remain explicit.
+  // Other products keep the existing automatic repair behavior.
   const handleOptionSelect = useCallback(
     (optionId: string, value: string) => {
       setSelectedOptions((prev) => {
@@ -275,7 +277,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     <button
       type="button"
       onClick={onBack}
-      className="text-muted hover:text-foreground focus-visible:ring-foreground/30 mb-4 inline-flex items-center gap-1.5 rounded-full text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="text-muted hover:text-foreground focus-visible:ring-foreground/30 mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       <ArrowLeft className="h-4 w-4" /> Back to products
     </button>
@@ -286,7 +288,7 @@ export function ProductDetail({ productId, onBack }: Props) {
       <div>
         {backLink}
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="bg-border/40 aspect-square animate-pulse rounded-2xl" />
+          <div className="bg-border/40 aspect-square animate-pulse rounded-xl" />
           <div className="space-y-4">
             <div className="bg-border/40 h-8 w-3/4 animate-pulse rounded" />
             <div className="bg-border/40 h-6 w-1/3 animate-pulse rounded" />
@@ -315,7 +317,7 @@ export function ProductDetail({ productId, onBack }: Props) {
     return (
       <div>
         {backLink}
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center sm:p-16">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-8 text-center sm:p-16">
           <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-primary h-8 w-8" />
           </div>
@@ -390,29 +392,29 @@ export function ProductDetail({ productId, onBack }: Props) {
         />
 
         {/* Details */}
-        <div className="border-border/50 bg-card space-y-5 rounded-2xl border p-4 sm:p-6">
+        <div className="space-y-5 md:py-2 md:pl-4 lg:pl-6">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1.5">
-              <h2 className="text-foreground text-xl font-bold sm:text-2xl">{product.title}</h2>
-              {ratingValue != null ? (
+              <Title className="text-foreground text-2xl font-bold sm:text-3xl">
+                {product.title}
+              </Title>
+              {ratingValue != null && reviewCount != null && reviewCount > 0 && (
                 <div className="flex items-center gap-2">
                   <StarRating rating={ratingValue} />
                   <span className="text-muted text-sm">
-                    {ratingValue.toFixed(1)} ({reviewCount ?? 0} reviews)
+                    {ratingValue.toFixed(1)} ({reviewCount} reviews)
                   </span>
                 </div>
-              ) : (
-                <p className="text-muted text-sm">No reviews yet</p>
               )}
             </div>
             <button
               type="button"
               onClick={handleWishlistToggle}
               disabled={wishlistMutation.isPending}
-              className={`focus-visible:ring-primary/30 bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`focus-visible:ring-primary/30 bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 isWishlisted
                   ? "border-primary text-primary"
-                  : "border-border/50 text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                  : "text-muted hover:bg-foreground/[0.04] hover:text-foreground border-[var(--control-border)]"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -450,8 +452,8 @@ export function ProductDetail({ productId, onBack }: Props) {
 
           {/* Options */}
           {(product.options ?? []).map((option) => (
-            <div key={option.id} className="space-y-2">
-              <label className="text-foreground text-sm font-semibold">{option.title}</label>
+            <fieldset key={option.id} className="min-w-0 space-y-2">
+              <legend className="text-foreground text-sm font-semibold">{option.title}</legend>
               <div className="flex flex-wrap gap-2">
                 {option.values.map((val) => {
                   const selected = effectiveOptions[option.id] === val.value;
@@ -464,12 +466,12 @@ export function ProductDetail({ productId, onBack }: Props) {
                       disabled={!available && !selected}
                       aria-pressed={selected}
                       aria-label={available ? undefined : `${val.value} — sold out`}
-                      className={`focus-visible:ring-primary/20 rounded-full border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                      className={`focus-visible:ring-primary/30 min-h-11 min-w-11 rounded-lg border px-4 py-2.5 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                         selected
-                          ? "border-foreground bg-foreground/[0.06] text-foreground"
+                          ? "border-foreground bg-foreground text-white"
                           : available
-                            ? "border-border/50 text-foreground hover:bg-foreground/[0.04]"
-                            : "border-border/50 text-muted cursor-not-allowed line-through opacity-60"
+                            ? "text-foreground hover:border-foreground hover:bg-foreground/[0.04] border-[var(--control-border)]"
+                            : "border-border bg-background text-muted cursor-not-allowed border-dashed line-through"
                       }`}
                     >
                       {val.value}
@@ -477,7 +479,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
           ))}
 
           {requiresSize && <ClothingFit product={product} />}
@@ -489,28 +491,45 @@ export function ProductDetail({ productId, onBack }: Props) {
           )}
 
           {/* Quantity + Add to Cart */}
-          <div className="flex items-center gap-3">
-            <div className="border-border/50 bg-card flex items-center rounded-full border">
-              <button
-                onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-l-full transition focus-visible:ring-2 focus-visible:outline-none"
-                disabled={!availability.canPurchase || maxedOut}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex items-center justify-between gap-3 sm:block">
+              <span className="text-foreground block text-sm font-semibold sm:mb-2">Quantity</span>
+              <div
+                role="group"
+                aria-label="Quantity"
+                className="bg-card flex w-fit items-center rounded-lg border border-[var(--control-border)]"
               >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <span className="flex h-11 w-10 items-center justify-center text-sm font-semibold">
-                {safeQuantity}
-              </span>
-              <button
-                onClick={() => setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))}
-                className="text-muted hover:text-foreground focus-visible:ring-primary/20 flex h-11 w-11 items-center justify-center rounded-r-full transition focus-visible:ring-2 focus-visible:outline-none"
-                disabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQuantity(Math.max(1, safeQuantity - 1))}
+                  className="text-muted hover:text-foreground focus-visible:ring-primary/30 flex h-11 w-11 items-center justify-center rounded-l-lg transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!availability.canPurchase || maxedOut || safeQuantity <= 1}
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <output
+                  aria-label="Selected quantity"
+                  className="flex h-11 w-10 items-center justify-center text-sm font-semibold"
+                >
+                  {safeQuantity}
+                </output>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  onClick={() =>
+                    setQuantity(Math.min(Math.max(remainingStock, 1), safeQuantity + 1))
+                  }
+                  className="text-muted hover:text-foreground focus-visible:ring-primary/30 flex h-11 w-11 items-center justify-center rounded-r-lg transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!availability.canPurchase || maxedOut || safeQuantity >= remainingStock}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             <button
+              type="button"
               onClick={handleAddToCart}
               disabled={
                 cartMutation.isPending ||
@@ -519,7 +538,7 @@ export function ProductDetail({ productId, onBack }: Props) {
                 justAdded ||
                 maxedOut
               }
-              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+              className={`flex min-h-12 w-full flex-1 items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
                 justAdded
                   ? "bg-accent-green-bold"
                   : maxedOut
@@ -556,7 +575,12 @@ export function ProductDetail({ productId, onBack }: Props) {
           <ul className="text-muted flex flex-wrap gap-x-4 gap-y-2 text-xs">
             <li className="flex items-center gap-1.5">
               <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
-              Free delivery on orders over {freeShippingThresholdLabel()}
+              <Link
+                href="/policies/shipping"
+                className="hover:text-foreground underline underline-offset-2 transition"
+              >
+                Delivery policy
+              </Link>
             </li>
             <li className="flex items-center gap-1.5">
               <Smartphone className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -566,9 +590,9 @@ export function ProductDetail({ productId, onBack }: Props) {
               <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
               <Link
                 href="/policies/returns"
-                className="hover:text-foreground underline-offset-2 transition hover:underline"
+                className="hover:text-foreground underline underline-offset-2 transition"
               >
-                Easy returns
+                Returns policy
               </Link>
             </li>
           </ul>
@@ -607,7 +631,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </AccordionSection>
         <AccordionSection title="Delivery & returns">
           <p>
-            Free delivery on orders over {freeShippingThresholdLabel()} across Kenya. See our{" "}
+            Delivery options and charges are confirmed at checkout. See our{" "}
             <Link
               href="/policies/shipping"
               className="text-primary hover:text-primary-hover underline underline-offset-2"

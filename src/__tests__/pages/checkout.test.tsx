@@ -54,6 +54,82 @@ describe("CheckoutPage", () => {
     mockCompleteCart.mockResolvedValue({ type: "order" });
   });
 
+  it("associates address labels, autofill and required semantics with their fields", async () => {
+    renderWithProviders(<CheckoutPage />);
+    await screen.findByText("Shipping Address");
+    for (const [label, autocomplete, required] of [
+      ["First Name", "given-name", true],
+      ["Last Name", "family-name", true],
+      ["Email", "email", false],
+      ["Phone", "tel", true],
+      ["Street Address", "street-address", true],
+    ] as const) {
+      const input = screen.getByRole("textbox", { name: new RegExp(`^${label}`) });
+      expect(input).toHaveAttribute("id");
+      expect(input).toHaveAttribute("autocomplete", autocomplete);
+      if (required) expect(input).toBeRequired();
+      else expect(input).not.toBeRequired();
+    }
+  });
+
+  it("links native field validation errors and clears them when corrected", async () => {
+    renderWithProviders(<CheckoutPage />);
+    const firstName = await screen.findByRole("textbox", { name: /^First Name/ });
+    fireEvent.invalid(firstName);
+    expect(firstName).toHaveAttribute("aria-invalid", "true");
+    expect(firstName).toHaveAccessibleDescription(/.+/);
+    fireEvent.change(firstName, { target: { value: "Amina" } });
+    expect(firstName).not.toHaveAttribute("aria-invalid", "true");
+    expect(firstName).not.toHaveAttribute("aria-describedby");
+    expect(mockUpdateCart).not.toHaveBeenCalled();
+  });
+
+  it("labels the amount before shipping and distinguishes a confirmed free method", async () => {
+    mockGetCart.mockResolvedValueOnce({ ...mockCart, region: mockRegion });
+    const { unmount } = renderWithProviders(<CheckoutPage />);
+    expect(await screen.findByText("Total before shipping")).toBeInTheDocument();
+    expect(screen.getByText("Calculated after your address")).toBeInTheDocument();
+    unmount();
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      region: mockRegion,
+      shipping_methods: [{ id: "sm_free", name: "Free Shipping", amount: 0 }],
+    });
+    renderWithProviders(<CheckoutPage />);
+    expect(await screen.findByText("Total")).toBeInTheDocument();
+    expect(screen.getByText("Free")).toBeInTheDocument();
+    expect(screen.queryByText("Calculated after your address")).not.toBeInTheDocument();
+  });
+
+  it("shows product identity and named size and colour without repeating the unit price", async () => {
+    mockGetProductsByIds.mockResolvedValue([
+      {
+        ...mockProduct,
+        title: "Cotton everyday long sleeve shirt",
+        options: [
+          { id: "size", title: "Size", product_id: "prod_01", values: [] },
+          { id: "colour", title: "Color", product_id: "prod_01", values: [] },
+        ],
+        variants: [
+          {
+            ...mockProduct.variants![0],
+            title: "6 / Navy",
+            options: [
+              { id: "size_6", option_id: "size", value: "6" },
+              { id: "navy", option_id: "colour", value: "Navy" },
+            ],
+          },
+        ],
+      },
+    ]);
+    renderWithProviders(<CheckoutPage />);
+    expect(await screen.findByText("Cotton everyday long sleeve shirt")).toBeInTheDocument();
+    expect(screen.getByText("Size: 6")).toBeInTheDocument();
+    expect(screen.getByText("Colour: Navy")).toBeInTheDocument();
+    expect(screen.getByText("Quantity: 2")).toBeInTheDocument();
+    expect(screen.queryByText("KSh1,500.00")).not.toBeInTheDocument();
+  });
+
   it("blocks checkout when a retired product still has cached stock in the cart", async () => {
     mockGetCart.mockResolvedValue({
       ...mockCart,
@@ -147,11 +223,18 @@ describe("CheckoutPage", () => {
   async function continueToPayment() {
     await screen.findByText("Shipping Address");
 
-    const textboxes = screen.getAllByRole("textbox");
-    fireEvent.change(textboxes[0], { target: { value: "Amina" } });
-    fireEvent.change(textboxes[1], { target: { value: "Otieno" } });
-    fireEvent.change(textboxes[3], { target: { value: "+254712345678" } });
-    fireEvent.change(textboxes[4], { target: { value: "Westlands Road" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /^First Name/ }), {
+      target: { value: "Amina" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Last Name/ }), {
+      target: { value: "Otieno" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Phone/ }), {
+      target: { value: "+254712345678" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Street Address/ }), {
+      target: { value: "Westlands Road" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Continue to Shipping" }));
 
@@ -162,16 +245,35 @@ describe("CheckoutPage", () => {
     await screen.findByText("Payment Method");
   }
 
+  it("names both payment choices and associates the payer phone with its own label", async () => {
+    renderWithProviders(<CheckoutPage />);
+    await continueToPayment();
+    expect(screen.getByRole("radio", { name: "M-Pesa Express" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Pay via M-Pesa Paybill" })).not.toBeChecked();
+    const phone = screen.getByRole("textbox", { name: /^M-Pesa Phone Number/ });
+    expect(phone).toBeRequired();
+    expect(phone).toHaveAttribute("autocomplete", "tel");
+    expect(phone).toHaveValue("+254712345678");
+    expect(mockInitializePaymentSession).not.toHaveBeenCalled();
+  });
+
   it("lets guests continue without sending an empty optional email", async () => {
     renderWithProviders(<CheckoutPage />);
 
     await screen.findByText("Shipping Address");
 
-    const textboxes = screen.getAllByRole("textbox");
-    fireEvent.change(textboxes[0], { target: { value: "Amina" } });
-    fireEvent.change(textboxes[1], { target: { value: "Otieno" } });
-    fireEvent.change(textboxes[3], { target: { value: "+254712345678" } });
-    fireEvent.change(textboxes[4], { target: { value: "Westlands Road" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /^First Name/ }), {
+      target: { value: "Amina" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Last Name/ }), {
+      target: { value: "Otieno" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Phone/ }), {
+      target: { value: "+254712345678" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Street Address/ }), {
+      target: { value: "Westlands Road" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Continue to Shipping" }));
 

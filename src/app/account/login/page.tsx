@@ -268,10 +268,7 @@ export default function LoginPage() {
             <span className="text-foreground font-medium">{forgotEmail}</span>, you&apos;ll receive
             an email with instructions to reset your password.
           </p>
-          <button
-            onClick={() => switchTo("login")}
-            className={buttonVariants()}
-          >
+          <button onClick={() => switchTo("login")} className={buttonVariants()}>
             <ArrowLeft className="h-4 w-4" /> Back to Sign In
           </button>
         </div>
@@ -293,10 +290,14 @@ export default function LoginPage() {
             reset your password.
           </p>
           <div>
-            <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
+            <label htmlFor="account-email" className="text-muted mb-1.5 block text-sm font-medium">
+              Email
+            </label>
             <input
               type="email"
               placeholder="you@example.com"
+              id="account-email"
+              autoComplete="email"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
               className={inputClass}
@@ -404,49 +405,85 @@ export default function LoginPage() {
         {isRegister && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-muted mb-1.5 block text-sm font-medium">First name</label>
+              <label
+                htmlFor="account-first_name"
+                className="text-muted mb-1.5 block text-sm font-medium"
+              >
+                First name
+              </label>
               <input
                 placeholder="First name"
+                id="account-first_name"
+                autoComplete="given-name"
+                aria-invalid={Boolean(validationErrors.first_name)}
+                aria-describedby={
+                  validationErrors.first_name ? "account-first_name-error" : undefined
+                }
                 value={form.first_name}
                 onChange={(e) => setForm({ ...form, first_name: e.target.value })}
                 className={inputClass}
               />
               {validationErrors.first_name && (
-                <p className="text-danger mt-1 text-sm">{validationErrors.first_name}</p>
+                <p id="account-first_name-error" className="text-danger mt-1 text-sm">
+                  {validationErrors.first_name}
+                </p>
               )}
             </div>
             <div>
-              <label className="text-muted mb-1.5 block text-sm font-medium">Last name</label>
+              <label
+                htmlFor="account-last_name"
+                className="text-muted mb-1.5 block text-sm font-medium"
+              >
+                Last name
+              </label>
               <input
                 placeholder="Last name"
+                id="account-last_name"
+                autoComplete="family-name"
+                aria-invalid={Boolean(validationErrors.last_name)}
+                aria-describedby={
+                  validationErrors.last_name ? "account-last_name-error" : undefined
+                }
                 value={form.last_name}
                 onChange={(e) => setForm({ ...form, last_name: e.target.value })}
                 className={inputClass}
               />
               {validationErrors.last_name && (
-                <p className="text-danger mt-1 text-sm">{validationErrors.last_name}</p>
+                <p id="account-last_name-error" className="text-danger mt-1 text-sm">
+                  {validationErrors.last_name}
+                </p>
               )}
             </div>
           </div>
         )}
 
         <div>
-          <label className="text-muted mb-1.5 block text-sm font-medium">Email</label>
+          <label htmlFor="account-email" className="text-muted mb-1.5 block text-sm font-medium">
+            Email
+          </label>
           <input
             type="text"
             placeholder="Email"
+            id="account-email"
+            autoComplete="email"
+            aria-invalid={Boolean(validationErrors.email)}
+            aria-describedby={validationErrors.email ? "account-email-error" : undefined}
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className={inputClass}
           />
           {validationErrors.email && (
-            <p className="text-danger mt-1 text-sm">{validationErrors.email}</p>
+            <p id="account-email-error" className="text-danger mt-1 text-sm">
+              {validationErrors.email}
+            </p>
           )}
         </div>
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-muted text-sm font-medium">Password</label>
+            <label htmlFor="account-password" className="text-muted text-sm font-medium">
+              Password
+            </label>
             {!isRegister && (
               <button
                 type="button"
@@ -464,21 +501,28 @@ export default function LoginPage() {
             <input
               type={showPassword ? "text" : "password"}
               placeholder={isRegister ? "Min. 8 characters" : "Password"}
+              id="account-password"
+              autoComplete={isRegister ? "new-password" : "current-password"}
+              aria-invalid={Boolean(validationErrors.password)}
+              aria-describedby={validationErrors.password ? "account-password-error" : undefined}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className={`${inputClass} pr-10`}
             />
             <button
               type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
               onClick={() => setShowPassword(!showPassword)}
-              className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
-              tabIndex={-1}
+              className="text-muted hover:text-foreground absolute top-1/2 right-0 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg transition"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {validationErrors.password && (
-            <p className="text-danger mt-1 text-sm">{validationErrors.password}</p>
+            <p id="account-password-error" className="text-danger mt-1 text-sm">
+              {validationErrors.password}
+            </p>
           )}
 
           {/* Password strength meter -- only during registration */}
@@ -515,26 +559,42 @@ export default function LoginPage() {
         {/* Confirm password -- only during registration */}
         {isRegister && (
           <div>
-            <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
+            <label
+              htmlFor="account-confirm_password"
+              className="text-muted mb-1.5 block text-sm font-medium"
+            >
+              Confirm Password
+            </label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
                 placeholder="Re-enter your password"
+                id="account-confirm_password"
+                autoComplete="new-password"
+                aria-invalid={Boolean(validationErrors.confirm_password)}
+                aria-describedby={
+                  validationErrors.confirm_password ? "account-confirm_password-error" : undefined
+                }
                 value={form.confirm_password}
                 onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
                 className={`${inputClass} pr-10`}
               />
               <button
                 type="button"
+                aria-label={
+                  showConfirm ? "Hide confirmation password" : "Show confirmation password"
+                }
+                aria-pressed={showConfirm}
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="text-muted hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition"
-                tabIndex={-1}
+                className="text-muted hover:text-foreground absolute top-1/2 right-0 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg transition"
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {validationErrors.confirm_password && (
-              <p className="text-danger mt-1 text-sm">{validationErrors.confirm_password}</p>
+              <p id="account-confirm_password-error" className="text-danger mt-1 text-sm">
+                {validationErrors.confirm_password}
+              </p>
             )}
             {form.confirm_password.length > 0 &&
               form.password === form.confirm_password &&

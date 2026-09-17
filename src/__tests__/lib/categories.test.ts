@@ -20,12 +20,12 @@ import { mockCategory, mockCategories } from "../fixtures";
 describe("getCategoryIcon", () => {
   it("returns correct icon for known handles", () => {
     expect(getCategoryIcon("tops")).toBe("shirt");
-    expect(getCategoryIcon("bottoms")).toBe("layout");
-    expect(getCategoryIcon("dresses-jumpsuits")).toBe("sparkles");
-    expect(getCategoryIcon("sets-outfits")).toBe("gift");
-    expect(getCategoryIcon("knitwear-outerwear")).toBe("cloud");
+    expect(getCategoryIcon("bottoms")).toBe("trousers");
+    expect(getCategoryIcon("dresses-jumpsuits")).toBe("dress");
+    expect(getCategoryIcon("sets-outfits")).toBe("outfit");
+    expect(getCategoryIcon("knitwear-outerwear")).toBe("jacket");
     expect(getCategoryIcon("sleepwear")).toBe("moon");
-    expect(getCategoryIcon("underwear-socks")).toBe("footprints");
+    expect(getCategoryIcon("underwear-socks")).toBe("socks");
   });
 
   it("returns a clothing icon as fallback for unknown handles", () => {

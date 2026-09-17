@@ -129,7 +129,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   );
 
   return (
-    <article className="group border-border/50 bg-card hover:border-border relative flex flex-col overflow-hidden rounded-2xl border transition duration-300">
+    <article className="group relative flex min-w-0 flex-col">
       {isNew && (
         <div className="absolute top-3 left-3 z-10">
           <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase">
@@ -138,12 +138,12 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       )}
 
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-100 transition-all duration-200 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+      <div className="absolute top-2 right-2 z-10">
         <button
           type="button"
           onClick={handleWishlistToggle}
           disabled={wishlistMutation.isPending}
-          className={`border-border/50 focus-visible:ring-primary/30 bg-card flex h-10 w-10 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+          className={`border-border focus-visible:ring-primary/30 bg-card flex h-11 w-11 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
             isWishlisted
               ? "text-primary"
               : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -151,19 +151,19 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
+          <Heart className="h-[18px] w-[18px]" fill={isWishlisted ? "currentColor" : "none"} />
         </button>
       </div>
 
-      <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
-        <div className="bg-background relative aspect-square overflow-hidden">
+      <Link href={productHref} onClick={handleClick} className="block overflow-hidden rounded-lg">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-[#f6f3eb]">
           {imageUrl ? (
             <Image
               src={imageUrl}
               alt={product.title}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.02]"
             />
           ) : (
             <div className="text-muted-light flex h-full flex-col items-center justify-center gap-2">
@@ -174,7 +174,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-1 px-3 pt-2.5 pb-3">
+      <div className="flex flex-1 flex-col gap-1.5 pt-3 pb-2">
         <Link
           href={productHref}
           onClick={handleClick}
@@ -183,44 +183,42 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {product.title}
         </Link>
 
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
+          {originalPrice && (
+            <span className="text-muted text-2xs line-through">{originalPrice}</span>
+          )}
+          {discountPercent ? (
+            <span className="text-primary text-2xs font-bold">-{discountPercent}%</span>
+          ) : null}
+        </div>
+
         <p
-          className={`text-sm font-medium ${
+          className={`text-xs ${
             maxedOut
               ? "text-muted"
               : availability.isOutOfStock
                 ? "text-danger"
                 : availability.isLowStock
                   ? "text-accent-yellow-ink"
-                  : "text-success-ink"
+                  : "text-muted"
           }`}
         >
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
         {requiresSize ? (
-          <p className="text-muted-light text-2xs">
-            Sizes: {availableSizes.join(", ") || "Sold out"}
-          </p>
+          <p className="text-muted text-xs">Sizes: {availableSizes.join(", ") || "Sold out"}</p>
         ) : optionCount > 1 ? (
-          <p className="text-muted-light text-2xs">{optionCount} options</p>
+          <p className="text-muted text-xs">{optionCount} options</p>
         ) : null}
 
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex flex-wrap items-baseline gap-1.5">
-            <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
-            {originalPrice && (
-              <span className="text-muted text-2xs line-through">{originalPrice}</span>
-            )}
-            {discountPercent ? (
-              <span className="text-primary text-2xs font-bold">-{discountPercent}%</span>
-            ) : null}
-          </div>
-
+        <div className="mt-auto flex flex-col items-start justify-between gap-x-3 pt-1 sm:flex-row sm:flex-wrap sm:items-center">
           {requiresSize ? (
             <Link
               href={productHref}
               onClick={handleClick}
-              className="text-primary shrink-0 text-xs font-semibold underline underline-offset-4"
+              className="text-primary inline-flex min-h-11 shrink-0 items-center text-sm font-semibold underline underline-offset-4"
             >
               Choose size
             </Link>
@@ -230,7 +228,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
                 type="button"
                 onClick={handleAddToCart}
                 disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                className={`flex h-11 w-11 items-center justify-center rounded-lg text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                   justAdded
                     ? "bg-accent-green-bold scale-110"
                     : maxedOut

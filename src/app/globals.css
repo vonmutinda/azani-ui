@@ -2,33 +2,34 @@
 
 :root {
   /* Azani — pastel playful palette */
-  --background: #fefcfd;
-  --foreground: #342a33;
+  --background: #fffdf9;
+  --foreground: #354653;
   --primary: #d6336c;
   --primary-hover: #c2255c;
-  --primary-light: #fff1f6;
+  --primary-light: #f9e1e6;
   --secondary: #267cb8;
   --secondary-hover: #1f699f;
-  --secondary-light: #edf7ff;
+  --secondary-light: #dcedf5;
   --accent-yellow: #f6d973;
   --accent-yellow-ink: #8f6200;
-  --accent-yellow-light: #fff9e5;
+  --accent-yellow-light: #fff1c7;
   --accent-green: #93d8bb;
   --accent-green-bold: #34c759;
   --accent-green-light: #e7f8ee;
   --success: #34c759;
   --success-ink: #1d7b47;
-  --muted: #6f6571;
-  --muted-light: #a79ba7;
-  --border: #d8ced6;
+  --muted: #626d75;
+  --muted-light: #727d85;
+  --border: #dde3e5;
   --border-hover: #b8adb7;
   --card: #ffffff;
   --card-raised: #ffffff;
-  --danger: #e26b89;
+  --danger: #b42340;
+  --control-border: #82909a;
   --whatsapp: #25d366;
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
-  --radius-lg: 1rem;
+  --radius-lg: 0.75rem;
   --radius-xl: 1.25rem;
   --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.04);
   --shadow: 0 2px 8px rgba(45, 42, 38, 0.06);
@@ -63,8 +64,8 @@
   --color-whatsapp: var(--whatsapp);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-dm-sans);
-  --text-2xs: 0.6875rem;
+  --font-heading: var(--font-nunito);
+  --text-2xs: 0.75rem;
 }
 
 html {
@@ -92,7 +93,7 @@ body {
 
 h1,
 h2 {
-  font-family: var(--font-dm-sans), var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-nunito), var(--font-geist-sans), system-ui, sans-serif;
   letter-spacing: -0.02em;
 }
 
@@ -184,5 +185,34 @@ h4 {
       transform: scale(1);
       opacity: 1;
     }
+  }
+}
+
+/* Shopping controls share visible boundaries and a predictable focus treatment. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+select,
+textarea {
+  border-color: var(--control-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--card);
+  min-height: 44px;
+  font-size: 1rem;
+}
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

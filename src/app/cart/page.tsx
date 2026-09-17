@@ -7,9 +7,8 @@ import { useState, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Baby,
+  Shirt,
   Check,
-  Clock,
   Minus,
   Package,
   Plus,
@@ -106,6 +105,7 @@ export default function CartPage() {
   const cart = cartQuery.data;
   const items = useMemo(() => cart?.items ?? [], [cart?.items]);
   const currencyCode = "kes";
+  const shippingKnown = (cart?.shipping_methods?.length ?? 0) > 0;
   const cartProductIds = useMemo(
     () =>
       Array.from(new Set(items.map((item) => item.product_id).filter((id): id is string => !!id))),
@@ -130,7 +130,7 @@ export default function CartPage() {
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-8 sm:px-6 lg:px-8">
         <div className="bg-border/40 h-8 w-48 animate-pulse rounded" />
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-border/40 h-28 animate-pulse rounded-2xl" />
+          <div key={i} className="bg-border/40 h-28 animate-pulse rounded-xl" />
         ))}
       </div>
     );
@@ -143,13 +143,13 @@ export default function CartPage() {
           <Link
             href="/products"
             aria-label="Back to products"
-            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground -ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-foreground text-2xl font-bold">Shopping Cart</h1>
         </div>
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
             <ShoppingBag className="text-secondary h-8 w-8" />
           </div>
@@ -161,9 +161,9 @@ export default function CartPage() {
           </div>
           <Link
             href="/products"
-            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
+            className="bg-primary hover:bg-primary-hover focus-visible:ring-primary inline-flex min-h-11 items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            <Baby className="h-4 w-4" /> Start Shopping
+            <Shirt className="h-4 w-4" /> Start Shopping
           </Link>
         </div>
       </div>
@@ -176,7 +176,7 @@ export default function CartPage() {
         <Link
           href="/products"
           aria-label="Back to products"
-          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground/20 -ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground -ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -189,13 +189,13 @@ export default function CartPage() {
       {cartProductsQuery.isError && (
         <div
           role="alert"
-          className="border-danger/20 bg-danger/5 text-danger mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium"
+          className="border-danger/20 bg-danger/5 text-danger mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium"
         >
           <span>We couldn’t check item availability. Please try again.</span>
           <button
             type="button"
             onClick={() => cartProductsQuery.refetch()}
-            className="rounded-full border border-current px-3 py-1.5 text-xs font-semibold"
+            className="focus-visible:ring-danger min-h-11 rounded-lg border border-current px-3 py-1.5 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Try again
           </button>
@@ -203,7 +203,7 @@ export default function CartPage() {
       )}
 
       {hasUnavailableItems && (
-        <div className="border-danger/20 bg-danger/5 text-danger mb-5 rounded-2xl border px-4 py-3 text-sm font-medium">
+        <div className="border-danger/20 bg-danger/5 text-danger mb-5 rounded-xl border px-4 py-3 text-sm font-medium">
           Some items are no longer available in the requested quantity. Update or remove them to
           continue.
         </div>
@@ -211,14 +211,7 @@ export default function CartPage() {
 
       <div className="grid items-start gap-8 lg:grid-cols-3">
         {/* Items — single receipt-style card */}
-        <div className="divide-border border-border/50 bg-card divide-y overflow-hidden rounded-2xl border lg:col-span-2">
-          <div className="text-muted hidden items-center justify-between px-4 py-2.5 text-xs font-semibold tracking-widest uppercase sm:flex">
-            <span>Product</span>
-            <div className="flex gap-8 lg:gap-16">
-              <span>Qty</span>
-              <span>Subtotal</span>
-            </div>
-          </div>
+        <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border lg:col-span-2">
           {items.map((item) => (
             <CartItem
               key={item.id}
@@ -236,13 +229,13 @@ export default function CartPage() {
 
         {/* Summary — sticky on desktop */}
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="border-border/50 bg-card rounded-2xl border p-6">
+          <div className="border-border bg-card rounded-xl border p-6">
             <h2 className="text-foreground mb-4 text-base font-semibold">Order Summary</h2>
             <div className="space-y-3 text-sm">
               <div className="text-muted flex justify-between">
                 <span>
-                  {items.length} {items.length === 1 ? "item" : "items"} (
-                  {items.reduce((sum, i) => sum + i.quantity, 0)} units)
+                  {items.reduce((sum, i) => sum + i.quantity, 0)}{" "}
+                  {items.reduce((sum, i) => sum + i.quantity, 0) === 1 ? "item" : "items"}
                 </span>
               </div>
               <div className="text-muted flex justify-between">
@@ -268,6 +261,18 @@ export default function CartPage() {
                 </div>
               )}
               {(() => {
+                if (shippingKnown) {
+                  return (
+                    <div className="text-muted flex justify-between">
+                      <span>Shipping</span>
+                      <span className="text-foreground font-medium">
+                        {cart.shipping_total === 0
+                          ? "Free"
+                          : formatPrice(cart.shipping_total, currencyCode)}
+                      </span>
+                    </div>
+                  );
+                }
                 const subtotal = cart.subtotal ?? 0;
                 const remaining = freeShippingRemaining(subtotal);
                 const progress = freeShippingProgress(subtotal);
@@ -276,7 +281,7 @@ export default function CartPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-muted">Shipping</span>
                       <span className="text-accent-green flex items-center gap-1 text-xs font-medium">
-                        <Check className="h-3 w-3" /> Free
+                        <Check className="h-3 w-3" /> Free shipping available
                       </span>
                     </div>
                   );
@@ -306,64 +311,88 @@ export default function CartPage() {
                   </div>
                 );
               })()}
-              <div className="border-border/50 border-t pt-3">
-                <div className="text-foreground flex justify-between text-lg font-bold">
-                  <span>Total</span>
+              <div className="border-border border-t pt-3">
+                <div className="text-foreground flex justify-between text-base font-bold">
+                  <span>{shippingKnown ? "Total" : "Total before shipping"}</span>
                   <span>{formatPrice(cart.total ?? 0, currencyCode)}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-secondary-light/50 text-muted mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
-              <Clock className="text-secondary h-3.5 w-3.5 shrink-0" />
-              <span>
-                Estimated delivery:{" "}
-                <span className="text-foreground font-medium">within 24 hours</span>
-              </span>
+              <Truck className="text-secondary h-3.5 w-3.5 shrink-0" />
+              <span>Delivery options depend on your address. Confirm them at checkout.</span>
             </div>
           </div>
 
           {/* Promo Code */}
-          <div className="border-border/50 bg-card rounded-2xl border p-6">
-            <h3 className="text-foreground mb-3 text-sm font-bold">Promo Code</h3>
-            {cart.promotions && cart.promotions.length > 0 ? (
-              <div className="space-y-2">
-                {cart.promotions.map((promo) => (
-                  <div
-                    key={promo.code}
-                    className="bg-accent-green-light flex items-center justify-between rounded-lg px-3 py-2 text-sm"
-                  >
-                    <span className="text-success font-medium">{promo.code}</span>
-                    <button
-                      onClick={() => removePromoMutation.mutate(promo.code)}
-                      className="text-muted hover:text-danger focus-visible:ring-danger/20 transition focus-visible:rounded focus-visible:ring-2 focus-visible:outline-none"
+          <details
+            className="border-border bg-card rounded-xl border px-4"
+            open={!!cart.promotions?.length}
+          >
+            <summary className="text-foreground focus-visible:ring-primary list-item min-h-11 cursor-pointer rounded-lg py-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              Have a promo code?
+            </summary>
+            <div className="pb-4">
+              {cart.promotions && cart.promotions.length > 0 ? (
+                <div className="space-y-2">
+                  {cart.promotions.map((promo) => (
+                    <div
+                      key={promo.code}
+                      className="bg-accent-green-light flex items-center justify-between rounded-lg px-3 py-2 text-sm"
                     >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  placeholder="Enter code"
-                  className="border-border/50 bg-background focus:border-secondary focus:ring-secondary/15 h-10 flex-1 rounded-xl border px-3 text-sm transition outline-none focus:ring-2"
-                />
-                <button
-                  onClick={() => promoMutation.mutate()}
-                  disabled={!promoCode || promoMutation.isPending}
-                  className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-4 text-sm font-medium text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                      <span className="text-success font-medium">{promo.code}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove promo code ${promo.code}`}
+                        onClick={() => removePromoMutation.mutate(promo.code)}
+                        className="text-muted hover:text-danger focus-visible:ring-danger inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <form
+                  className="flex gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (promoCode.trim() && !promoMutation.isPending) promoMutation.mutate();
+                  }}
                 >
-                  Apply
-                </button>
-              </div>
-            )}
-            {promoMutation.isError && (
-              <p className="text-danger mt-2 text-xs">{(promoMutation.error as Error).message}</p>
-            )}
-          </div>
+                  <label htmlFor="cart-promo-code" className="sr-only">
+                    Promo code
+                  </label>
+                  <input
+                    id="cart-promo-code"
+                    name="promo_code"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      promoMutation.reset();
+                    }}
+                    placeholder="Enter code"
+                    aria-invalid={promoMutation.isError || undefined}
+                    aria-describedby={promoMutation.isError ? "cart-promo-error" : undefined}
+                    className="border-muted-light bg-background focus:border-secondary focus:ring-secondary min-h-11 min-w-0 flex-1 rounded-lg border px-3 text-sm transition outline-none focus:ring-2"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!promoCode.trim() || promoMutation.isPending}
+                    className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 rounded-lg px-4 text-sm font-medium text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </form>
+              )}
+              {promoMutation.isError && (
+                <p id="cart-promo-error" role="alert" className="text-danger mt-2 text-sm">
+                  {(promoMutation.error as Error).message}
+                </p>
+              )}
+            </div>
+          </details>
 
           {cartProductsQuery.isPending || cartProductsQuery.isError || hasUnavailableItems ? (
             <button
@@ -380,7 +409,7 @@ export default function CartPage() {
           ) : (
             <Link
               href="/checkout"
-              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white shadow-md transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Proceed to Checkout <ArrowRight className="h-4 w-4" />
             </Link>
@@ -443,7 +472,7 @@ function CartItem({
     <div className="hover:bg-foreground/[0.04]/50 flex gap-3 px-4 py-3 transition">
       <Link
         href={productHref}
-        className="bg-background relative h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
+        className="bg-background relative h-16 w-16 shrink-0 overflow-hidden rounded-xl transition-opacity hover:opacity-90 sm:h-24 sm:w-24"
       >
         {resolvedImage ? (
           <Image src={resolvedImage} alt={item.title} fill sizes="96px" className="object-cover" />
@@ -455,10 +484,10 @@ function CartItem({
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
           <div className="min-w-0">
             <Link href={productHref} className="group">
-              <h3 className="text-foreground group-hover:text-secondary line-clamp-1 text-sm font-medium transition-colors">
+              <h3 className="text-foreground group-hover:text-secondary text-sm font-medium break-words transition-colors">
                 {item.title}
               </h3>
             </Link>
@@ -499,55 +528,71 @@ function CartItem({
           </span>
         </div>
 
-        <div className="mt-1 flex items-center justify-between">
-          <div className="border-border/50 flex items-center rounded-full border">
-            <button
-              onClick={() => {
-                const next = Math.max(1, item.quantity - 1);
-                setEditQty(String(next));
-                onUpdate(item.id, next);
-              }}
-              disabled={isUpdating || availability.isOutOfStock || item.quantity <= 1}
-              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <label
+              htmlFor={`cart-quantity-${item.id}`}
+              className="text-muted mb-1 block text-xs font-medium"
             >
-              <Minus className="h-3.5 w-3.5" />
-            </button>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={editQty}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "");
-                setEditQty(raw);
-              }}
-              onBlur={commitQuantity}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
+              Quantity
+            </label>
+            <div className="border-muted-light flex items-center rounded-lg border">
+              <button
+                type="button"
+                aria-label={`Decrease quantity for ${item.title}`}
+                onClick={() => {
+                  const next = Math.max(1, item.quantity - 1);
+                  setEditQty(String(next));
+                  onUpdate(item.id, next);
+                }}
+                disabled={isUpdating || availability.isOutOfStock || item.quantity <= 1}
+                className="text-muted hover:text-foreground focus-visible:ring-primary inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                id={`cart-quantity-${item.id}`}
+                aria-label={`Quantity for ${item.title}`}
+                type="text"
+                inputMode="numeric"
+                value={editQty}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setEditQty(raw);
+                }}
+                onBlur={commitQuantity}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                  }
+                }}
+                disabled={availability.isOutOfStock}
+                className="focus-visible:ring-primary min-h-11 w-11 rounded-lg bg-transparent text-center text-sm font-bold outline-none focus-visible:ring-2 disabled:opacity-40"
+              />
+              <button
+                type="button"
+                aria-label={`Increase quantity for ${item.title}`}
+                onClick={() => {
+                  const next = Math.min(effectiveMaxQuantity, item.quantity + 1);
+                  setEditQty(String(next));
+                  onUpdate(item.id, next);
+                }}
+                disabled={
+                  isUpdating || availability.isOutOfStock || item.quantity >= effectiveMaxQuantity
                 }
-              }}
-              disabled={availability.isOutOfStock}
-              className="focus-visible:ring-primary/20 w-8 bg-transparent text-center text-xs font-bold outline-none focus-visible:ring-2 disabled:opacity-40"
-            />
-            <button
-              onClick={() => {
-                const next = Math.min(effectiveMaxQuantity, item.quantity + 1);
-                setEditQty(String(next));
-                onUpdate(item.id, next);
-              }}
-              disabled={
-                isUpdating || availability.isOutOfStock || item.quantity >= effectiveMaxQuantity
-              }
-              className="text-muted hover:text-foreground focus-visible:ring-primary/20 cursor-pointer px-3 py-2 transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
+                className="text-muted hover:text-foreground focus-visible:ring-primary inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
           <button
+            type="button"
+            aria-label={`Remove ${item.title} from cart`}
             onClick={() => onRemove(item.id)}
             disabled={isRemoving}
-            className="text-muted hover:bg-danger/10 hover:text-danger focus-visible:ring-danger/20 rounded-full p-2.5 transition focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted hover:bg-danger/10 hover:text-danger focus-visible:ring-danger inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none"
           >
             <Trash2 className="h-4 w-4" />
           </button>

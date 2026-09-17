@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductsPage from "@/app/products/page";
 import { renderWithProviders } from "../test-utils";
 import { mockProduct } from "../fixtures";
 import { clothingCategories as mockCategories } from "../clothing-fixtures";
+
+vi.mock("@/components/product-detail", () => ({
+  ProductDetail: ({ onBack }: { onBack: () => void }) => (
+    <button onClick={onBack}>Return to catalogue</button>
+  ),
+}));
 
 const mockGetProducts = vi.fn();
 const mockGetCategories = vi.fn();
@@ -43,6 +49,74 @@ beforeEach(() => {
 });
 
 describe("ProductsPage", () => {
+  it("announces loading before showing the server total", async () => {
+    let resolveProducts!: (value: { products: (typeof mockProduct)[]; count: number }) => void;
+    mockGetProducts.mockReturnValue(
+      new Promise((resolve) => {
+        resolveProducts = resolve;
+      }),
+    );
+    mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+    renderWithProviders(<ProductsPage />);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading clothing…");
+    expect(screen.queryByText("0 products found")).not.toBeInTheDocument();
+    await act(async () => resolveProducts({ products: [mockProduct], count: 21 }));
+    expect(await screen.findByText("21 products found")).toBeInTheDocument();
+  });
+
+  it("uses matching category photographs and preserves selected shortcuts", async () => {
+    searchParamsRef.current = new URLSearchParams("category=tops");
+    mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+    mockGetProducts.mockResolvedValue({
+      products: [{ ...mockProduct, thumbnail: "/tops-photo.jpg", categories: [mockCategories[0]] }],
+      count: 1,
+    });
+    renderWithProviders(<ProductsPage />);
+    const rail = await screen.findByRole("region", { name: "Shop by garment" });
+    const tops = within(rail).getByRole("button", { name: "Browse Tops" });
+    await waitFor(() =>
+      expect(tops.querySelector("img")).toHaveAttribute("src", "/tops-photo.jpg"),
+    );
+    expect(tops).toHaveAttribute("aria-pressed", "true");
+    const bottoms = within(rail).getByRole("button", { name: "Browse Bottoms" });
+    expect(bottoms.querySelector("img")).toBeNull();
+    await userEvent.click(bottoms);
+    expect(mockRouterPush).toHaveBeenCalledWith("/products?category=tops%2Cbottoms");
+  });
+
+  it("takes shoppers from an empty sale to new arrivals", async () => {
+    searchParamsRef.current = new URLSearchParams("sale=true");
+    mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+    mockGetProducts.mockResolvedValue({ products: [], count: 0 });
+    renderWithProviders(<ProductsPage />);
+    expect(await screen.findByRole("heading", { name: "No offers right now" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Shop new arrivals" })).toHaveAttribute(
+      "href",
+      "/products?sort=newest",
+    );
+    expect(
+      screen.queryByText("Try adjusting your filters or search terms."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("starts inline product details and the returning catalogue at the top", async () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    mockGetProducts.mockResolvedValue({ products: [mockProduct], count: 1, offset: 0, limit: 20 });
+    mockGetCategories.mockResolvedValue({
+      product_categories: mockCategories,
+      count: 3,
+      offset: 0,
+      limit: 100,
+    });
+    renderWithProviders(<ProductsPage />);
+    const productLinks = await screen.findAllByRole("link", { name: mockProduct.title });
+    await userEvent.click(productLinks[0]);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
+    scrollTo.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Return to catalogue" }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
+    scrollTo.mockRestore();
+  });
   it("renders the products heading", async () => {
     mockGetProducts.mockResolvedValueOnce({
       products: [mockProduct],
@@ -205,7 +279,7 @@ describe("Clothing facets", () => {
     );
     expect(await screen.findByText("45 products found")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Size" })).toHaveValue("6 years");
-    expect(screen.getByRole("button", { name: "3" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 3" })).toBeInTheDocument();
   });
 
   it("clears every clothing facet from the empty results state", async () => {
