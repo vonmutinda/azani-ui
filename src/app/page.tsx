@@ -5,14 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   ArrowRight,
-  Baby,
-  ShieldCheck,
+  MessageCircleQuestion,
   Shirt,
   Smartphone,
   Sparkles,
   Star,
   Truck,
-  UtensilsCrossed,
   Zap,
 } from "lucide-react";
 import Image from "next/image";
@@ -33,7 +31,7 @@ export default function Home() {
 
   const newQuery = useQuery({
     queryKey: ["products", "new"],
-    queryFn: () => getProducts({ limit: 8, order: "-created_at" }),
+    queryFn: () => getProducts({ limit: 8, sort: "newest" }),
   });
 
   const categoriesQuery = useQuery({
@@ -71,13 +69,12 @@ export default function Home() {
           >
             <div className="text-primary bg-primary/[0.06] mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold">
               <Star className="h-3.5 w-3.5" fill="currentColor" />
-              Trusted by 10,000+ parents
+              Kids clothing · Ages 2–12
             </div>
 
             <h1 className="font-heading text-foreground max-w-xl text-[clamp(2.25rem,6vw,4rem)] leading-[1.08] font-extrabold tracking-tight">
-              Everything Your{" "}
               <span className="text-primary relative">
-                Little One
+                Clothing for Every Kid
                 <svg
                   className="absolute -bottom-1 left-0 w-full"
                   viewBox="0 0 200 8"
@@ -92,13 +89,12 @@ export default function Home() {
                     opacity="0.3"
                   />
                 </svg>
-              </span>{" "}
-              Needs
+              </span>
             </h1>
 
             <p className="text-muted mt-5 max-w-lg text-base leading-relaxed sm:text-lg">
-              From newborn essentials to toddler adventures — discover curated, quality products for
-              every stage of your baby&apos;s journey.
+              Explore everyday clothing for girls, boys and unisex wardrobes, with age guidance from
+              2 to 12 years.
             </p>
 
             <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
@@ -109,11 +105,11 @@ export default function Home() {
                 Shop Now <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/products?order=-created_at"
+                href="/products?sort=newest"
                 className="bg-secondary hover:bg-secondary-hover focus-visible:ring-secondary/30 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 <Sparkles className="h-4 w-4" />
-                New Arrivals
+                New In
               </Link>
             </div>
 
@@ -170,8 +166,8 @@ export default function Home() {
                         />
                       ) : (
                         <div className="text-muted-light flex flex-col items-center gap-2">
-                          <Baby className="h-12 w-12" />
-                          <span className="text-xs font-medium">Featured pick</span>
+                          <Shirt className="h-12 w-12" />
+                          <span className="text-xs font-medium">Featured clothing</span>
                         </div>
                       )}
                     </div>
@@ -296,6 +292,15 @@ export default function Home() {
                 </div>
               );
             }
+            if (!query.data?.products?.length) {
+              return (
+                <div className="border-border/50 bg-card rounded-2xl border p-8 text-center">
+                  <p className="text-foreground text-sm font-medium">
+                    No clothing is available right now. Please check back soon.
+                  </p>
+                </div>
+              );
+            }
             return (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {query.data?.products?.map((product) => (
@@ -314,36 +319,34 @@ export default function Home() {
             <Shirt className="text-secondary/[0.08] absolute -right-4 -bottom-4 h-36 w-36 rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6" />
             <div className="bg-secondary/[0.06] absolute top-8 right-8 h-24 w-24 rounded-full" />
             <div className="relative flex flex-col gap-4">
-              <span className="text-secondary text-sm font-semibold">New Collection</span>
-              <h3 className="text-foreground text-xl font-bold sm:text-2xl">
-                Adorable Baby Clothing
-              </h3>
+              <span className="text-secondary text-sm font-semibold">Girls</span>
+              <h3 className="text-foreground text-xl font-bold sm:text-2xl">Clothing for Girls</h3>
               <p className="text-muted max-w-xs text-sm">
-                From receiving sets to party dresses — find cute outfits for every occasion.
+                Browse the available tops, bottoms, dresses, sets and layers for ages 2–12.
               </p>
               <Link
-                href="/products?category=clothing"
+                href="/products?audience=girls"
                 className="bg-secondary hover:bg-secondary-hover inline-flex w-fit items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition"
               >
-                Shop Clothing <ArrowRight className="h-3.5 w-3.5" />
+                Shop Girls <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
 
           <div className="group bg-accent-yellow-light relative overflow-hidden rounded-2xl p-6 sm:p-8">
-            <UtensilsCrossed className="text-accent-yellow/[0.12] absolute -right-4 -bottom-4 h-36 w-36 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+            <Shirt className="text-accent-yellow/[0.12] absolute -right-4 -bottom-4 h-36 w-36 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
             <div className="bg-accent-yellow/[0.08] absolute top-6 right-10 h-20 w-20 rounded-full" />
             <div className="relative flex flex-col gap-4">
-              <span className="text-accent-yellow-ink text-sm font-semibold">Must-Haves</span>
-              <h3 className="text-foreground text-xl font-bold sm:text-2xl">Feeding Essentials</h3>
+              <span className="text-accent-yellow-ink text-sm font-semibold">Boys</span>
+              <h3 className="text-foreground text-xl font-bold sm:text-2xl">Clothing for Boys</h3>
               <p className="text-muted max-w-xs text-sm">
-                Bottles, pumps, weaning supplies and nutritious baby foods all in one place.
+                Browse the available tops, bottoms, sets, knitwear and sleepwear for ages 2–12.
               </p>
               <Link
-                href="/products?category=feeding"
+                href="/products?audience=boys"
                 className="bg-accent-yellow text-foreground inline-flex w-fit items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition hover:opacity-90"
               >
-                Shop Feeding <ArrowRight className="h-3.5 w-3.5" />
+                Shop Boys <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
@@ -367,15 +370,15 @@ export default function Home() {
               color: "text-accent-yellow-ink",
             },
             {
-              icon: ShieldCheck,
-              title: "Safe Products",
-              desc: "Certified & tested",
+              icon: Shirt,
+              title: "Ages 2–12",
+              desc: "Kids clothing only",
               color: "text-success-ink",
             },
             {
-              icon: Baby,
-              title: "Expert Support",
-              desc: "Parenting advice",
+              icon: MessageCircleQuestion,
+              title: "Sizing Help",
+              desc: "Ask us before ordering",
               color: "text-primary",
             },
           ].map((feat) => (

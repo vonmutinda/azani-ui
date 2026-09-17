@@ -5,110 +5,66 @@ import Image from "next/image";
 import {
   ChevronDown,
   Heart,
-  LayoutGrid,
   Menu,
   Search,
+  Shirt,
   ShoppingBag,
   Smartphone,
   Truck,
   User,
   X,
-  Shield,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getCart, getCategories, getCustomer } from "@/lib/medusa-api";
-import { Category, toCategory, TOP_LEVEL_HANDLES, resolveToMainAndSub } from "@/lib/categories";
-import { CategoryIcon } from "@/components/category-icon";
+import { getCart, getCustomer } from "@/lib/medusa-api";
 import { freeDeliveryBarLabel } from "@/lib/shipping";
 
 const TRUST_SIGNALS = [
   { icon: Truck, text: freeDeliveryBarLabel() },
   { icon: Smartphone, text: "Pay with M-Pesa" },
-  { icon: Shield, text: "Safe & certified products" },
+  { icon: Shirt, text: "Kids clothing for ages 2–12" },
 ];
+
+const PRIMARY_NAV = [
+  { label: "Shop All", href: "/products" },
+  { label: "Girls", href: "/products?audience=girls" },
+  { label: "Boys", href: "/products?audience=boys" },
+  { label: "New In", href: "/products?sort=newest" },
+  { label: "Sale", href: "/products?sale=true" },
+] as const;
+
+const AGE_NAV = [
+  { label: "2–4 years", href: "/products?age=2-4" },
+  { label: "5–8 years", href: "/products?age=5-8" },
+  { label: "9–12 years", href: "/products?age=9-12" },
+] as const;
 
 const subscribeToClientSnapshot = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
-function MegaMenu({ category, onClose }: { category: Category; onClose: () => void }) {
-  const children = category.children ?? [];
-  return (
-    <div className="absolute inset-x-0 top-full z-50 hidden lg:block">
-      <div className="bg-card/98 border-border/40 border-t shadow-xl backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-7xl px-6 py-6 lg:px-8">
-          <p className="text-foreground mb-4 text-base font-semibold">{category.name}</p>
-          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
-            {children.map((sub) => (
-              <div key={sub.slug}>
-                <Link
-                  href={`/products?category=${sub.slug}`}
-                  onClick={onClose}
-                  className="text-foreground hover:text-secondary mb-2 flex items-center gap-2 text-sm font-semibold transition"
-                >
-                  <CategoryIcon icon={sub.icon} size={15} colored />
-                  {sub.name}
-                </Link>
-                {sub.children && sub.children.length > 0 && (
-                  <ul className="space-y-0.5">
-                    {sub.children.map((child) => (
-                      <li key={child.slug}>
-                        <Link
-                          href={`/products?category=${child.slug}`}
-                          onClick={onClose}
-                          className="text-muted hover:text-foreground block py-1.5 text-sm transition"
-                        >
-                          {child.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeMega, setActiveMega] = useState<string | null>(null);
   const [trustIdx, setTrustIdx] = useState(0);
   const hasHydrated = useSyncExternalStore(
     subscribeToClientSnapshot,
     getClientSnapshot,
     getServerSnapshot,
   );
-  const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const pathname = usePathname();
   const headerSearchParams = useSearchParams();
-  const currentCategorySlug = headerSearchParams.get("category") ?? undefined;
-  const isProductsPage = pathname === "/products";
+  const currentQuery = headerSearchParams.toString();
 
-  const categoriesQuery = useQuery({
-    queryKey: ["categories-nav"],
-    queryFn: () => getCategories(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const topCategories: Category[] = (categoriesQuery.data?.product_categories ?? [])
-    .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
-    .map(toCategory);
-
-  const activeMainSlug: string | undefined = (() => {
-    if (!isProductsPage || !currentCategorySlug) return undefined;
-    const resolved = resolveToMainAndSub(currentCategorySlug, topCategories);
-    return resolved?.main;
-  })();
+  const isDestinationActive = (href: string) => {
+    if (pathname !== "/products") return false;
+    const query = href.split("?")[1] ?? "";
+    return currentQuery === query;
+  };
 
   const cartQuery = useQuery({
     queryKey: ["cart"],
@@ -136,26 +92,11 @@ export function SiteHeader() {
     }
   };
 
-  const openMega = (slug: string) => {
-    if (megaTimeout.current) clearTimeout(megaTimeout.current);
-    setActiveMega(slug);
-  };
-
-  const closeMega = () => {
-    megaTimeout.current = setTimeout(() => setActiveMega(null), 200);
-  };
-
   const toggleSearch = useCallback(() => {
     setSearchOpen((prev) => {
       if (!prev) setTimeout(() => searchInputRef.current?.focus(), 50);
       return !prev;
     });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (megaTimeout.current) clearTimeout(megaTimeout.current);
-    };
   }, []);
 
   useEffect(() => {
@@ -165,7 +106,6 @@ export function SiteHeader() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeCategory = topCategories.find((c) => c.slug === activeMega);
   const TrustIcon = TRUST_SIGNALS[trustIdx].icon;
 
   return (
@@ -217,43 +157,52 @@ export function SiteHeader() {
           {/* Desktop nav */}
           <nav className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
             <div className="flex items-center gap-0.5">
-              <Link
-                href="/products"
-                aria-label="All Products"
-                title="All Products"
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
-                  isProductsPage && !currentCategorySlug
-                    ? "bg-foreground/[0.06] text-foreground"
-                    : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
-                }`}
-              >
-                <LayoutGrid className="h-[15px] w-[15px]" />
-              </Link>
-              {topCategories.map((cat) => {
-                const isNavActive = activeMainSlug === cat.slug;
-                return (
-                  <div
-                    key={cat.slug}
-                    className="relative"
-                    onMouseEnter={() => openMega(cat.slug)}
-                    onMouseLeave={closeMega}
-                  >
+              {PRIMARY_NAV.slice(0, 3).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
+                    isDestinationActive(item.href)
+                      ? "bg-foreground/[0.06] text-foreground"
+                      : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <div className="group relative">
+                <button
+                  type="button"
+                  className="text-muted hover:bg-foreground/[0.04] hover:text-foreground flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition"
+                >
+                  Shop by Age
+                  <ChevronDown className="h-3 w-3 opacity-50 transition group-focus-within:rotate-180 group-hover:rotate-180" />
+                </button>
+                <div className="bg-card border-border/50 invisible absolute top-full left-0 z-50 mt-1 w-40 rounded-xl border p-2 opacity-0 shadow-lg transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                  {AGE_NAV.map((item) => (
                     <Link
-                      href={`/products?category=${cat.slug}`}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
-                        activeMega === cat.slug || isNavActive
-                          ? "bg-foreground/[0.06] text-foreground"
-                          : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
-                      }`}
+                      key={item.href}
+                      href={item.href}
+                      className="text-muted hover:bg-foreground/[0.04] hover:text-foreground block rounded-lg px-3 py-2 text-sm transition"
                     >
-                      {cat.name}
-                      <ChevronDown
-                        className={`h-3 w-3 shrink-0 opacity-50 transition-transform ${activeMega === cat.slug ? "rotate-180" : ""}`}
-                      />
+                      {item.label}
                     </Link>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
+              {PRIMARY_NAV.slice(3).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
+                    isDestinationActive(item.href)
+                      ? "bg-foreground/[0.06] text-foreground"
+                      : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </nav>
 
@@ -304,17 +253,6 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Mega menu */}
-      {activeCategory && (
-        <div
-          className="relative hidden lg:block"
-          onMouseEnter={() => openMega(activeCategory.slug)}
-          onMouseLeave={closeMega}
-        >
-          <MegaMenu category={activeCategory} onClose={() => setActiveMega(null)} />
-        </div>
-      )}
-
       {/* Search overlay */}
       {searchOpen && (
         <div className="bg-card/98 border-border/40 border-t backdrop-blur-xl">
@@ -351,38 +289,40 @@ export function SiteHeader() {
             </form>
 
             <div className="space-y-0.5">
-              <Link
-                href="/products"
-                onClick={() => setMobileOpen(false)}
-                className="text-foreground hover:bg-foreground/[0.04] block rounded-lg px-3 py-2.5 text-sm font-semibold transition"
-              >
-                All Products
-              </Link>
-              {topCategories.map((cat) => (
-                <div key={cat.slug}>
+              {PRIMARY_NAV.slice(0, 3).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="text-foreground hover:bg-foreground/[0.04] block rounded-lg px-3 py-2.5 text-sm font-semibold transition"
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <p className="text-muted px-3 pt-3 pb-1 text-xs font-semibold tracking-wide uppercase">
+                Shop by Age
+              </p>
+              <div className="ml-3 space-y-0.5">
+                {AGE_NAV.map((item) => (
                   <Link
-                    href={`/products?category=${cat.slug}`}
+                    key={item.href}
+                    href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className="text-foreground hover:bg-foreground/[0.04] flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition"
+                    className="text-muted hover:text-foreground block rounded-lg px-3 py-2 text-sm transition"
                   >
-                    <CategoryIcon icon={cat.icon} size={15} colored />
-                    {cat.name}
+                    {item.label}
                   </Link>
-                  {cat.children && (
-                    <div className="ml-8 space-y-0.5">
-                      {cat.children.slice(0, 5).map((sub) => (
-                        <Link
-                          key={sub.slug}
-                          href={`/products?category=${sub.slug}`}
-                          onClick={() => setMobileOpen(false)}
-                          className="text-muted hover:text-foreground block rounded-lg px-3 py-2 text-sm transition"
-                        >
-                          {sub.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ))}
+              </div>
+              {PRIMARY_NAV.slice(3).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="text-foreground hover:bg-foreground/[0.04] block rounded-lg px-3 py-2.5 text-sm font-semibold transition"
+                >
+                  {item.label}
+                </Link>
               ))}
             </div>
 

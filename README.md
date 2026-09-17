@@ -1,7 +1,16 @@
 # Azani UI
 
-Azani Kenya storefront — Next.js App Router consuming the `azani-api` Medusa v2 backend.
-Forked from `micro-ui` `main` and hardcoded for Kenya/KES; no env-driven brand config.
+Azani Kenya kids clothing storefront for ages 2–12 — Next.js App Router consuming the
+`azani-api` Medusa v2 backend. The catalogue is organised by garment type, with audience, age,
+size, colour, availability, price, sale status and sorting as discovery filters.
+
+The storefront calls the clothing-specific Medusa routes for catalogue discovery:
+
+- `GET /store/clothing-products`
+- `GET /store/clothing-products/:id`
+- `GET /store/clothing-categories`
+
+Existing cart, customer, checkout and order flows continue to use Medusa's standard store routes.
 
 ## Tech Stack
 

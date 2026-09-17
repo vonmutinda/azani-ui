@@ -74,8 +74,7 @@ export const policyPages = {
     href: "/policies/returns",
     eyebrow: "After purchase",
     title: "Returns & Exchanges",
-    description:
-      "Return, exchange, and damaged-item guidance for baby products purchased from Azani.",
+    description: "Return, exchange, and damaged-item guidance for clothing purchased from Azani.",
     updatedAt: LAST_UPDATED,
     quickFacts: [
       { label: "Return window", value: "3 days after delivery" },
@@ -89,7 +88,7 @@ export const policyPages = {
       },
       {
         title: "Items we cannot take back",
-        body: "For safety and hygiene, opened feeding, bath, diapering, or personal-care items cannot be returned unless they arrived damaged, faulty, or different from what you ordered.",
+        body: "For hygiene, sealed items cannot be returned after their packaging has been opened unless they arrived damaged, faulty, or different from what you ordered.",
       },
       {
         title: "Exchanges",
@@ -151,7 +150,7 @@ export const policyPages = {
       },
       {
         title: "Product information",
-        body: "We aim to keep product names, photos, prices, stock, and descriptions accurate. Small differences in packaging, color, or supplier presentation can happen, especially for baby essentials sourced from different batches.",
+        body: "We aim to keep product names, photos, prices, stock, and descriptions accurate. Small differences in packaging, colour, or supplier presentation can happen between batches.",
       },
       {
         title: "Delivery and returns",
@@ -170,7 +169,7 @@ export const contactPage = {
   eyebrow: "Support",
   title: "Contact Azani",
   description:
-    "Need help choosing baby essentials, tracking an order, or checking stock? Reach Azani through the channel that works best for you.",
+    "Need help choosing kids clothing, checking a size, tracking an order, or confirming stock? Reach Azani through the channel that works best for you.",
   updatedAt: LAST_UPDATED,
   quickFacts: [
     { label: "Location", value: siteConfig.contact.location },
@@ -201,8 +200,8 @@ export const contactPage = {
     {
       title: "What we can help with",
       items: [
-        "Choosing feeding, diapering, nursery, clothing, toy, and maternity essentials.",
-        "Checking stock, size, color, and bundle availability before you order.",
+        "Choosing clothing by garment type, audience, or age guidance for kids ages 2–12.",
+        "Checking stock, size, colour, and outfit availability before you order.",
         "Tracking an order or correcting delivery details before dispatch.",
         "Starting a return, exchange, or damaged-item review.",
       ],

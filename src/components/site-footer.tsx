@@ -3,16 +3,6 @@ import Image from "next/image";
 import { Facebook, Heart, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 
-const TOP_CATEGORIES = [
-  { name: "Feeding", slug: "feeding" },
-  { name: "Bath & Diapering", slug: "bath-diapering" },
-  { name: "Nursery", slug: "nursery" },
-  { name: "Baby Gear", slug: "baby-gear" },
-  { name: "Clothing", slug: "clothing" },
-  { name: "Toys & Books", slug: "toys-books" },
-  { name: "Mom & Maternity", slug: "mom-maternity" },
-];
-
 export function SiteFooter() {
   return (
     <footer className="border-border/50 bg-card mt-10 border-t">
@@ -22,8 +12,7 @@ export function SiteFooter() {
             <Image src="/logo.svg" alt="Azani" width={320} height={100} className="h-16 w-auto" />
           </Link>
           <p className="text-muted text-sm leading-relaxed">
-            Quality baby products, clothing, toys and essentials. Curated with love for your little
-            ones.
+            Kids clothing for ages 2–12. Browse by garment, audience, age, size and colour.
           </p>
           <div className="text-muted space-y-2 text-xs">
             <div className="flex items-center gap-2">
@@ -80,18 +69,23 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h4 className="text-foreground mb-4 text-sm font-bold">Categories</h4>
+          <h4 className="text-foreground mb-4 text-sm font-bold">Shop by Age</h4>
           <ul className="text-muted space-y-2.5 text-sm">
-            {TOP_CATEGORIES.map((cat) => (
-              <li key={cat.slug}>
-                <Link
-                  href={`/products?category=${cat.slug}`}
-                  className="hover:text-foreground transition"
-                >
-                  {cat.name}
-                </Link>
-              </li>
-            ))}
+            <li>
+              <Link href="/products?age=2-4" className="hover:text-foreground transition">
+                2–4 years
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?age=5-8" className="hover:text-foreground transition">
+                5–8 years
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?age=9-12" className="hover:text-foreground transition">
+                9–12 years
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -100,12 +94,27 @@ export function SiteFooter() {
           <ul className="text-muted space-y-2.5 text-sm">
             <li>
               <Link href="/products" className="hover:text-foreground transition">
-                All Products
+                Shop All
               </Link>
             </li>
             <li>
-              <Link href="/products?category=clothing" className="hover:text-foreground transition">
-                New Arrivals
+              <Link href="/products?audience=girls" className="hover:text-foreground transition">
+                Girls
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?audience=boys" className="hover:text-foreground transition">
+                Boys
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?sort=newest" className="hover:text-foreground transition">
+                New In
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?sale=true" className="hover:text-foreground transition">
+                Sale
               </Link>
             </li>
             <li>
@@ -167,7 +176,7 @@ export function SiteFooter() {
         <div className="text-muted mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-5 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
           <span>&copy; {new Date().getFullYear()} Azani. All rights reserved.</span>
           <span className="flex items-center gap-1">
-            Made with <Heart className="text-primary h-3 w-3" fill="currentColor" /> for little ones
+            Made with <Heart className="text-primary h-3 w-3" fill="currentColor" /> for kids
           </span>
         </div>
       </div>

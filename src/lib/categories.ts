@@ -8,93 +8,108 @@ export type Category = {
   children?: Category[];
 };
 
-/** Icon mapping for known category handles */
-const CATEGORY_ICONS: Record<string, string> = {
-  // Top-level
-  feeding: "utensils",
-  "bath-diapering": "bath",
-  nursery: "moon",
-  "baby-gear": "car",
-  clothing: "shirt",
-  "toys-books": "gamepad",
-  "mom-maternity": "heart-handshake",
+/** Canonical garment categories exposed by the clothing catalogue. */
+export const CLOTHING_CATEGORY_HANDLES = [
+  "tops",
+  "bottoms",
+  "dresses-jumpsuits",
+  "sets-outfits",
+  "knitwear-outerwear",
+  "sleepwear",
+  "underwear-socks",
+] as const;
 
-  // Feeding
-  "bottles-sippy-cups": "milk",
-  "breast-pumps-milk-storage": "heart",
-  "bottle-warmers-sterilizers": "thermometer",
-  "baby-formula": "milk",
-  "baby-food-snacks": "apple",
-  "weaning-essentials": "utensils",
-  "high-chairs-booster-seats": "armchair",
+export type ClothingCategoryHandle = (typeof CLOTHING_CATEGORY_HANDLES)[number];
 
-  // Bath & Diapering
-  "diapers-pull-ups": "baby",
-  wipes: "sparkles",
-  "diaper-bags-changing-mats": "briefcase",
-  "diaper-rash-skin-care": "heart",
-  "bath-tubs-seats": "bath",
-  "soaps-shampoos-wash": "sparkles",
-  "towels-washcloths": "bath",
-  "potty-training": "baby",
+/** Compatible former garment handles that can preserve a shopper's destination. */
+export const LEGACY_CATEGORY_ALIASES = {
+  "tops-t-shirts": "tops",
+  "dresses-outfits": "dresses-jumpsuits",
+  "sleepwear-pajamas": "sleepwear",
+  "socks-shoes": "underwear-socks",
+} as const satisfies Record<string, ClothingCategoryHandle>;
 
-  // Nursery
-  "cribs-bassinets": "bed",
-  "mattresses-bedding": "bed",
-  "swaddles-sleep-sacks": "moon",
-  "monitors-night-lights": "moon",
-  "nursery-decor-storage": "star",
-
-  // Baby Gear
-  strollers: "car",
-  "car-seats": "car",
-  "baby-carriers-wraps": "briefcase",
-  "travel-bags-accessories": "briefcase",
-  "playmats-activity-gyms": "layout",
-  "baby-walkers-bouncers": "baby",
-  safety: "shield",
-
-  // Clothing
-  "newborn-layette-sets": "gift",
-  "bodysuits-onesies": "shirt",
-  "sleepwear-pajamas": "moon",
-  "tops-t-shirts": "shirt",
-  bottoms: "shirt",
-  "dresses-outfits": "sparkles",
-  "socks-shoes": "footprints",
-  "hats-accessories": "crown",
-
-  // Toys & Books
-  "rattles-teethers": "star",
-  "stuffed-animals-soft-toys": "heart",
-  "bath-toys": "bath",
-  "ride-ons-bikes-cars": "bike",
-  "building-stacking-toys": "gamepad",
-  "books-learning": "book",
-  "pacifiers-soothers": "baby",
-
-  // Mom & Maternity
-  "nursing-tops-bras": "shirt",
-  "nursing-pillows": "cloud",
-  "breast-care": "heart",
-  "postpartum-recovery": "heart",
-  "maternity-wear": "shirt",
-  "mom-self-care": "sparkles",
-};
-
-/** Top-level category handles (the 7 main categories) */
-export const TOP_LEVEL_HANDLES = [
+/** Known former departments that no longer belong in the clothing-only store. */
+export const RETIRED_CATEGORY_HANDLES = [
   "feeding",
   "bath-diapering",
   "nursery",
   "baby-gear",
-  "clothing",
   "toys-books",
   "mom-maternity",
-];
+  "bottles-sippy-cups",
+  "breast-pumps-milk-storage",
+  "bottle-warmers-sterilizers",
+  "baby-formula",
+  "baby-food-snacks",
+  "weaning-essentials",
+  "high-chairs-booster-seats",
+  "diapers-pull-ups",
+  "wipes",
+  "diaper-bags-changing-mats",
+  "diaper-rash-skin-care",
+  "bath-tubs-seats",
+  "soaps-shampoos-wash",
+  "towels-washcloths",
+  "potty-training",
+  "cribs-bassinets",
+  "mattresses-bedding",
+  "swaddles-sleep-sacks",
+  "monitors-night-lights",
+  "nursery-decor-storage",
+  "strollers",
+  "car-seats",
+  "baby-carriers-wraps",
+  "travel-bags-accessories",
+  "playmats-activity-gyms",
+  "baby-walkers-bouncers",
+  "safety",
+  "newborn-layette-sets",
+  "bodysuits-onesies",
+  "hats-accessories",
+  "rattles-teethers",
+  "stuffed-animals-soft-toys",
+  "bath-toys",
+  "ride-ons-bikes-cars",
+  "building-stacking-toys",
+  "books-learning",
+  "pacifiers-soothers",
+  "nursing-tops-bras",
+  "nursing-pillows",
+  "breast-care",
+  "postpartum-recovery",
+  "maternity-wear",
+  "mom-self-care",
+] as const;
+
+const CLOTHING_CATEGORY_HANDLE_SET = new Set<string>(CLOTHING_CATEGORY_HANDLES);
+const RETIRED_CATEGORY_HANDLE_SET = new Set<string>(RETIRED_CATEGORY_HANDLES);
+
+export function resolveClothingCategoryHandle(handle: string): ClothingCategoryHandle | undefined {
+  if (CLOTHING_CATEGORY_HANDLE_SET.has(handle)) return handle as ClothingCategoryHandle;
+  return LEGACY_CATEGORY_ALIASES[handle as keyof typeof LEGACY_CATEGORY_ALIASES];
+}
+
+export function isRetiredCategoryHandle(handle: string): boolean {
+  return RETIRED_CATEGORY_HANDLE_SET.has(handle);
+}
+
+/** Icon mapping for the canonical garment handles. */
+const CATEGORY_ICONS: Record<string, string> = {
+  tops: "shirt",
+  bottoms: "layout",
+  "dresses-jumpsuits": "sparkles",
+  "sets-outfits": "gift",
+  "knitwear-outerwear": "cloud",
+  sleepwear: "moon",
+  "underwear-socks": "footprints",
+};
+
+/** Compatibility name used by existing category-tree consumers. */
+export const TOP_LEVEL_HANDLES: readonly string[] = CLOTHING_CATEGORY_HANDLES;
 
 export function getCategoryIcon(handle: string): string {
-  return CATEGORY_ICONS[handle] ?? "baby";
+  return CATEGORY_ICONS[handle] ?? "shirt";
 }
 
 /** Convert Medusa categories to our local Category shape for navigation */

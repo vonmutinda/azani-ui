@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s | Azani",
   },
   description:
-    "Quality baby products, clothing, toys and essentials for your little one. Shop baby care, feeding, clothing, and more.",
+    "Shop kids clothing for ages 2–12 at Azani. Browse garments for girls, boys and unisex wardrobes by age, size and colour.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://azani.shop"),
   openGraph: {
     type: "website",

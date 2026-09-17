@@ -11,6 +11,35 @@ vi.mock("@/lib/medusa-api", () => ({
 }));
 
 describe("SiteHeader", () => {
+  it("renders the clothing discovery destinations with canonical query parameters", () => {
+    const html = renderToString(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteHeader />
+      </QueryClientProvider>,
+    );
+
+    expect(html).toContain('href="/products"');
+    expect(html).toContain('href="/products?audience=girls"');
+    expect(html).toContain('href="/products?audience=boys"');
+    expect(html).toContain('href="/products?age=2-4"');
+    expect(html).toContain('href="/products?age=5-8"');
+    expect(html).toContain('href="/products?age=9-12"');
+    expect(html).toContain('href="/products?sort=newest"');
+    expect(html).toContain('href="/products?sale=true"');
+    expect(html).toContain("Shop All");
+    expect(html).toContain("Shop by Age");
+  });
+
+  it("does not advertise unsupported product certification", () => {
+    const html = renderToString(
+      <QueryClientProvider client={new QueryClient()}>
+        <SiteHeader />
+      </QueryClientProvider>,
+    );
+
+    expect(html).not.toContain("Safe &amp; certified products");
+  });
+
   it("does not server-render the cart quantity from client cache", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["cart"], {
