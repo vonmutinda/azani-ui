@@ -30,6 +30,21 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const originalPrice = getProductOriginalPrice(product);
   const discountPercent = getProductDiscountPercent(product);
   const optionCount = product.variants?.length ?? 0;
+  const requiresSize = product.options?.some((option) => option.title.toLowerCase() === "size");
+  const availableSizes =
+    product.options
+      ?.filter((option) => option.title.toLowerCase() === "size")
+      .flatMap((option) =>
+        option.values
+          .filter((value) =>
+            product.variants?.some(
+              (variant) =>
+                getVariantAvailability(variant).canPurchase &&
+                variant.options?.some((v) => v.option_id === option.id && v.value === value.value),
+            ),
+          )
+          .map((value) => value.value),
+      ) ?? [];
   const quickAddVariant =
     product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
     product.variants?.[0];
@@ -182,12 +197,16 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
-        {optionCount > 1 ? (
+        {requiresSize ? (
+          <p className="text-muted-light text-2xs">
+            Sizes: {availableSizes.join(", ") || "Sold out"}
+          </p>
+        ) : optionCount > 1 ? (
           <p className="text-muted-light text-2xs">{optionCount} options</p>
         ) : null}
 
-        <div className="mt-auto flex items-center justify-between">
-          <div className="flex items-baseline gap-1.5">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex flex-wrap items-baseline gap-1.5">
             <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
             {originalPrice && (
               <span className="text-muted text-2xs line-through">{originalPrice}</span>
@@ -197,41 +216,51 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
             ) : null}
           </div>
 
-          {quickAddVariant && (
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                justAdded
-                  ? "bg-accent-green-bold scale-110"
-                  : maxedOut
-                    ? "bg-muted cursor-default opacity-60"
-                    : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 disabled:opacity-40"
-              }`}
-              aria-label={
-                maxedOut
-                  ? "Max quantity in cart"
-                  : availability.canPurchase
-                    ? "Add to cart"
-                    : "Out of stock"
-              }
-              title={
-                maxedOut
-                  ? "Max quantity in cart"
-                  : availability.canPurchase
-                    ? "Add to cart"
-                    : "Out of stock"
-              }
+          {requiresSize ? (
+            <Link
+              href={productHref}
+              onClick={handleClick}
+              className="text-primary shrink-0 text-xs font-semibold underline underline-offset-4"
             >
-              {justAdded ? (
-                <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
-              ) : maxedOut ? (
-                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-              ) : (
-                <Plus className="h-4 w-4" strokeWidth={2.5} />
-              )}
-            </button>
+              Choose size
+            </Link>
+          ) : (
+            quickAddVariant && (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                  justAdded
+                    ? "bg-accent-green-bold scale-110"
+                    : maxedOut
+                      ? "bg-muted cursor-default opacity-60"
+                      : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 disabled:opacity-40"
+                }`}
+                aria-label={
+                  maxedOut
+                    ? "Max quantity in cart"
+                    : availability.canPurchase
+                      ? "Add to cart"
+                      : "Out of stock"
+                }
+                title={
+                  maxedOut
+                    ? "Max quantity in cart"
+                    : availability.canPurchase
+                      ? "Add to cart"
+                      : "Out of stock"
+                }
+              >
+                {justAdded ? (
+                  <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
+                ) : maxedOut ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                ) : (
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                )}
+              </button>
+            )
           )}
         </div>
       </div>

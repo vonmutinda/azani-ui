@@ -54,6 +54,96 @@ describe("CheckoutPage", () => {
     mockCompleteCart.mockResolvedValue({ type: "order" });
   });
 
+  it("blocks checkout when a retired product still has cached stock in the cart", async () => {
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      items: mockCart.items.map((item) => ({ ...item, variant: mockProduct.variants![0] })),
+    });
+    mockGetProductsByIds.mockResolvedValue([]);
+    renderWithProviders(<CheckoutPage />);
+    await screen.findByText(/Some items in your cart are no longer available/);
+    expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeDisabled();
+  });
+
+  it("blocks a removed size instead of trusting the cached cart variant", async () => {
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      items: mockCart.items.map((item) => ({ ...item, variant: mockProduct.variants![0] })),
+    });
+    mockGetProductsByIds.mockResolvedValue([{ ...mockProduct, variants: [] }]);
+    renderWithProviders(<CheckoutPage />);
+    await screen.findByText(/Some items in your cart are no longer available/);
+    expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeDisabled();
+  });
+
+  it("waits for the clothing catalogue before allowing checkout to continue", async () => {
+    mockGetProductsByIds.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(<CheckoutPage />);
+    await screen.findByText("Shipping Address");
+    expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeDisabled();
+  });
+
+  it("blocks checkout when the requested quantity exceeds current managed stock", async () => {
+    const liveVariant = {
+      ...mockProduct.variants![0],
+      manage_inventory: true,
+      allow_backorder: false,
+      inventory_quantity: 1,
+    };
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      region: mockRegion,
+      items: mockCart.items.map((item) => ({ ...item, quantity: 2, variant: liveVariant })),
+    });
+    mockGetProductsByIds.mockResolvedValue([{ ...mockProduct, variants: [liveVariant] }]);
+
+    renderWithProviders(<CheckoutPage />);
+
+    await screen.findByText(/Some items in your cart are no longer available/);
+    expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeDisabled();
+  });
+
+  it("allows checkout when current stock covers a quantity above the quantity control cap", async () => {
+    const liveVariant = {
+      ...mockProduct.variants![0],
+      manage_inventory: true,
+      allow_backorder: false,
+      inventory_quantity: 20,
+    };
+    mockGetCart.mockResolvedValue({
+      ...mockCart,
+      region: mockRegion,
+      items: mockCart.items.map((item) => ({ ...item, quantity: 12, variant: liveVariant })),
+    });
+    mockGetProductsByIds.mockResolvedValue([{ ...mockProduct, variants: [liveVariant] }]);
+
+    renderWithProviders(<CheckoutPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeEnabled(),
+    );
+    expect(
+      screen.queryByText(/Some items in your cart are no longer available/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("blocks checkout and offers a retry when availability cannot be checked", async () => {
+    mockGetProductsByIds.mockRejectedValueOnce(new Error("Catalogue unavailable"));
+
+    renderWithProviders(<CheckoutPage />);
+
+    await screen.findByText(/couldn’t check item availability/i);
+    expect(
+      screen.queryByText(/Some items in your cart are no longer available/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Continue to Shipping" })).toBeEnabled(),
+    );
+  });
+
   async function continueToPayment() {
     await screen.findByText("Shipping Address");
 

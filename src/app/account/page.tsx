@@ -34,7 +34,7 @@ import {
   Plus,
   Phone,
   ShoppingBag,
-  Baby,
+  Shirt,
   Heart,
   Mail,
   BadgeCheck,
@@ -1072,7 +1072,7 @@ function OrdersSection({
             href="/products"
             className="bg-primary hover:bg-primary-hover mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition"
           >
-            <Baby className="h-4 w-4" />
+            <Shirt className="h-4 w-4" />
             Start Shopping
           </Link>
         </div>
@@ -1296,6 +1296,9 @@ function OrderDetail({
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
+                {item.variant?.title && item.variant.title !== "Default variant" && (
+                  <p className="text-muted text-xs">{item.variant.title}</p>
+                )}
                 <p className="text-muted text-xs">Qty: {item.quantity}</p>
               </div>
               <span className="text-foreground shrink-0 text-sm font-medium">

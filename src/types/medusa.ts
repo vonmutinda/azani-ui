@@ -27,7 +27,15 @@ export type MedusaMoneyAmount = {
   max_quantity?: number | null;
 };
 
+export type ClothingVariantMetadata = {
+  age_min?: number;
+  age_max?: number;
+  height_min_cm?: number;
+  height_max_cm?: number;
+};
+
 export type MedusaProductVariant = {
+  metadata?: Record<string, unknown> & { clothing?: ClothingVariantMetadata };
   id: string;
   title: string;
   sku?: string | null;

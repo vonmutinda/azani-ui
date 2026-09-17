@@ -79,7 +79,8 @@ export async function getProducts(
     count: number;
     offset: number;
     limit: number;
-  }>("store/products", {
+    facets?: { sizes: string[]; colours: string[] };
+  }>("store/clothing-products", {
     searchParams: {
       limit: 20,
       offset: 0,
@@ -92,7 +93,7 @@ export async function getProducts(
 export async function getProductByHandle(handle: string) {
   const pricingParams = await getProductPricingParams();
 
-  const res = await medusaRequest<{ products: MedusaProduct[] }>("store/products", {
+  const res = await medusaRequest<{ products: MedusaProduct[] }>("store/clothing-products", {
     searchParams: { handle, limit: 1, ...pricingParams },
   });
   return res.products[0] ?? null;
@@ -101,7 +102,7 @@ export async function getProductByHandle(handle: string) {
 export async function getProductById(id: string) {
   const pricingParams = await getProductPricingParams();
 
-  return medusaRequest<{ product: MedusaProduct }>(`store/products/${validateId(id)}`, {
+  return medusaRequest<{ product: MedusaProduct }>(`store/clothing-products/${validateId(id)}`, {
     searchParams: pricingParams,
   });
 }
@@ -109,13 +110,8 @@ export async function getProductById(id: string) {
 export async function getProductsByIds(productIds: string[]) {
   if (productIds.length === 0) return [];
 
-  let listedProducts: MedusaProduct[] = [];
-  try {
-    const listed = await getProducts({ id: productIds, limit: productIds.length });
-    listedProducts = listed.products ?? [];
-  } catch {
-    // Fallback to per-product fetches below.
-  }
+  const listed = await getProducts({ id: productIds, limit: productIds.length });
+  const listedProducts = listed.products ?? [];
 
   const listedProductMap = new Map(listedProducts.map((product) => [product.id, product]));
   const missingIds = productIds.filter((productId) => !listedProductMap.has(productId));
@@ -125,8 +121,9 @@ export async function getProductsByIds(productIds: string[]) {
       try {
         const res = await getProductById(productId);
         return res.product;
-      } catch {
-        return null;
+      } catch (error) {
+        if ((error as Error & { status?: number }).status === 404) return null;
+        throw error;
       }
     }),
   );
@@ -152,7 +149,7 @@ export async function getCategories(
     count: number;
     offset: number;
     limit: number;
-  }>("store/product-categories", {
+  }>("store/clothing-categories", {
     searchParams: {
       limit: 100,
       include_descendants_tree: true,
@@ -164,7 +161,7 @@ export async function getCategories(
 export async function getCategoryByHandle(handle: string) {
   const res = await medusaRequest<{
     product_categories: MedusaProductCategory[];
-  }>("store/product-categories", {
+  }>("store/clothing-categories", {
     searchParams: { handle, limit: 1, include_descendants_tree: true },
   });
   return res.product_categories[0] ?? null;
@@ -210,7 +207,9 @@ export async function getCart(): Promise<MedusaCart | null> {
   if (!cartId) return null;
 
   try {
-    const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
+    const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`, {
+      searchParams: { fields: "+items.variant.title,+shipping_methods.name" },
+    });
     // An already-completed cart shouldn't drive the storefront UI (mutations
     // against it 400). Drop the stored id so the next `getOrCreateCart` mints
     // a new one, and surface "no cart" to callers like the cart page.

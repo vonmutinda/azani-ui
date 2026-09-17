@@ -165,7 +165,7 @@ describe("ProductDetail", () => {
     expect(screen.getByRole("button", { name: /50 Count/i })).toBeDisabled();
   });
 
-  it("auto-selects an available value when a selection change makes the current one unavailable", async () => {
+  it("clears an incompatible clothing option and requires an explicit replacement", async () => {
     const product: MedusaProduct = {
       ...mockProduct,
       options: [
@@ -236,13 +236,17 @@ describe("ProductDetail", () => {
     renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
     await screen.findByRole("heading", { name: "Pampers Baby Dry Diapers" });
 
-    // Default selection is S / Red. Switch size to M, where M/Red is sold out.
+    // Explicitly choose S / Red, then switch to M where Red is sold out.
+    await user.click(screen.getByRole("button", { name: "S" }));
+    await user.click(screen.getByRole("button", { name: "Red" }));
     await user.click(screen.getByRole("button", { name: "M" }));
 
-    // Picking M strands Red (M/Red is sold out), so Color repairs to the
-    // in-stock Blue and the selection resolves to the available M/Blue variant.
+    // No colour is silently substituted. The customer must choose Blue.
     expect(screen.getByRole("button", { name: "M" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Choose size and colour" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Blue" }));
+    expect(screen.getByRole("button", { name: "Add to Cart" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Red" })).toHaveAttribute("aria-pressed", "false");
   });
 

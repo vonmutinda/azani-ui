@@ -52,10 +52,25 @@ function getCartItemProduct(item: MedusaLineItem, productsById: Map<string, Medu
 }
 
 function getCartItemAvailability(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  if (item.product_id && !productsById.has(item.product_id))
+    return {
+      ...getVariantAvailability(undefined),
+      label: "No longer available — remove this item",
+    };
   const product = getCartItemProduct(item, productsById);
-  const variant =
-    product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
   return getVariantAvailability(variant);
+}
+
+function canFulfillCartItem(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  const availability = getCartItemAvailability(item, productsById);
+  if (!availability.canPurchase) return false;
+
+  const product = getCartItemProduct(item, productsById);
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
+  if (variant?.manage_inventory !== true || variant.allow_backorder === true) return true;
+
+  return item.quantity <= availability.inventoryQuantity;
 }
 
 export default function CartPage() {
@@ -107,8 +122,8 @@ export default function CartPage() {
     [cartProductsQuery.data],
   );
   const hasUnavailableItems =
-    cartProductsQuery.isFetched &&
-    items.some((item) => !getCartItemAvailability(item, cartProductsById).canPurchase);
+    cartProductsQuery.isSuccess &&
+    items.some((item) => !canFulfillCartItem(item, cartProductsById));
 
   if (cartQuery.isLoading) {
     return (
@@ -171,6 +186,22 @@ export default function CartPage() {
         </span>
       </div>
 
+      {cartProductsQuery.isError && (
+        <div
+          role="alert"
+          className="border-danger/20 bg-danger/5 text-danger mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium"
+        >
+          <span>We couldn’t check item availability. Please try again.</span>
+          <button
+            type="button"
+            onClick={() => cartProductsQuery.refetch()}
+            className="rounded-full border border-current px-3 py-1.5 text-xs font-semibold"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {hasUnavailableItems && (
         <div className="border-danger/20 bg-danger/5 text-danger mb-5 rounded-2xl border px-4 py-3 text-sm font-medium">
           Some items are no longer available in the requested quantity. Update or remove them to
@@ -198,7 +229,7 @@ export default function CartPage() {
               isUpdating={updateMutation.isPending}
               isRemoving={removeMutation.isPending}
               productsById={cartProductsById}
-              productsLoaded={cartProductsQuery.isFetched}
+              productsLoaded={cartProductsQuery.isSuccess}
             />
           ))}
         </div>
@@ -334,13 +365,17 @@ export default function CartPage() {
             )}
           </div>
 
-          {hasUnavailableItems ? (
+          {cartProductsQuery.isPending || cartProductsQuery.isError || hasUnavailableItems ? (
             <button
               type="button"
               disabled
               className="bg-primary flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-white opacity-50"
             >
-              Resolve Stock Issues First
+              {cartProductsQuery.isPending
+                ? "Checking availability…"
+                : cartProductsQuery.isError
+                  ? "Availability check failed"
+                  : "Resolve Stock Issues First"}
             </button>
           ) : (
             <Link

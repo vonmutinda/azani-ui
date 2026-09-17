@@ -33,6 +33,7 @@ import {
 } from "@/lib/formatters";
 import { freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
+import { ClothingFit } from "@/components/clothing-fit";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { StarRating } from "@/components/star-rating";
@@ -129,9 +130,11 @@ export function ProductDetail({ productId, onBack }: Props) {
   const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart, staleTime: 10_000 });
 
   const product = productQuery.data?.product;
+  const requiresSize = product?.options?.some((option) => option.title.toLowerCase() === "size");
   const isWishlisted = product ? (wishlistQuery.data ?? []).includes(product.id) : false;
 
   const defaultOptions = useMemo(() => {
+    if (requiresSize) return {};
     const firstVariant = product?.variants?.[0];
     if (!firstVariant?.options) return {};
     const initial: Record<string, string> = {};
@@ -139,7 +142,7 @@ export function ProductDetail({ productId, onBack }: Props) {
       initial[vo.option_id] = vo.value;
     }
     return initial;
-  }, [product]);
+  }, [product, requiresSize]);
 
   const effectiveOptions =
     Object.keys(selectedOptions).length > 0 ? selectedOptions : defaultOptions;
@@ -184,9 +187,9 @@ export function ProductDetail({ productId, onBack }: Props) {
           if (!selected) return false;
           return v.options!.some((vo) => vo.option_id === opt.id && vo.value === selected);
         });
-      }) ?? vars[0]
+      }) ?? (requiresSize ? undefined : vars[0])
     );
-  }, [product, effectiveOptions]);
+  }, [product, effectiveOptions, requiresSize]);
 
   // Does an in-stock variant carry `value` for `optionId`, compatible with the
   // given selection of the *other* options? An empty selection asks the looser
@@ -197,7 +200,9 @@ export function ProductDetail({ productId, onBack }: Props) {
       const vars = product?.variants ?? [];
       return vars.some((v) => {
         if (!v.options || !getVariantAvailability(v).inStock) return false;
-        const carriesValue = v.options.some((vo) => vo.option_id === optionId && vo.value === value);
+        const carriesValue = v.options.some(
+          (vo) => vo.option_id === optionId && vo.value === value,
+        );
         if (!carriesValue) return false;
         return opts.every((opt) => {
           if (opt.id === optionId) return true;
@@ -226,17 +231,30 @@ export function ProductDetail({ productId, onBack }: Props) {
       setSelectedOptions((prev) => {
         const base = Object.keys(prev).length > 0 ? prev : defaultOptions;
         const next = { ...base, [optionId]: value };
+        if (requiresSize) {
+          for (const opt of product?.options ?? []) {
+            if (
+              opt.id !== optionId &&
+              next[opt.id] &&
+              !isValueAvailableGiven(next, opt.id, next[opt.id])
+            )
+              delete next[opt.id];
+          }
+          return next;
+        }
         for (const opt of product?.options ?? []) {
           if (opt.id === optionId) continue;
           const held = next[opt.id];
           if (held && isValueAvailableGiven(next, opt.id, held)) continue;
-          const firstAvailable = opt.values.find((v) => isValueAvailableGiven(next, opt.id, v.value));
+          const firstAvailable = opt.values.find((v) =>
+            isValueAvailableGiven(next, opt.id, v.value),
+          );
           if (firstAvailable) next[opt.id] = firstAvailable.value;
         }
         return next;
       });
     },
-    [defaultOptions, product, isValueAvailableGiven],
+    [defaultOptions, product, isValueAvailableGiven, requiresSize],
   );
 
   const availability = getVariantAvailability(selectedVariant);
@@ -279,6 +297,20 @@ export function ProductDetail({ productId, onBack }: Props) {
     );
   }
 
+  if (productQuery.isError && (productQuery.error as Error & { status?: number }).status !== 404) {
+    return (
+      <div>
+        {backLink}
+        <div role="alert" className="rounded-xl border p-6">
+          <p>We couldn’t load this clothing item. Please try again.</p>
+          <button className="mt-3 underline" onClick={() => productQuery.refetch()}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div>
@@ -298,10 +330,14 @@ export function ProductDetail({ productId, onBack }: Props) {
     );
   }
 
-  const price = selectedVariant ? getVariantPrice(selectedVariant) : "--";
+  const price = selectedVariant
+    ? getVariantPrice(selectedVariant)
+    : product.variants?.[0]
+      ? getVariantPrice(product.variants[0])
+      : "--";
   const originalPrice = getVariantOriginalPrice(selectedVariant);
   const discountPercent = getVariantDiscountPercent(selectedVariant);
-  const category = product.categories?.[0];
+  const category = product.categories?.find((category) => category.handle && category.name);
   const ratingValue = typeof product.metadata?.rating === "number" ? product.metadata.rating : null;
   const reviewCount =
     typeof product.metadata?.review_count === "number" ? product.metadata.review_count : null;
@@ -405,7 +441,11 @@ export function ProductDetail({ productId, onBack }: Props) {
                     : "text-success-ink"
             }`}
           >
-            {maxedOut ? "Max quantity in cart" : availability.label}
+            {requiresSize && !selectedVariant
+              ? "Select your size and colour"
+              : maxedOut
+                ? "Max quantity in cart"
+                : availability.label}
           </p>
 
           {/* Options */}
@@ -439,6 +479,14 @@ export function ProductDetail({ productId, onBack }: Props) {
               </div>
             </div>
           ))}
+
+          {requiresSize && <ClothingFit product={product} />}
+          {cartMutation.isError && (
+            <p role="alert" className="text-danger text-sm">
+              {cartMutation.error.message ||
+                "This item could not be added. Please check its availability."}
+            </p>
+          )}
 
           {/* Quantity + Add to Cart */}
           <div className="flex items-center gap-3">
@@ -494,9 +542,11 @@ export function ProductDetail({ productId, onBack }: Props) {
                   <ShoppingBag className="h-4 w-4" />
                   {cartMutation.isPending
                     ? "Adding..."
-                    : availability.canPurchase
-                      ? "Add to Cart"
-                      : "Out of Stock"}
+                    : requiresSize && !selectedVariant
+                      ? "Choose size and colour"
+                      : availability.canPurchase
+                        ? "Add to Cart"
+                        : "Out of Stock"}
                 </>
               )}
             </button>
@@ -522,12 +572,6 @@ export function ProductDetail({ productId, onBack }: Props) {
               </Link>
             </li>
           </ul>
-
-          {cartMutation.isError && (
-            <p className="text-danger text-sm font-medium">
-              Failed to add to cart. Please try again.
-            </p>
-          )}
         </div>
       </div>
 
@@ -582,9 +626,7 @@ export function ProductDetail({ productId, onBack }: Props) {
         </AccordionSection>
       </div>
 
-      {category && (
-        <RelatedProducts categoryId={category.id} currentProductId={product.id} />
-      )}
+      {category && <RelatedProducts categoryId={category.id} currentProductId={product.id} />}
     </div>
   );
 }

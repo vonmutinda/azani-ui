@@ -96,7 +96,7 @@ describe("getProducts", () => {
       .mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 5 });
 
     await getProducts({ limit: 5, q: "diapers" });
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products", {
       searchParams: {
         limit: 5,
         offset: 0,
@@ -116,7 +116,7 @@ describe("getProductByHandle", () => {
       .mockResolvedValueOnce({ products: [mockProduct] });
 
     const result = await getProductByHandle("pampers-baby-dry");
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products", {
       searchParams: {
         handle: "pampers-baby-dry",
         limit: 1,
@@ -144,7 +144,7 @@ describe("getProductById", () => {
       .mockResolvedValueOnce({ product: mockProduct });
 
     const result = await getProductById("prod_01");
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products/prod_01", {
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products/prod_01", {
       searchParams: {
         fields:
           "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
@@ -167,7 +167,7 @@ describe("getProductsByIds", () => {
       if (path === "store/regions") {
         return Promise.resolve({ regions: [mockRegion], count: 1 });
       }
-      if (path === "store/products") {
+      if (path === "store/clothing-products") {
         return Promise.resolve({
           products: [mockProduct, prod02],
           count: 2,
@@ -188,10 +188,10 @@ describe("getProductsByIds", () => {
       if (path === "store/regions") {
         return Promise.resolve({ regions: [mockRegion], count: 1 });
       }
-      if (path === "store/products") {
+      if (path === "store/clothing-products") {
         return Promise.resolve({ products: [mockProduct], count: 1, offset: 0, limit: 2 });
       }
-      if (path === "store/products/prod_02") {
+      if (path === "store/clothing-products/prod_02") {
         return Promise.resolve({ product: prod02 });
       }
       return Promise.resolve({});
@@ -199,6 +199,57 @@ describe("getProductsByIds", () => {
 
     const result = await getProductsByIds(["prod_01", "prod_02"]);
     expect(result.map((p) => p.id)).toEqual(["prod_01", "prod_02"]);
+  });
+
+  it("omits a product when its clothing detail returns 404", async () => {
+    const retiredError = Object.assign(new Error("Product not found"), { status: 404 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.resolve({ products: [], count: 0, offset: 0, limit: 1 });
+      }
+      if (path === "store/clothing-products/prod_01") {
+        return Promise.reject(retiredError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).resolves.toEqual([]);
+  });
+
+  it("propagates a bulk catalogue transport error", async () => {
+    const catalogueError = Object.assign(new Error("Catalogue unavailable"), { status: 503 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.reject(catalogueError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).rejects.toBe(catalogueError);
+  });
+
+  it("propagates a non-404 error from a missing product detail", async () => {
+    const catalogueError = Object.assign(new Error("Catalogue unavailable"), { status: 503 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.resolve({ products: [], count: 0, offset: 0, limit: 1 });
+      }
+      if (path === "store/clothing-products/prod_01") {
+        return Promise.reject(catalogueError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).rejects.toBe(catalogueError);
   });
 });
 
@@ -214,7 +265,7 @@ describe("getCategories", () => {
     });
 
     const result = await getCategories();
-    expect(mockRequest).toHaveBeenCalledWith("store/product-categories", {
+    expect(mockRequest).toHaveBeenCalledWith("store/clothing-categories", {
       searchParams: { limit: 100, include_descendants_tree: true },
     });
     expect(result.product_categories).toHaveLength(1);
@@ -283,6 +334,9 @@ describe("getCart", () => {
     mockRequest.mockResolvedValueOnce({ cart: mockCart });
 
     const result = await getCart();
+    expect(mockRequest).toHaveBeenCalledWith("store/carts/cart_01", {
+      searchParams: { fields: "+items.variant.title,+shipping_methods.name" },
+    });
     expect(result).toEqual(mockCart);
   });
 

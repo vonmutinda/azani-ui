@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   ArrowLeft,
-  Baby,
+  Shirt,
   Check,
   Clock,
   CreditCard,
@@ -99,10 +99,25 @@ function getCheckoutItemAvailability(
   item: MedusaLineItem,
   productsById: Map<string, MedusaProduct>,
 ) {
+  if (item.product_id && !productsById.has(item.product_id))
+    return {
+      ...getVariantAvailability(undefined),
+      label: "No longer available — remove this item",
+    };
   const product = getCheckoutItemProduct(item, productsById);
-  const variant =
-    product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
   return getVariantAvailability(variant);
+}
+
+function canFulfillCheckoutItem(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  const availability = getCheckoutItemAvailability(item, productsById);
+  if (!availability.canPurchase) return false;
+
+  const product = getCheckoutItemProduct(item, productsById);
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
+  if (variant?.manage_inventory !== true || variant.allow_backorder === true) return true;
+
+  return item.quantity <= availability.inventoryQuantity;
 }
 
 function hasCapturedPayment(sessions?: PaymentSession[]) {
@@ -267,10 +282,13 @@ export default function CheckoutPage() {
     [checkoutProductsQuery.data],
   );
   const hasUnavailableItems =
-    checkoutProductsQuery.isFetched &&
-    (cart?.items ?? []).some(
-      (item) => !getCheckoutItemAvailability(item, checkoutProductsById).canPurchase,
-    );
+    checkoutProductsQuery.isSuccess &&
+    (cart?.items ?? []).some((item) => !canFulfillCheckoutItem(item, checkoutProductsById));
+  const cataloguePending =
+    checkoutProductIds.length > 0 &&
+    (checkoutProductsQuery.isPending || checkoutProductsQuery.isFetching);
+  const catalogueError = checkoutProductsQuery.isError;
+  const checkoutBlocked = cataloguePending || catalogueError || hasUnavailableItems;
 
   const customerQuery = useQuery({
     queryKey: ["customer"],
@@ -577,7 +595,7 @@ export default function CheckoutPage() {
 
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasUnavailableItems) {
+    if (checkoutBlocked) {
       setErrorMessage("Update your cart before checkout. Some items are out of stock.");
       return;
     }
@@ -755,7 +773,7 @@ export default function CheckoutPage() {
             href="/products"
             className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
           >
-            <Baby className="h-4 w-4" /> Continue Shopping
+            <Shirt className="h-4 w-4" /> Continue Shopping
           </Link>
         </div>
       </div>
@@ -777,7 +795,7 @@ export default function CheckoutPage() {
             href="/products"
             className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            <Baby className="h-4 w-4" /> Continue Shopping
+            <Shirt className="h-4 w-4" /> Continue Shopping
           </Link>
         </div>
       </div>
@@ -839,6 +857,22 @@ export default function CheckoutPage() {
       {errorMessage && (
         <div className="border-danger/30 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm">
           {errorMessage}
+        </div>
+      )}
+
+      {catalogueError && (
+        <div
+          role="alert"
+          className="border-danger/20 bg-danger/5 text-danger mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium"
+        >
+          <span>We couldn’t check item availability. Please try again.</span>
+          <button
+            type="button"
+            onClick={() => checkoutProductsQuery.refetch()}
+            className="rounded-full border border-current px-3 py-1.5 text-xs font-semibold"
+          >
+            Try again
+          </button>
         </div>
       )}
 
@@ -960,7 +994,7 @@ export default function CheckoutPage() {
                       <div className="flex flex-wrap gap-3">
                         <button
                           type="submit"
-                          disabled={addressMutation.isPending || hasUnavailableItems}
+                          disabled={addressMutation.isPending || checkoutBlocked}
                           className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                         >
                           {addressMutation.isPending
@@ -1048,7 +1082,7 @@ export default function CheckoutPage() {
                   {(!isUsingSavedAddress || !selectedSavedAddress) && (
                     <button
                       type="submit"
-                      disabled={addressMutation.isPending || hasUnavailableItems}
+                      disabled={addressMutation.isPending || checkoutBlocked}
                       className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
@@ -1072,10 +1106,10 @@ export default function CheckoutPage() {
                   options={shippingQuery.data?.shipping_options ?? []}
                   isLoading={shippingQuery.isLoading}
                   selectedShipping={selectedShipping}
-                  isPending={shippingMutation.isPending}
+                  isPending={shippingMutation.isPending || checkoutBlocked}
                   cartSubtotal={cart.subtotal ?? 0}
                   onSelect={(optionId) => {
-                    if (hasUnavailableItems) return;
+                    if (checkoutBlocked) return;
                     setSelectedShipping(optionId);
                     shippingMutation.mutate(optionId);
                   }}
@@ -1211,7 +1245,7 @@ export default function CheckoutPage() {
                       onClick={() => paymentMutation.mutate()}
                       disabled={
                         paymentMutation.isPending ||
-                        hasUnavailableItems ||
+                        checkoutBlocked ||
                         (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
                       }
                       className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
@@ -1329,7 +1363,7 @@ export default function CheckoutPage() {
                       disabled={
                         completeMutation.isPending ||
                         finalizeOrderMutation.isPending ||
-                        hasUnavailableItems ||
+                        checkoutBlocked ||
                         !acceptedTerms
                       }
                       className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
@@ -1405,6 +1439,9 @@ export default function CheckoutPage() {
                       </div>
                       <div className="flex flex-1 flex-col justify-center overflow-hidden">
                         <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
+                        {item.variant?.title && item.variant.title !== "Default variant" && (
+                          <p className="text-muted text-xs">{item.variant.title}</p>
+                        )}
                         <div className="text-muted flex items-center gap-2 text-sm">
                           <span>{formatPrice(item.unit_price, currencyCode)}</span>
                           {item.quantity > 1 && <span className="text-xs">× {item.quantity}</span>}

@@ -24,6 +24,7 @@ type Props = {
   filters: Filters;
   onFilterChange: (filters: Filters) => void;
   categories: MedusaProductCategory[];
+  facets?: { sizes: string[]; colours: string[] };
 };
 
 function isSlugInTree(slug: string, cat: Category): boolean {
@@ -118,7 +119,7 @@ function CategoryItem({
   );
 }
 
-export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
+export function FilterSidebar({ filters, onFilterChange, categories, facets }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
 
@@ -191,6 +192,11 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
                 q: undefined,
                 availability: undefined,
                 price: undefined,
+                audience: undefined,
+                age: undefined,
+                size: undefined,
+                colour: undefined,
+                sale: undefined,
               })
             }
             className="text-muted hover:text-foreground rounded-full px-1 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -223,6 +229,64 @@ export function FilterSidebar({ filters, onFilterChange, categories }: Props) {
         ))}
       </div>
 
+      <div className="space-y-3 border-t pt-4">
+        {[
+          {
+            key: "audience",
+            label: "Shop for",
+            values: [
+              ["girls", "Girls"],
+              ["boys", "Boys"],
+            ],
+          },
+          {
+            key: "age",
+            label: "Age",
+            values: [
+              ["2-4", "2–4 years"],
+              ["5-8", "5–8 years"],
+              ["9-12", "9–12 years"],
+            ],
+          },
+          {
+            key: "size",
+            label: "Size",
+            values: (facets?.sizes ?? []).map((value) => [value, value]),
+          },
+          {
+            key: "colour",
+            label: "Colour",
+            values: (facets?.colours ?? []).map((value) => [value, value]),
+          },
+        ].map(({ key, label, values }) => (
+          <label key={key} className="block text-sm font-medium">
+            {label}
+            <select
+              aria-label={label}
+              value={String(filters[key] ?? "")}
+              onChange={(event) => setFilter(key, event.target.value || undefined)}
+              className="mt-1 block w-full rounded-lg border bg-white p-2"
+            >
+              <option value="">
+                All {label === "Shop for" ? "children" : label.toLowerCase() + "s"}
+              </option>
+              {Array.from(
+                new Set([
+                  ...values.map(([v]) => v),
+                  ...(filters[key] ? [String(filters[key])] : []),
+                ]),
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {values.find(([v]) => v === value)?.[1] ?? value}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+        <p className="text-muted text-xs">
+          Age is a guide. Check the product’s size information before choosing.
+        </p>
+      </div>
       <div className="border-border/50 border-t pt-4">
         <p className="text-foreground mb-1 text-sm font-semibold">Availability</p>
         <label className="hover:bg-foreground/[0.04] flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm transition">

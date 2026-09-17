@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { renderWithProviders } from "../test-utils";
-import { mockCategories } from "../fixtures";
+import { clothingCategories as mockCategories } from "../clothing-fixtures";
 
 describe("FilterSidebar", () => {
   const defaultProps = {
@@ -24,9 +24,9 @@ describe("FilterSidebar", () => {
 
   it("renders top-level categories that match TOP_LEVEL_HANDLES", () => {
     renderWithProviders(<FilterSidebar {...defaultProps} />);
-    expect(screen.getByText("Bath & Diapering")).toBeInTheDocument();
-    expect(screen.getByText("Feeding")).toBeInTheDocument();
-    expect(screen.getByText("Clothing")).toBeInTheDocument();
+    expect(screen.getByText("Tops")).toBeInTheDocument();
+    expect(screen.getByText("Bottoms")).toBeInTheDocument();
+    expect(screen.getByText("Sleepwear")).toBeInTheDocument();
   });
 
   it("calls onFilterChange when a category is selected", async () => {
@@ -35,8 +35,8 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(<FilterSidebar {...defaultProps} onFilterChange={onFilterChange} />);
 
-    await user.click(screen.getByText("Bath & Diapering"));
-    expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering" });
+    await user.click(screen.getByText("Tops"));
+    expect(onFilterChange).toHaveBeenCalledWith({ category: "tops" });
   });
 
   it("calls onFilterChange with undefined when active category is deselected", async () => {
@@ -45,31 +45,28 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
     );
 
-    await user.click(screen.getByText("Bath & Diapering"));
+    await user.click(screen.getByText("Tops"));
     expect(onFilterChange).toHaveBeenCalledWith({ category: undefined });
   });
 
   it("renders category rows as pressed buttons without category checkboxes", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
     );
 
-    expect(screen.queryByRole("checkbox", { name: /Bath & Diapering/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bath & Diapering" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "Feeding" })).toHaveAttribute(
+    expect(screen.queryByRole("checkbox", { name: /Tops/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tops" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Bottoms" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
@@ -81,27 +78,27 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Feeding" }));
-    expect(onFilterChange).toHaveBeenCalledWith({ category: "bath-diapering,feeding" });
+    await user.click(screen.getByRole("button", { name: "Bottoms" }));
+    expect(onFilterChange).toHaveBeenCalledWith({ category: "tops,bottoms" });
   });
 
   it("opens active child categories and marks the active child button", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "diapers-pull-ups" }}
+        filters={{ category: "t-shirts" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
     );
 
-    expect(screen.getByText("Diapers & Pull-Ups")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Diapers & Pull-Ups" })).toHaveAttribute(
+    expect(screen.getByText("T-shirts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "T-shirts" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -110,7 +107,7 @@ describe("FilterSidebar", () => {
   it("shows filter count badge when filters active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -122,7 +119,7 @@ describe("FilterSidebar", () => {
   it("counts each selected category in the filter badge", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering,feeding" }}
+        filters={{ category: "tops,bottoms" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -134,7 +131,7 @@ describe("FilterSidebar", () => {
   it("shows 'Clear all' button when filters are active", () => {
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -148,7 +145,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -169,7 +166,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={vi.fn()}
         categories={mockCategories}
       />,
@@ -192,7 +189,7 @@ describe("FilterSidebar", () => {
 
     renderWithProviders(
       <FilterSidebar
-        filters={{ category: "bath-diapering" }}
+        filters={{ category: "tops" }}
         onFilterChange={onFilterChange}
         categories={mockCategories}
       />,

@@ -2,19 +2,21 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ArrowLeft, ArrowUpDown, Search, ShoppingBag, Tag, X } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { buttonVariants } from "@/components/ui/button";
-import { getProductPrice, getVariantAvailability } from "@/lib/formatters";
+
 import {
   parseCategoryParam,
   serializeCategoryParam,
   resolveCategoryIds,
   findMedusaCategory,
+  resolveClothingCategoryHandle,
+  isRetiredCategoryHandle,
 } from "@/lib/categories";
 
 type Filters = Record<string, string | number | undefined>;
@@ -32,17 +34,6 @@ function isSortValue(value: string | null): value is SortValue {
   return SORT_OPTIONS.some((option) => option.value === value);
 }
 
-function getSortOrder(sort: SortValue) {
-  return SORT_OPTIONS.find((option) => option.value === sort)?.order;
-}
-
-function matchesPriceBracket(amount: number, bracket: string): boolean {
-  if (bracket === "u1000") return amount < 1000;
-  if (bracket === "1000-5000") return amount >= 1000 && amount <= 5000;
-  if (bracket === "o5000") return amount > 5000;
-  return true;
-}
-
 function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -53,11 +44,17 @@ function ProductsContent() {
     q: searchParams.get("q") ?? undefined,
     availability: searchParams.get("availability") ?? undefined,
     price: searchParams.get("price") ?? undefined,
+    audience: searchParams.get("audience") ?? undefined,
+    age: searchParams.get("age") ?? undefined,
+    size: searchParams.get("size") ?? undefined,
+    colour: searchParams.get("colour") ?? undefined,
+    sale: searchParams.get("sale") ?? undefined,
   };
   const requestedSort = searchParams.get("sort");
   const sort: SortValue = isSortValue(requestedSort) ? requestedSort : "featured";
 
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
+  const parsedPage = Number(searchParams.get("page") ?? 1);
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const limit = 20;
   const offset = (page - 1) * limit;
 
@@ -74,7 +71,28 @@ function ProductsContent() {
   // `category` is a comma-joined list of handles → server-side OR over the
   // union of each selected handle's subtree ids (resolved from the loaded tree).
   const categoryParam = filters.category ? String(filters.category) : undefined;
-  const categoryHandles = useMemo(() => parseCategoryParam(categoryParam), [categoryParam]);
+  const requestedHandles = useMemo(() => parseCategoryParam(categoryParam), [categoryParam]);
+  const retiredDepartment = requestedHandles.some(isRetiredCategoryHandle);
+  const categoryHandles = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          requestedHandles
+            .filter((handle) => handle !== "clothing")
+            .map((handle) => resolveClothingCategoryHandle(handle) ?? handle),
+        ),
+      ),
+    [requestedHandles],
+  );
+  useEffect(() => {
+    const canonical = serializeCategoryParam(categoryHandles);
+    if (!retiredDepartment && canonical !== categoryParam) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (canonical) params.set("category", canonical);
+      else params.delete("category");
+      router.replace(params.size ? `/products?${params}` : "/products");
+    }
+  }, [categoryHandles, categoryParam, retiredDepartment, router, searchParams]);
   const hasCategoryFilter = categoryHandles.length > 0;
 
   const categoryIds = useMemo(
@@ -87,7 +105,7 @@ function ProductsContent() {
     queryFn: () => {
       // Selected categories that resolve to no ids yield no products — don't
       // fall back to fetching the whole catalogue.
-      if (hasCategoryFilter && categoryIds && categoryIds.length === 0) {
+      if (retiredDepartment || (hasCategoryFilter && categoryIds && categoryIds.length === 0)) {
         return Promise.resolve({ products: [], count: 0, offset, limit });
       }
 
@@ -96,7 +114,14 @@ function ProductsContent() {
         offset,
         ...(categoryIds && categoryIds.length > 0 ? { category_id: categoryIds } : {}),
         ...(filters.q ? { q: String(filters.q) } : {}),
-        ...(getSortOrder(sort) ? { order: getSortOrder(sort) } : {}),
+        sort,
+        audience: filters.audience,
+        age: filters.age,
+        size: filters.size,
+        colour: filters.colour,
+        sale: filters.sale,
+        availability: filters.availability,
+        price: filters.price,
       });
     },
     // Wait for the category tree before filtering so the ids resolve correctly.
@@ -104,52 +129,9 @@ function ProductsContent() {
   });
 
   const products = useMemo(() => productsQuery.data?.products ?? [], [productsQuery.data]);
-  // Medusa can't order by calculated price, so price sorts happen client-side
-  // over the current page.
-  const sortedProducts = useMemo(() => {
-    const copy = [...products];
-    if (sort === "price_asc") {
-      return copy.sort(
-        (a, b) =>
-          (getProductPrice(a)?.amount ?? Number.MAX_SAFE_INTEGER) -
-          (getProductPrice(b)?.amount ?? Number.MAX_SAFE_INTEGER),
-      );
-    }
-    if (sort === "price_desc") {
-      return copy.sort(
-        (a, b) => (getProductPrice(b)?.amount ?? 0) - (getProductPrice(a)?.amount ?? 0),
-      );
-    }
-    if (sort === "newest") {
-      return copy.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-    }
-    return products;
-  }, [products, sort]);
-
-  // Availability + price facets, applied client-side over the current page
-  // (category/sort already narrow the server query; full server-side faceting
-  // is the production follow-up).
-  const inStockOnly = filters.availability === "in_stock";
-  const priceBracket = filters.price ? String(filters.price) : undefined;
-  const visibleProducts = useMemo(() => {
-    if (!inStockOnly && !priceBracket) return sortedProducts;
-    return sortedProducts.filter((product) => {
-      if (inStockOnly && !(product.variants ?? []).some((v) => getVariantAvailability(v).inStock)) {
-        return false;
-      }
-      if (priceBracket) {
-        const amount = getProductPrice(product)?.amount;
-        if (amount == null || !matchesPriceBracket(amount, priceBracket)) return false;
-      }
-      return true;
-    });
-  }, [sortedProducts, inStockOnly, priceBracket]);
-  const hasClientFacets = inStockOnly || !!priceBracket;
-
+  const visibleProducts = products;
   const total = productsQuery.data?.count ?? 0;
-  const shownCount = hasClientFacets ? visibleProducts.length : total;
+  const shownCount = total;
   const totalPages = Math.ceil(total / limit);
 
   const updateQuery = useCallback(
@@ -160,6 +142,11 @@ function ProductsContent() {
         q: filters.q,
         availability: filters.availability,
         price: filters.price,
+        audience: filters.audience,
+        age: filters.age,
+        size: filters.size,
+        colour: filters.colour,
+        sale: filters.sale,
         sort,
         ...newFilters,
       };
@@ -174,7 +161,19 @@ function ProductsContent() {
       const query = params.toString();
       router.push(query ? `/products?${query}` : "/products");
     },
-    [filters.category, filters.q, filters.availability, filters.price, router, sort],
+    [
+      filters.category,
+      filters.q,
+      filters.availability,
+      filters.price,
+      filters.audience,
+      filters.age,
+      filters.size,
+      filters.colour,
+      filters.sale,
+      router,
+      sort,
+    ],
   );
 
   const isLoading = productsQuery.isLoading || (hasCategoryFilter && categoriesQuery.isLoading);
@@ -201,15 +200,23 @@ function ProductsContent() {
         ? `Search: "${filters.q}"`
         : categoryHandles.length > 1
           ? "Selected categories"
-          : "All Products"));
+          : filters.audience === "girls"
+            ? "Girls’ Clothing"
+            : filters.audience === "boys"
+              ? "Boys’ Clothing"
+              : filters.age
+                ? `Clothing for ages ${filters.age}`
+                : filters.sale
+                  ? "Sale"
+                  : "All Clothing"));
   const headerDescription = selectedProductId
     ? undefined
     : singleCategory?.description ||
       (filters.q
         ? "Search results across Azani products."
         : categoryHandles.length > 1
-          ? "Showing products across your selected baby boutique categories."
-          : "Browse baby essentials, gear, clothing, toys, and care products.");
+          ? "Clothing across your selected garment categories."
+          : "Clothing for children aged 2–12. Choose a size to find an available fit.");
   const categoryChildren = singleCategory?.category_children ?? [];
 
   return (
@@ -292,6 +299,11 @@ function ProductsContent() {
             updateQuery(newFilters);
           }}
           categories={categoriesQuery.data?.product_categories ?? []}
+          facets={
+            productsQuery.data && "facets" in productsQuery.data
+              ? productsQuery.data.facets
+              : undefined
+          }
         />
 
         <div className="min-w-0 flex-1">
@@ -346,6 +358,11 @@ function ProductsContent() {
                       q: undefined,
                       availability: undefined,
                       price: undefined,
+                      audience: undefined,
+                      age: undefined,
+                      size: undefined,
+                      colour: undefined,
+                      sale: undefined,
                     });
                   }}
                   className="text-secondary hover:text-secondary-hover ml-1 text-sm font-medium transition hover:underline"
@@ -358,6 +375,7 @@ function ProductsContent() {
 
           {selectedProductId ? (
             <ProductDetail
+              key={selectedProductId}
               productId={selectedProductId}
               onBack={() => setSelectedProductId(null)}
             />
@@ -366,6 +384,29 @@ function ProductsContent() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
               ))}
+            </div>
+          ) : productsQuery.isError || (hasCategoryFilter && categoriesQuery.isError) ? (
+            <div role="alert" className="rounded-2xl border p-8">
+              <p>Clothing is temporarily unavailable. Please try again.</p>
+              <button
+                onClick={() => {
+                  productsQuery.refetch();
+                  categoriesQuery.refetch();
+                }}
+                className={buttonVariants()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : retiredDepartment ? (
+            <div className="rounded-2xl border p-8 text-center">
+              <h2 className="text-lg font-semibold">We now specialise in kids’ clothing</h2>
+              <p className="text-muted my-3">
+                This department has retired. Explore clothing for children aged 2–12.
+              </p>
+              <button className={buttonVariants()} onClick={() => router.push("/products")}>
+                Shop clothing
+              </button>
             </div>
           ) : visibleProducts.length === 0 ? (
             <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
@@ -386,6 +427,11 @@ function ProductsContent() {
                     sort: undefined,
                     availability: undefined,
                     price: undefined,
+                    audience: undefined,
+                    age: undefined,
+                    size: undefined,
+                    colour: undefined,
+                    sale: undefined,
                   })
                 }
                 className={buttonVariants()}
@@ -405,7 +451,7 @@ function ProductsContent() {
                 ))}
               </div>
 
-              {totalPages > 1 && !hasClientFacets && (
+              {totalPages > 1 && (
                 <div className="mt-8 flex justify-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <button

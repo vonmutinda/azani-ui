@@ -70,10 +70,7 @@ export default function WishlistPage() {
             : "Save products to your wishlist as a guest, or sign in to keep them synced to your account."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/products"
-            className={buttonVariants()}
-          >
+          <Link href="/products" className={buttonVariants()}>
             Browse Products
           </Link>
           {!customer && (
@@ -111,6 +108,25 @@ export default function WishlistPage() {
             <div key={index} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
           ))}
         </div>
+      ) : wishlistProductsQuery.isError ? (
+        <div
+          role="alert"
+          className="border-border/50 bg-card flex flex-col items-center gap-4 rounded-2xl border p-10 text-center"
+        >
+          <div>
+            <p className="text-foreground text-lg font-semibold">
+              We couldn’t load your saved products
+            </p>
+            <p className="text-muted mt-1 text-sm">Please try again in a moment.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => wishlistProductsQuery.refetch()}
+            className={buttonVariants()}
+          >
+            Try again
+          </button>
+        </div>
       ) : products.length === 0 ? (
         <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
           <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
@@ -122,10 +138,7 @@ export default function WishlistPage() {
               Some wishlist items may no longer be available.
             </p>
           </div>
-          <Link
-            href="/products"
-            className={buttonVariants()}
-          >
+          <Link href="/products" className={buttonVariants()}>
             Browse Products
           </Link>
         </div>

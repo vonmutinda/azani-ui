@@ -4,3 +4,5 @@ out
 build
 coverage
 *.min.js
+.claude/worktrees
+.superpowers

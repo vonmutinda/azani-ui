@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import WishlistPage from "@/app/account/wishlist/page";
 import { renderWithProviders } from "../test-utils";
 
@@ -30,7 +30,9 @@ describe("WishlistPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Save products to your wishlist as a guest, or sign in to keep them synced to your account."),
+        screen.getByText(
+          "Save products to your wishlist as a guest, or sign in to keep them synced to your account.",
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -42,9 +44,7 @@ describe("WishlistPage", () => {
       has_account: true,
     });
     mockGetWishlistProductIds.mockResolvedValue(["prod_01"]);
-    mockGetProductsByIds.mockResolvedValue([
-      { id: "prod_01", title: "Pampers Baby Dry Diapers" },
-    ]);
+    mockGetProductsByIds.mockResolvedValue([{ id: "prod_01", title: "Pampers Baby Dry Diapers" }]);
 
     renderWithProviders(<WishlistPage />);
 
@@ -52,5 +52,20 @@ describe("WishlistPage", () => {
       expect(screen.getByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
     });
     expect(screen.getByText("Your saved favorites, synced to your account.")).toBeInTheDocument();
+  });
+
+  it("offers a retry instead of reporting saved products as retired on a catalogue error", async () => {
+    mockGetWishlistProductIds.mockResolvedValue(["prod_01"]);
+    mockGetProductsByIds
+      .mockRejectedValueOnce(new Error("Catalogue unavailable"))
+      .mockResolvedValueOnce([{ id: "prod_01", title: "Kids Tee" }]);
+
+    renderWithProviders(<WishlistPage />);
+
+    await screen.findByText(/couldn’t load your saved products/i);
+    expect(screen.queryByText("No saved products found")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Kids Tee")).toBeInTheDocument();
   });
 });

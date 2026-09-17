@@ -3,7 +3,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductsPage from "@/app/products/page";
 import { renderWithProviders } from "../test-utils";
-import { mockProduct, mockCategories } from "../fixtures";
+import { mockProduct } from "../fixtures";
+import { clothingCategories as mockCategories } from "../clothing-fixtures";
 
 const mockGetProducts = vi.fn();
 const mockGetCategories = vi.fn();
@@ -58,7 +59,7 @@ describe("ProductsPage", () => {
 
     renderWithProviders(<ProductsPage />);
     await waitFor(() => {
-      expect(screen.getByText("All Products")).toBeInTheDocument();
+      expect(screen.getByText("All Clothing")).toBeInTheDocument();
     });
   });
 
@@ -118,7 +119,7 @@ describe("ProductsPage", () => {
   });
 
   it("filters by multiple selected categories (server-side OR via category_id)", async () => {
-    searchParamsRef.current = new URLSearchParams("category=feeding,clothing");
+    searchParamsRef.current = new URLSearchParams("category=bottoms,sleepwear");
     mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
@@ -134,14 +135,14 @@ describe("ProductsPage", () => {
     await waitFor(() => {
       expect(mockGetProducts).toHaveBeenCalledWith(
         expect.objectContaining({
-          category_id: expect.arrayContaining(["pcat_feeding", "pcat_clothing"]),
+          category_id: expect.arrayContaining(["pcat_bottoms", "pcat_sleepwear"]),
         }),
       );
     });
   });
 
   it("labels the results as selected categories when multiple categories are active", async () => {
-    searchParamsRef.current = new URLSearchParams("category=feeding,clothing");
+    searchParamsRef.current = new URLSearchParams("category=bottoms,sleepwear");
     mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
@@ -158,7 +159,7 @@ describe("ProductsPage", () => {
   });
 
   it("adds a subcategory chip to the existing category filter", async () => {
-    searchParamsRef.current = new URLSearchParams("category=bath-diapering");
+    searchParamsRef.current = new URLSearchParams("category=tops");
     mockGetCategories.mockResolvedValue({
       product_categories: mockCategories,
       count: 3,
@@ -169,11 +170,105 @@ describe("ProductsPage", () => {
 
     renderWithProviders(<ProductsPage />);
 
-    const chip = await screen.findByRole("button", { name: "Browse Diapers & Pull-Ups" });
+    const chip = await screen.findByRole("button", { name: "Browse T-shirts" });
     await userEvent.click(chip);
 
-    expect(mockRouterPush).toHaveBeenCalledWith(
-      "/products?category=bath-diapering%2Cdiapers-pull-ups",
-    );
+    expect(mockRouterPush).toHaveBeenCalledWith("/products?category=tops%2Ct-shirts");
   });
+});
+
+describe("Clothing facets", () => {
+  it("sends size, age and colour to the server before pagination and preserves server totals", async () => {
+    searchParamsRef.current = new URLSearchParams(
+      "audience=girls&age=5-8&size=6+years&colour=Blue&page=2&sort=price_asc",
+    );
+    mockGetCategories.mockResolvedValue({ product_categories: [], count: 0 });
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 45,
+      offset: 20,
+      limit: 20,
+      facets: { sizes: ["6 years"], colours: ["Blue"] },
+    });
+    renderWithProviders(<ProductsPage />);
+    await waitFor(() =>
+      expect(mockGetProducts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audience: "girls",
+          age: "5-8",
+          size: "6 years",
+          colour: "Blue",
+          offset: 20,
+          sort: "price_asc",
+        }),
+      ),
+    );
+    expect(await screen.findByText("45 products found")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Size" })).toHaveValue("6 years");
+    expect(screen.getByRole("button", { name: "3" })).toBeInTheDocument();
+  });
+
+  it("clears every clothing facet from the empty results state", async () => {
+    searchParamsRef.current = new URLSearchParams(
+      "audience=girls&age=5-8&size=6+years&colour=Blue&sale=true&availability=in_stock&price=u1000",
+    );
+    mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 20 });
+
+    renderWithProviders(<ProductsPage />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Clear filters" }));
+    expect(mockRouterPush).toHaveBeenCalledWith("/products");
+  });
+});
+
+describe("Catalogue errors", () => {
+  it("keeps a successful non-category listing visible when category navigation fails", async () => {
+    mockGetCategories.mockRejectedValue(new Error("Categories unavailable"));
+    mockGetProducts.mockResolvedValue({
+      products: [mockProduct],
+      count: 1,
+      offset: 0,
+      limit: 20,
+    });
+
+    renderWithProviders(<ProductsPage />);
+
+    expect(await screen.findByText("Pampers Baby Dry Diapers")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Clothing is temporarily unavailable. Please try again."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an error when category navigation is required to resolve a filter", async () => {
+    searchParamsRef.current = new URLSearchParams("category=tops");
+    mockGetCategories.mockRejectedValue(new Error("Categories unavailable"));
+
+    renderWithProviders(<ProductsPage />);
+
+    expect(
+      await screen.findByText("Clothing is temporarily unavailable. Please try again."),
+    ).toBeInTheDocument();
+    expect(mockGetProducts).not.toHaveBeenCalled();
+  });
+});
+
+it("explains retired departments without fetching unrelated clothing", async () => {
+  searchParamsRef.current = new URLSearchParams("category=feeding");
+  mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+  renderWithProviders(<ProductsPage />);
+  expect(await screen.findByText("We now specialise in kids’ clothing")).toBeInTheDocument();
+  expect(mockGetProducts).not.toHaveBeenCalled();
+});
+
+it("resolves former tops links to the canonical garment filter", async () => {
+  searchParamsRef.current = new URLSearchParams("category=tops-t-shirts");
+  mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
+  mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 20 });
+  renderWithProviders(<ProductsPage />);
+  await waitFor(() =>
+    expect(mockGetProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: expect.arrayContaining(["pcat_tops"]) }),
+    ),
+  );
 });
