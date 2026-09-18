@@ -194,7 +194,7 @@ export function SiteHeader() {
                       : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
                   }`}
                 >
-                  <ShopNavIcon name={item.icon} className="h-7 w-7" />
+                  <ShopNavIcon name={item.icon} className="h-9 w-9" />
                   {item.label}
                 </Link>
               ))}
@@ -210,7 +210,7 @@ export function SiteHeader() {
                   }}
                   className="text-muted hover:bg-foreground/[0.04] hover:text-foreground flex flex-col items-center gap-1 rounded-xl px-2.5 py-2 text-[13px] font-semibold whitespace-nowrap transition"
                 >
-                  <ShopNavIcon name="age" className="h-7 w-7" />
+                  <ShopNavIcon name="age" className="h-9 w-9" />
                   <span className="flex items-center gap-1">
                     Shop by Age
                     <ChevronDown className={`h-3 w-3 transition ${ageOpen ? "rotate-180" : ""}`} />
@@ -244,7 +244,7 @@ export function SiteHeader() {
                       : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
                   }`}
                 >
-                  <ShopNavIcon name={item.icon} className="h-7 w-7" />
+                  <ShopNavIcon name={item.icon} className="h-9 w-9" />
                   {item.label}
                 </Link>
               ))}
@@ -350,7 +350,7 @@ export function SiteHeader() {
                   onClick={() => setMobileOpen(false)}
                   className="text-foreground hover:bg-foreground/[0.04] flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition"
                 >
-                  <ShopNavIcon name={item.icon} className="h-7 w-7" />
+                  <ShopNavIcon name={item.icon} className="h-9 w-9" />
                   {item.label}
                 </Link>
               ))}
@@ -376,7 +376,7 @@ export function SiteHeader() {
                   onClick={() => setMobileOpen(false)}
                   className="text-foreground hover:bg-foreground/[0.04] flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition"
                 >
-                  <ShopNavIcon name={item.icon} className="h-7 w-7" />
+                  <ShopNavIcon name={item.icon} className="h-9 w-9" />
                   {item.label}
                 </Link>
               ))}

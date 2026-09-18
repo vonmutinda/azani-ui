@@ -97,7 +97,7 @@ function CategoryItem({
         >
           <CategoryIcon
             icon={cat.icon}
-            size={depth === 0 ? 14 : 12}
+            size={depth === 0 ? 28 : 24}
             colored={!isActive}
             className={isActive ? "text-foreground" : ""}
           />

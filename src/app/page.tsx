@@ -161,7 +161,10 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2 px-4 pt-2 pb-5 sm:px-6">
-                    <h3 className="font-heading text-base font-bold sm:text-xl">{category.name}</h3>
+                    <h3 className="font-heading flex items-center gap-2 text-base font-bold sm:text-xl">
+                      {image && <CategoryIcon icon={category.icon} size={32} />}
+                      {category.name}
+                    </h3>
                     <ArrowRight className="h-4 w-4 shrink-0" />
                   </div>
                 </Link>

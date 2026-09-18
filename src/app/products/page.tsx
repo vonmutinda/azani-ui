@@ -272,7 +272,6 @@ function ProductsContent() {
       {!selectedProductId && !retiredDepartment && (
         <CatalogueCategories
           categories={categoryTree}
-          products={products}
           selectedHandles={categoryHandles}
           onSelect={(handle) =>
             updateQuery({

@@ -64,7 +64,7 @@ describe("ProductsPage", () => {
     expect(await screen.findByText("21 products found")).toBeInTheDocument();
   });
 
-  it("uses matching category photographs and preserves selected shortcuts", async () => {
+  it("keeps garment shortcuts identifiable even when their products are filtered out", async () => {
     searchParamsRef.current = new URLSearchParams("category=tops");
     mockGetCategories.mockResolvedValue({ product_categories: mockCategories, count: 3 });
     mockGetProducts.mockResolvedValue({
@@ -74,12 +74,13 @@ describe("ProductsPage", () => {
     renderWithProviders(<ProductsPage />);
     const rail = await screen.findByRole("region", { name: "Shop by garment" });
     const tops = within(rail).getByRole("button", { name: "Browse Tops" });
-    await waitFor(() =>
-      expect(tops.querySelector("img")).toHaveAttribute("src", "/tops-photo.jpg"),
-    );
+    expect(tops.querySelector("img")).toHaveAttribute("src", "/images/icons/enamel/shirt.webp");
     expect(tops).toHaveAttribute("aria-pressed", "true");
     const bottoms = within(rail).getByRole("button", { name: "Browse Bottoms" });
-    expect(bottoms.querySelector("img")).toBeNull();
+    expect(bottoms.querySelector("img")).toHaveAttribute(
+      "src",
+      "/images/icons/enamel/trousers.webp",
+    );
     await userEvent.click(bottoms);
     expect(mockRouterPush).toHaveBeenCalledWith("/products?category=tops%2Cbottoms");
   });
