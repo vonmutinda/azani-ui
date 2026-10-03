@@ -14,7 +14,7 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
       <article className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
         <Link
           href="/"
-          className="az-focus text-muted hover:text-foreground mb-5 inline-flex items-center gap-2 rounded-md text-sm font-semibold transition"
+          className="focus-visible:ring-primary text-muted hover:text-foreground mb-5 inline-flex items-center gap-2 rounded-md text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home
@@ -36,7 +36,7 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
           className="mt-6 grid gap-3 sm:grid-cols-3"
         >
           {page.quickFacts.map((fact) => (
-            <div key={fact.label} className="az-surface p-3.5">
+            <div key={fact.label} className="border-border bg-card rounded-2xl border p-3.5">
               <p className="text-muted text-xs font-bold tracking-wide uppercase">{fact.label}</p>
               <p className="text-foreground mt-1.5 text-sm font-bold">{fact.value}</p>
             </div>
@@ -54,7 +54,7 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
                   href={method.href}
                   target={method.href.startsWith("https://") ? "_blank" : undefined}
                   rel={method.href.startsWith("https://") ? "noopener noreferrer" : undefined}
-                  className="az-focus az-surface hover:border-border-hover group flex min-h-32 flex-col justify-between p-4 transition"
+                  className="focus-visible:ring-primary border-border bg-card hover:border-border-hover group flex min-h-32 flex-col justify-between rounded-2xl border p-4 transition focus-visible:ring-2 focus-visible:ring-offset-2"
                   aria-label={method.label}
                 >
                   <span className="text-primary bg-primary-light flex h-10 w-10 items-center justify-center rounded-full">
@@ -96,16 +96,22 @@ export function StoreInfoPage({ page }: { page: StoreInfoPageContent }) {
             ))}
           </div>
 
-          <aside className="az-surface h-fit p-5">
+          <aside className="border-border bg-card h-fit rounded-2xl border p-5">
             <h2 className="text-foreground text-base font-bold">Need help?</h2>
             <p className="text-muted mt-2 text-sm leading-6">
               Talk to Azani before you order, or ask us to help with an existing order.
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <Link href="/contact" className="az-btn az-btn-primary az-focus px-4">
+              <Link
+                href="/contact"
+                className="az-btn az-btn-primary focus-visible:ring-primary px-4 focus-visible:ring-2 focus-visible:ring-offset-2"
+              >
                 Contact Azani
               </Link>
-              <Link href="/products" className="az-btn az-btn-outline az-focus px-4">
+              <Link
+                href="/products"
+                className="az-btn az-btn-outline focus-visible:ring-primary px-4 focus-visible:ring-2 focus-visible:ring-offset-2"
+              >
                 Continue shopping
               </Link>
             </div>

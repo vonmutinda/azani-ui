@@ -1,45 +1,48 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import Home from "@/app/page";
+import { getProducts } from "@/lib/medusa-api";
 import { renderWithProviders } from "../test-utils";
+
+const clothingProduct = {
+  id: "prod_01",
+  title: "Kids Cotton T-Shirt",
+  handle: "kids-cotton-t-shirt",
+  status: "published",
+  is_giftcard: false,
+  discountable: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  thumbnail: "https://example.com/t-shirt.jpg",
+  variants: [
+    {
+      id: "variant_01",
+      title: "Size 5–6",
+      prices: [{ id: "p1", amount: 1500, currency_code: "kes" }],
+    },
+  ],
+};
+
+const productResponse = {
+  products: [clothingProduct],
+  count: 1,
+  offset: 0,
+  limit: 8,
+};
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: vi.fn().mockResolvedValue(null),
   getWishlistProductIds: vi.fn().mockResolvedValue([]),
   addToCart: vi.fn(),
   toggleWishlistProduct: vi.fn(),
-  getProducts: vi.fn().mockResolvedValue({
-    products: [
-      {
-        id: "prod_01",
-        title: "Pampers Baby Dry Diapers",
-        handle: "pampers-baby-dry",
-        status: "published",
-        is_giftcard: false,
-        discountable: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        thumbnail: "https://example.com/pampers.jpg",
-        variants: [
-          {
-            id: "variant_01",
-            title: "24 Count",
-            prices: [{ id: "p1", amount: 1500, currency_code: "usd" }],
-          },
-        ],
-      },
-    ],
-    count: 1,
-    offset: 0,
-    limit: 8,
-  }),
+  getProducts: vi.fn(),
   getCategories: vi.fn().mockResolvedValue({
     product_categories: [
       {
-        id: "pcat_feeding",
-        name: "Feeding",
-        handle: "feeding",
-        description: "Everything for feeding your little one",
+        id: "pcat_tops",
+        name: "Tops",
+        handle: "tops",
+        description: "Kids tops",
         rank: 0,
         parent_category_id: null,
         created_at: "",
@@ -54,23 +57,35 @@ vi.mock("@/lib/medusa-api", () => ({
 }));
 
 describe("Home Page", () => {
-  it("renders the hero section", () => {
-    renderWithProviders(<Home />);
-    expect(screen.getByText(/Everything Your/i)).toBeInTheDocument();
-    expect(screen.getByText("Little One")).toBeInTheDocument();
+  beforeEach(() => {
+    vi.mocked(getProducts).mockResolvedValue(productResponse);
   });
 
-  it("keeps the hero carousel stage compact above the headline", async () => {
+  it("introduces clothing for kids ages 2–12", () => {
     renderWithProviders(<Home />);
+    expect(
+      screen.getByRole("heading", { name: "Little clothes. Big adventures." }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/ages 2–12/i).length).toBeGreaterThan(0);
+  });
 
-    await waitFor(() => {
-      expect(screen.getAllByText("Pampers Baby Dry Diapers").length).toBeGreaterThan(0);
-    });
+  it("links each age group to the matching catalogue filter", () => {
+    renderWithProviders(<Home />);
+    for (const [label, age] of [
+      ["2–4 years", "2-4"],
+      ["5–8 years", "5-8"],
+      ["9–12 years", "9-12"],
+    ]) {
+      expect(screen.getByRole("link", { name: new RegExp(label) })).toHaveAttribute(
+        "href",
+        `/products?age=${age}`,
+      );
+    }
+  });
 
-    expect(screen.getByTestId("home-hero-carousel")).toHaveClass("max-w-[400px]");
-    expect(screen.getByTestId("home-hero-carousel-stage")).toHaveClass("h-[220px]");
-    expect(screen.getByTestId("home-hero-carousel-stage")).toHaveClass("sm:h-[300px]");
-    expect(screen.getByTestId("home-hero-carousel-stage")).not.toHaveClass("h-[260px]");
+  it("requests new arrivals in newest order", async () => {
+    renderWithProviders(<Home />);
+    await waitFor(() => expect(getProducts).toHaveBeenCalledWith({ limit: 8, sort: "newest" }));
   });
 
   it("renders 'Shop Now' link", () => {
@@ -81,88 +96,86 @@ describe("Home Page", () => {
 
   it("renders explore collection section heading", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Explore Our Collection")).toBeInTheDocument();
+    expect(screen.getByText("New arrivals")).toBeInTheDocument();
   });
 
-  it("connects collection tabs to their product panel", () => {
+  it("renders shop by category section heading", async () => {
     renderWithProviders(<Home />);
-
-    const featuredTab = screen.getByRole("tab", { name: "Featured" });
-
-    expect(featuredTab).toHaveAttribute("aria-selected", "true");
-    expect(featuredTab).toHaveAttribute("aria-controls", "home-featured-panel");
-    expect(screen.getByRole("tabpanel", { name: "Featured" })).toHaveAttribute(
-      "id",
-      "home-featured-panel",
-    );
-  });
-
-  it("renders shop by category section heading", () => {
-    renderWithProviders(<Home />);
-    expect(screen.getByText("Shop by Category")).toBeInTheDocument();
-  });
-
-  it("renders a campaign band with focused category links", () => {
-    renderWithProviders(<Home />);
-
-    const campaignBand = screen.getByTestId("home-campaign-band");
-
-    expect(campaignBand).toHaveClass("flex");
-    expect(campaignBand).toHaveClass("lg:grid");
-    expect(screen.getByRole("link", { name: /Diaper Week/i })).toHaveAttribute(
-      "href",
-      "/products?category=bath-diapering",
-    );
-    expect(screen.getByRole("link", { name: /Newborn Sleep Edit/i })).toHaveAttribute(
-      "href",
-      "/products?category=nursery",
-    );
-    expect(screen.getByRole("link", { name: /Tiny Wardrobe Refresh/i })).toHaveAttribute(
-      "href",
-      "/products?category=clothing",
-    );
-  });
-
-  it("keeps the mobile campaign band compact before category discovery", () => {
-    renderWithProviders(<Home />);
-
-    const campaignBand = screen.getByTestId("home-campaign-band");
-    const diaperWeek = screen.getByRole("link", { name: /Diaper Week/i });
-
-    expect(campaignBand).toHaveClass("hide-scrollbar");
-    expect(campaignBand).toHaveClass("overflow-x-auto");
-    expect(campaignBand).toHaveClass("lg:overflow-visible");
-    expect(diaperWeek).toHaveClass("min-w-[17rem]");
-    expect(diaperWeek).toHaveClass("lg:min-w-0");
-    expect(screen.getByText(/Daily-change essentials/i)).toHaveClass("hidden");
-    expect(screen.getByText(/Daily-change essentials/i)).toHaveClass("sm:block");
+    expect(await screen.findByText("Shop by Category")).toBeInTheDocument();
   });
 
   it("renders feature bar items", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Free Shipping")).toBeInTheDocument();
-    expect(screen.getByText("Safe Products")).toBeInTheDocument();
-    expect(screen.getByText("Same-Day Express")).toBeInTheDocument();
-    expect(screen.getByText("Expert Support")).toBeInTheDocument();
+    expect(screen.getByText("See delivery options and costs at checkout.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Check the size guide on each product before choosing."),
+    ).toBeInTheDocument();
   });
 
   it("loads and renders product cards", async () => {
     renderWithProviders(<Home />);
     await waitFor(() => {
-      expect(screen.getAllByText("Pampers Baby Dry Diapers").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Kids Cotton T-Shirt").length).toBeGreaterThan(0);
     });
   });
 
   it("loads and renders categories", async () => {
     renderWithProviders(<Home />);
     await waitFor(() => {
-      expect(screen.getByText("Feeding")).toBeInTheDocument();
+      expect(screen.getByText("Tops")).toBeInTheDocument();
     });
   });
 
   it("renders promotional banners", () => {
     renderWithProviders(<Home />);
-    expect(screen.getByText("Adorable Baby Clothing")).toBeInTheDocument();
-    expect(screen.getByText("Feeding Essentials")).toBeInTheDocument();
+    expect(screen.getByText("Shop Girls")).toBeInTheDocument();
+    expect(screen.getByText("Shop Boys")).toBeInTheDocument();
   });
+
+  it("links New In and audience destinations to the clothing filters", () => {
+    renderWithProviders(<Home />);
+
+    expect(screen.getByRole("link", { name: /new in/i })).toHaveAttribute(
+      "href",
+      "/products?sort=newest",
+    );
+    expect(screen.getByRole("link", { name: "Shop Girls" })).toHaveAttribute(
+      "href",
+      "/products?audience=girls",
+    );
+    expect(screen.getByRole("link", { name: "Shop Boys" })).toHaveAttribute(
+      "href",
+      "/products?audience=boys",
+    );
+  });
+
+  it("shows an accurate message when no clothing is available", async () => {
+    vi.mocked(getProducts).mockResolvedValue({ products: [], count: 0, offset: 0, limit: 8 });
+    renderWithProviders(<Home />);
+
+    expect(
+      await screen.findByText("No clothing is available right now. Please check back soon."),
+    ).toBeInTheDocument();
+  });
+});
+
+it("uses the category result photograph rather than an unfiltered arrival", async () => {
+  vi.mocked(getProducts).mockImplementation(async (params) => ({
+    ...productResponse,
+    products: [
+      {
+        ...clothingProduct,
+        thumbnail: params?.category_id
+          ? "https://example.com/category-top.jpg"
+          : "https://example.com/unfiltered.jpg",
+      },
+    ],
+  }));
+  renderWithProviders(<Home />);
+  await waitFor(() =>
+    expect(screen.getByRole("link", { name: /^Tops/ }).querySelector("img")).toHaveAttribute(
+      "src",
+      "https://example.com/category-top.jpg",
+    ),
+  );
 });

@@ -29,7 +29,7 @@ export type StoreInfoPageContent = {
   contactMethods?: StoreInfoContactMethod[];
 };
 
-const LAST_UPDATED = "May 24, 2026";
+const LAST_UPDATED = "October 1, 2026";
 const whatsappHref = `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(
   siteConfig.whatsapp.prefillMessage,
 )}`;
@@ -43,21 +43,21 @@ export const policyPages = {
       "How Azani handles delivery timing, shipping fees, order processing, and delivery support.",
     updatedAt: LAST_UPDATED,
     quickFacts: [
-      { label: "Coverage", value: "Nairobi and delivery across Kenya" },
+      { label: "Coverage", value: "Check options for your address at checkout" },
       { label: "Free delivery", value: "Orders over KSh5,000" },
-      { label: "Fast option", value: "Same-day express where available" },
+      { label: "Fast option", value: "Priority delivery where available" },
     ],
     sections: [
       {
         title: "Where we deliver",
-        body: "Azani serves shoppers in Nairobi and delivery across Kenya through local courier partners. Exact delivery options and fees are confirmed during checkout based on your address and order.",
+        body: "Enter your delivery address at checkout to see the available services and fees for your order.",
       },
       {
         title: "Delivery timelines",
         items: [
-          "Nairobi standard delivery is usually completed within 24 hours after payment confirmation.",
-          "Same-day express delivery is available for eligible Nairobi orders placed early enough in the day.",
-          "County deliveries depend on courier routes and are usually confirmed after order review.",
+          "Delivery timing depends on your destination and selected service.",
+          "Dispatch and delivery estimates are confirmed after order review.",
+          "Priority delivery is offered only where available for your address.",
         ],
       },
       {
@@ -74,8 +74,7 @@ export const policyPages = {
     href: "/policies/returns",
     eyebrow: "After purchase",
     title: "Returns & Exchanges",
-    description:
-      "Return, exchange, and damaged-item guidance for baby products purchased from Azani.",
+    description: "Return, exchange, and damaged-item guidance for clothing purchased from Azani.",
     updatedAt: LAST_UPDATED,
     quickFacts: [
       { label: "Return window", value: "3 days after delivery" },
@@ -85,11 +84,11 @@ export const policyPages = {
     sections: [
       {
         title: "Eligible returns",
-        body: "Azani accepts returns within 3 days of delivery when the item is unused, unopened where relevant, in its original packaging, and accompanied by the order number or receipt.",
+        body: "Azani accepts returns within 3 days of delivery when the clothing is unworn, unwashed, with its original tags and packaging, and accompanied by the order number or receipt.",
       },
       {
         title: "Items we cannot take back",
-        body: "For safety and hygiene, opened feeding, bath, diapering, or personal-care items cannot be returned unless they arrived damaged, faulty, or different from what you ordered.",
+        body: "Clothing that has been worn, washed, or altered cannot be returned unless it is faulty. Contact us before returning an item so we can confirm the condition and next steps.",
       },
       {
         title: "Exchanges",
@@ -140,18 +139,18 @@ export const policyPages = {
       "The basic terms that apply when browsing Azani, creating an account, or placing an order.",
     updatedAt: LAST_UPDATED,
     quickFacts: [
-      { label: "Payments", value: "M-Pesa, card, or mobile money" },
+      { label: "Payments", value: "M-Pesa" },
       { label: "Orders", value: "Confirmed after payment" },
       { label: "Support", value: "WhatsApp, phone, or email" },
     ],
     sections: [
       {
         title: "Orders and payments",
-        body: "Orders are confirmed after payment is received through M-Pesa, card, or supported mobile-money payment. If an item becomes unavailable after payment, Azani will contact you to arrange a replacement, store credit, or refund.",
+        body: "Orders are confirmed after payment is received through an available M-Pesa payment method. If an item becomes unavailable after payment, Azani will contact you to arrange a replacement, store credit, or refund.",
       },
       {
         title: "Product information",
-        body: "We aim to keep product names, photos, prices, stock, and descriptions accurate. Small differences in packaging, color, or supplier presentation can happen, especially for baby essentials sourced from different batches.",
+        body: "We aim to keep product names, photos, prices, stock, and descriptions accurate. Small differences in packaging, colour, or supplier presentation can happen between batches.",
       },
       {
         title: "Delivery and returns",
@@ -170,12 +169,15 @@ export const contactPage = {
   eyebrow: "Support",
   title: "Contact Azani",
   description:
-    "Need help choosing baby essentials, tracking an order, or checking stock? Reach Azani through the channel that works best for you.",
+    "Need help choosing kids clothing, checking a size, tracking an order, or confirming stock? Reach Azani through the channel that works best for you.",
   updatedAt: LAST_UPDATED,
   quickFacts: [
     { label: "Location", value: siteConfig.contact.location },
-    { label: "Response", value: "Order help during shop hours" },
-    { label: "Best for urgent help", value: "Phone or WhatsApp" },
+    { label: "Response", value: siteConfig.contact.hours || "Contact us to confirm availability" },
+    {
+      label: "Best for urgent help",
+      value: siteConfig.contact.phone || siteConfig.whatsapp.number ? "Phone or WhatsApp" : "Email",
+    },
   ],
   contactMethods: [
     {
@@ -196,13 +198,19 @@ export const contactPage = {
       href: whatsappHref,
       description: "Best for quick product, sizing, and delivery questions.",
     },
-  ],
+  ].filter((method) =>
+    method.label === "Call Azani"
+      ? !!siteConfig.contact.phone
+      : method.label === "WhatsApp Azani"
+        ? !!siteConfig.whatsapp.number
+        : true,
+  ),
   sections: [
     {
       title: "What we can help with",
       items: [
-        "Choosing feeding, diapering, nursery, clothing, toy, and maternity essentials.",
-        "Checking stock, size, color, and bundle availability before you order.",
+        "Choosing clothing by garment type, audience, or age guidance for kids ages 2–12.",
+        "Checking stock, size, colour, and outfit availability before you order.",
         "Tracking an order or correcting delivery details before dispatch.",
         "Starting a return, exchange, or damaged-item review.",
       ],

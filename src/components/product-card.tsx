@@ -5,13 +5,13 @@ import Image from "next/image";
 import { Check, Heart, Plus, ShoppingBag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Chip } from "@heroui/react";
 import { MedusaCart, MedusaProduct } from "@/types/medusa";
 import {
   getProductPrice,
   getProductOriginalPrice,
   getProductDiscountPercent,
   getVariantAvailability,
+  getProductImageRotation,
   resolveProductImage,
 } from "@/lib/formatters";
 import { addToCart, getCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
@@ -30,6 +30,26 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
   const discountPercent = getProductDiscountPercent(product);
+  const optionCount = product.variants?.length ?? 0;
+  const colours =
+    product.options
+      ?.filter((option) => /^colou?r$/i.test(option.title))
+      .flatMap((option) => option.values.map((value) => value.value)) ?? [];
+  const requiresSize = product.options?.some((option) => option.title.toLowerCase() === "size");
+  const availableSizes =
+    product.options
+      ?.filter((option) => option.title.toLowerCase() === "size")
+      .flatMap((option) =>
+        option.values
+          .filter((value) =>
+            product.variants?.some(
+              (variant) =>
+                getVariantAvailability(variant).canPurchase &&
+                variant.options?.some((v) => v.option_id === option.id && v.value === value.value),
+            ),
+          )
+          .map((value) => value.value),
+      ) ?? [];
   const quickAddVariant =
     product.variants?.find((variant) => getVariantAvailability(variant).canPurchase) ??
     product.variants?.[0];
@@ -82,6 +102,17 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
     },
   });
 
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!quickAddVariant || !availability.canPurchase) return;
+    if (maxedOut) {
+      showToast("Maximum quantity already in cart", "info");
+      return;
+    }
+    cartMutation.mutate(quickAddVariant.id);
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     if (onSelect) {
       e.preventDefault();
@@ -89,84 +120,59 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
     }
   };
 
+  const handleWishlistToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    wishlistMutation.mutate();
+  };
+
   const productHref = `/products/${product.id}`;
   const [isNew] = useState(() =>
-    product.created_at
+    product.metadata?.local_photo_preview !== true && product.created_at
       ? Date.now() - new Date(product.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
       : false,
   );
-  const hasSalePrice = !!originalPrice;
-  const wishlistLabel = isWishlisted
-    ? `Remove ${product.title} from wishlist`
-    : `Add ${product.title} to wishlist`;
-  const quickAddLabel = maxedOut
-    ? `Maximum ${product.title} quantity already in cart`
-    : availability.canPurchase
-      ? `Quick add ${product.title}`
-      : `${product.title} is out of stock`;
 
   return (
-    <Card
-      role="article"
-      className="az-product-card group relative flex min-w-0 flex-col gap-0 overflow-hidden p-0 shadow-none transition duration-300"
-      variant="default"
-    >
-      {(isNew || hasSalePrice) && (
-        <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-wrap gap-1.5">
-          {isNew && (
-            <Chip
-              className="az-pill az-pill-promo text-2xs px-2 py-1 tracking-wider uppercase"
-              size="sm"
-            >
-              New
-            </Chip>
-          )}
-          {hasSalePrice && (
-            <Chip
-              className="az-pill az-pill-trust text-2xs px-2 py-1 tracking-wider uppercase"
-              size="sm"
-            >
-              Sale
-            </Chip>
-          )}
-          {discountPercent && (
-            <Chip
-              className="az-pill az-pill-neutral text-2xs bg-card/95 px-2 py-1 tracking-wider uppercase"
-              size="sm"
-            >
-              Save {discountPercent}%
-            </Chip>
-          )}
+    <article className="group relative flex min-w-0 flex-col">
+      {isNew && (
+        <div className="absolute top-3 left-3 z-10">
+          <span className="bg-accent-yellow text-foreground text-2xs rounded-full px-2.5 py-0.5 font-bold tracking-wider uppercase">
+            New
+          </span>
         </div>
       )}
 
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-100 transition-all duration-200 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-        <Button
-          isDisabled={wishlistMutation.isPending}
-          isIconOnly
-          className={`az-icon-button az-focus border-border/50 bg-card min-w-10 rounded-full border disabled:opacity-50 ${
-            isWishlisted ? "text-primary" : "text-muted"
+      <div className="absolute top-2 right-2 z-10">
+        <button
+          type="button"
+          onClick={handleWishlistToggle}
+          disabled={wishlistMutation.isPending}
+          className={`border-border focus-visible:ring-primary/30 bg-card flex h-11 w-11 items-center justify-center rounded-full border transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 ${
+            isWishlisted
+              ? "text-primary"
+              : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
-          aria-label={wishlistLabel}
-          variant="ghost"
-          onPress={() => wishlistMutation.mutate()}
+          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className="h-3.5 w-3.5" fill={isWishlisted ? "currentColor" : "none"} />
-        </Button>
+          <Heart className="h-[18px] w-[18px]" fill={isWishlisted ? "currentColor" : "none"} />
+        </button>
       </div>
 
-      <Link href={productHref} onClick={handleClick} className="block overflow-hidden">
-        <div
-          data-testid="product-card-media"
-          className="bg-product-media relative aspect-[4/5] overflow-hidden"
-        >
+      <Link href={productHref} onClick={handleClick} className="block overflow-hidden rounded-lg">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-[#f6f3eb]">
           {imageUrl ? (
             <Image
               src={imageUrl}
               alt={product.title}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              style={{
+                transform:
+                  getProductImageRotation(product) !== 0 ? "rotate(90deg) scale(.75)" : undefined,
+              }}
+              className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.02]"
             />
           ) : (
             <div className="text-muted-light flex h-full flex-col items-center justify-center gap-2">
@@ -177,84 +183,96 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
         </div>
       </Link>
 
-      <div
-        data-testid="product-card-details"
-        className="flex min-h-[7.25rem] flex-1 flex-col gap-1.5 px-3 pt-2.5 pb-3"
-      >
+      <div className="flex flex-1 flex-col gap-1.5 pt-3 pb-2">
         <Link
           href={productHref}
           onClick={handleClick}
-          data-testid="product-card-title"
-          className="text-foreground hover:text-secondary line-clamp-2 min-h-[2.35rem] text-sm leading-snug font-semibold transition"
+          className="text-foreground hover:text-secondary line-clamp-2 text-sm leading-snug font-medium transition"
         >
           {product.title}
         </Link>
 
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
+          {originalPrice && (
+            <span className="text-muted text-2xs line-through">{originalPrice}</span>
+          )}
+          {discountPercent ? (
+            <span className="text-primary text-2xs font-bold">-{discountPercent}%</span>
+          ) : null}
+        </div>
+
         <p
-          className={`text-xs leading-none font-semibold ${
+          className={`text-xs ${
             maxedOut
-              ? "az-status-muted"
+              ? "text-muted"
               : availability.isOutOfStock
-                ? "az-status-danger"
+                ? "text-danger"
                 : availability.isLowStock
-                  ? "az-status-warning"
-                  : "az-status-success"
+                  ? "text-accent-yellow-ink"
+                  : "text-muted"
           }`}
         >
           {maxedOut ? "Max in cart" : availability.label}
         </p>
 
-        <div
-          data-testid="product-card-purchase-row"
-          className="flex items-end justify-between gap-2"
-        >
-          <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5">
-            <span
-              data-testid="product-card-price"
-              className="text-foreground max-w-full text-base leading-tight font-bold whitespace-nowrap"
-            >
-              {price?.formatted ?? "--"}
-            </span>
-            {originalPrice && (
-              <span className="text-muted text-2xs max-w-full truncate leading-tight line-through">
-                {originalPrice}
-              </span>
-            )}
-          </div>
+        {requiresSize ? (
+          <p className="text-muted text-xs">Sizes: {availableSizes.join(", ") || "Sold out"}</p>
+        ) : optionCount > 1 ? (
+          <p className="text-muted text-xs">{optionCount} options</p>
+        ) : null}
 
-          {quickAddVariant && (
-            <Button
-              isDisabled={cartMutation.isPending || !availability.canPurchase || justAdded}
-              isIconOnly
-              className={`az-focus flex h-9 w-9 min-w-9 shrink-0 items-center justify-center rounded-full text-white transition-all duration-300 ${
-                justAdded
-                  ? "bg-success scale-110"
-                  : maxedOut
-                    ? "bg-muted cursor-default opacity-60"
-                    : "bg-foreground hover:bg-foreground/85 disabled:opacity-40"
-              }`}
-              aria-label={quickAddLabel}
-              variant="ghost"
-              onPress={() => {
-                if (!quickAddVariant || !availability.canPurchase) return;
-                if (maxedOut) {
-                  showToast("Maximum quantity already in cart", "info");
-                  return;
-                }
-                cartMutation.mutate(quickAddVariant.id);
-              }}
+        {colours.length > 1 && <p className="text-muted text-xs">{colours.length} colours</p>}
+
+        <div className="mt-auto flex flex-col items-start justify-between gap-x-3 pt-1 sm:flex-row sm:flex-wrap sm:items-center">
+          {requiresSize ? (
+            <Link
+              href={productHref}
+              onClick={handleClick}
+              className="text-primary inline-flex min-h-11 shrink-0 items-center text-sm font-semibold underline underline-offset-4"
             >
-              {justAdded ? (
-                <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
-              ) : maxedOut ? (
-                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-              ) : (
-                <Plus className="h-4 w-4" strokeWidth={2.5} />
-              )}
-            </Button>
+              {colours.length > 1 ? "Choose options" : "Choose size"}
+            </Link>
+          ) : (
+            quickAddVariant && (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
+                className={`flex h-11 w-11 items-center justify-center rounded-lg text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                  justAdded
+                    ? "bg-accent-green-bold scale-110"
+                    : maxedOut
+                      ? "bg-muted cursor-default opacity-60"
+                      : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 disabled:opacity-40"
+                }`}
+                aria-label={
+                  maxedOut
+                    ? "Max quantity in cart"
+                    : availability.canPurchase
+                      ? "Add to cart"
+                      : "Out of stock"
+                }
+                title={
+                  maxedOut
+                    ? "Max quantity in cart"
+                    : availability.canPurchase
+                      ? "Add to cart"
+                      : "Out of stock"
+                }
+              >
+                {justAdded ? (
+                  <Check className="h-4 w-4 animate-[pop_0.3s_ease-out]" strokeWidth={3} />
+                ) : maxedOut ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                ) : (
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                )}
+              </button>
+            )
           )}
         </div>
       </div>
-    </Card>
+    </article>
   );
 }

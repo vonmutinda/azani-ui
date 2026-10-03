@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Button } from "@heroui/react";
 import { Loader2 } from "lucide-react";
 import {
   validateGoogleCallback,
@@ -39,7 +38,7 @@ function GoogleCallbackContent() {
     });
 
     if (!params.code) {
-      setError("Missing authentication code from Google."); // eslint-disable-line react-hooks/set-state-in-effect -- one-time init guard
+      setError("Google sign-in could not be completed. Please try signing in again."); // eslint-disable-line react-hooks/set-state-in-effect -- one-time init guard
       return;
     }
 
@@ -127,15 +126,15 @@ function GoogleCallbackContent() {
   if (error) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <div className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-8">
+        <div className="border-border/50 bg-card space-y-4 rounded-2xl border p-8">
+          <h1 className="text-foreground text-xl font-bold">Sign-in unsuccessful</h1>
           <p className="text-danger text-sm font-medium">{error}</p>
-          <Button
-            onPress={() => router.push("/account/login")}
-            variant="ghost"
-            className="bg-foreground hover:bg-foreground/85 inline-flex rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+          <button
+            onClick={() => router.push("/account/login")}
+            className="bg-primary hover:bg-primary-hover inline-flex rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Back to Sign In
-          </Button>
+          </button>
         </div>
       </div>
     );

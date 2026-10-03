@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { Button } from "@heroui/react";
 import { verifyEmail, resendVerificationEmail } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle, Loader2, Mail } from "lucide-react";
@@ -44,7 +43,7 @@ export default function VerifyEmailPage() {
   if (status === "loading") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-5 text-center sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
           <Loader2 className="text-secondary h-10 w-10 animate-spin" />
           <h1 className="text-foreground text-xl font-bold">Verifying Your Email...</h1>
           <p className="text-muted text-sm">Please wait while we confirm your email address.</p>
@@ -56,7 +55,7 @@ export default function VerifyEmailPage() {
   if (status === "success" || status === "already") {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-5 text-center sm:p-8">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -69,8 +68,8 @@ export default function VerifyEmailPage() {
               : "Your email address has been confirmed. Your account is now fully set up."}
           </p>
           <Link
-            href="/account"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            href="/account/login"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Continue to Account
           </Link>
@@ -81,7 +80,7 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-      <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-5 text-center sm:p-8">
+      <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-5 text-center sm:p-8">
         <div className="bg-danger/10 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertTriangle className="text-danger h-7 w-7" />
         </div>
@@ -92,15 +91,14 @@ export default function VerifyEmailPage() {
         </p>
 
         {email && !resendSent && (
-          <Button
-            onPress={() => resendMutation.mutate()}
-            isDisabled={resendMutation.isPending}
-            variant="ghost"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
+          <button
+            onClick={() => resendMutation.mutate()}
+            disabled={resendMutation.isPending}
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
           >
             <Mail className="h-4 w-4" />
             {resendMutation.isPending ? "Sending..." : "Resend Verification Email"}
-          </Button>
+          </button>
         )}
 
         {resendSent && (
@@ -110,10 +108,10 @@ export default function VerifyEmailPage() {
         )}
 
         <Link
-          href="/account"
+          href="/account/login"
           className="text-secondary text-sm font-medium transition hover:underline"
         >
-          Go to Account
+          Back to Sign In
         </Link>
       </div>
     </div>

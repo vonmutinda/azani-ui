@@ -9,6 +9,7 @@ import {
   getCategoryByHandle,
   getOrCreateCart,
   getCart,
+  getCheckoutCart,
   addToCart,
   updateLineItem,
   removeLineItem,
@@ -57,7 +58,6 @@ vi.mock("@/lib/http", () => ({
 const mockRequest = http.medusaRequest as Mock;
 const mockGetCartId = http.getStoredCartId as Mock;
 const mockSetCartId = http.setStoredCartId as Mock;
-const mockClearCartId = http.clearStoredCartId as Mock;
 const mockGetAuthToken = http.getAuthToken as Mock;
 const mockClearAuthToken = http.clearAuthToken as Mock;
 const mockGetStoredWishlistIds = http.getStoredWishlistProductIds as Mock;
@@ -97,12 +97,14 @@ describe("getProducts", () => {
       .mockResolvedValueOnce({ regions: [mockRegion], count: 1 })
       .mockResolvedValueOnce({ products: [], count: 0, offset: 0, limit: 5 });
 
-    await getProducts({ limit: 5, q: "diapers" });
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+    await getProducts({ limit: 5, q: "cotton", age: "5-8", size: "6" });
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products", {
       searchParams: {
         limit: 5,
         offset: 0,
-        q: "diapers",
+        q: "cotton",
+        age: "5-8",
+        size: "6",
         fields:
           "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
         region_id: "reg_01",
@@ -118,7 +120,7 @@ describe("getProductByHandle", () => {
       .mockResolvedValueOnce({ products: [mockProduct] });
 
     const result = await getProductByHandle("pampers-baby-dry");
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products", {
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products", {
       searchParams: {
         handle: "pampers-baby-dry",
         limit: 1,
@@ -146,7 +148,7 @@ describe("getProductById", () => {
       .mockResolvedValueOnce({ product: mockProduct });
 
     const result = await getProductById("prod_01");
-    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/products/prod_01", {
+    expect(mockRequest).toHaveBeenNthCalledWith(2, "store/clothing-products/prod_01", {
       searchParams: {
         fields:
           "+variants.calculated_price,+variants.prices,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder",
@@ -169,7 +171,7 @@ describe("getProductsByIds", () => {
       if (path === "store/regions") {
         return Promise.resolve({ regions: [mockRegion], count: 1 });
       }
-      if (path === "store/products") {
+      if (path === "store/clothing-products") {
         return Promise.resolve({
           products: [mockProduct, prod02],
           count: 2,
@@ -190,10 +192,10 @@ describe("getProductsByIds", () => {
       if (path === "store/regions") {
         return Promise.resolve({ regions: [mockRegion], count: 1 });
       }
-      if (path === "store/products") {
+      if (path === "store/clothing-products") {
         return Promise.resolve({ products: [mockProduct], count: 1, offset: 0, limit: 2 });
       }
-      if (path === "store/products/prod_02") {
+      if (path === "store/clothing-products/prod_02") {
         return Promise.resolve({ product: prod02 });
       }
       return Promise.resolve({});
@@ -201,6 +203,57 @@ describe("getProductsByIds", () => {
 
     const result = await getProductsByIds(["prod_01", "prod_02"]);
     expect(result.map((p) => p.id)).toEqual(["prod_01", "prod_02"]);
+  });
+
+  it("omits a product when its clothing detail returns 404", async () => {
+    const retiredError = Object.assign(new Error("Product not found"), { status: 404 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.resolve({ products: [], count: 0, offset: 0, limit: 1 });
+      }
+      if (path === "store/clothing-products/prod_01") {
+        return Promise.reject(retiredError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).resolves.toEqual([]);
+  });
+
+  it("propagates a bulk catalogue transport error", async () => {
+    const catalogueError = Object.assign(new Error("Catalogue unavailable"), { status: 503 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.reject(catalogueError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).rejects.toBe(catalogueError);
+  });
+
+  it("propagates a non-404 error from a missing product detail", async () => {
+    const catalogueError = Object.assign(new Error("Catalogue unavailable"), { status: 503 });
+    mockRequest.mockImplementation((path: string) => {
+      if (path === "store/regions") {
+        return Promise.resolve({ regions: [mockRegion], count: 1 });
+      }
+      if (path === "store/clothing-products") {
+        return Promise.resolve({ products: [], count: 0, offset: 0, limit: 1 });
+      }
+      if (path === "store/clothing-products/prod_01") {
+        return Promise.reject(catalogueError);
+      }
+      return Promise.resolve({});
+    });
+
+    await expect(getProductsByIds(["prod_01"])).rejects.toBe(catalogueError);
   });
 });
 
@@ -216,7 +269,7 @@ describe("getCategories", () => {
     });
 
     const result = await getCategories();
-    expect(mockRequest).toHaveBeenCalledWith("store/product-categories", {
+    expect(mockRequest).toHaveBeenCalledWith("store/clothing-categories", {
       searchParams: { limit: 100, include_descendants_tree: true },
     });
     expect(result.product_categories).toHaveLength(1);
@@ -241,6 +294,24 @@ describe("getCategoryByHandle", () => {
 // ── Cart ────────────────────────────────────────────────────────────────
 
 describe("getOrCreateCart", () => {
+  it("discards a stored cart that the backend reports as already completed", async () => {
+    mockGetCartId.mockReturnValue("cart_completed");
+    const completedCart = {
+      ...mockCart,
+      id: "cart_completed",
+      completed_at: "2026-05-26T11:50:00.000Z",
+    };
+    mockRequest
+      .mockResolvedValueOnce({ cart: completedCart })
+      .mockResolvedValueOnce({ regions: [mockRegion] })
+      .mockResolvedValueOnce({ cart: { ...mockCart, id: "cart_fresh" } });
+
+    const result = await getOrCreateCart();
+
+    expect(http.clearStoredCartId).toHaveBeenCalled();
+    expect(result.id).toBe("cart_fresh");
+    expect(mockSetCartId).toHaveBeenCalledWith("cart_fresh");
+  });
   it("returns existing cart if ID is stored", async () => {
     mockGetCartId.mockReturnValue("cart_01");
     mockRequest.mockResolvedValueOnce({ cart: mockCart });
@@ -271,28 +342,20 @@ describe("getOrCreateCart", () => {
     const result = await getOrCreateCart();
     expect(result).toEqual(mockCart);
   });
-
-  it("discards a stored cart that the backend reports as already completed", async () => {
-    mockGetCartId.mockReturnValue("cart_completed");
-    const completedCart = {
-      ...mockCart,
-      id: "cart_completed",
-      completed_at: "2026-05-26T11:50:00.000Z",
-    };
-    mockRequest
-      .mockResolvedValueOnce({ cart: completedCart })
-      .mockResolvedValueOnce({ regions: [mockRegion] })
-      .mockResolvedValueOnce({ cart: { ...mockCart, id: "cart_fresh" } });
-
-    const result = await getOrCreateCart();
-
-    expect(mockClearCartId).toHaveBeenCalled();
-    expect(result.id).toBe("cart_fresh");
-    expect(mockSetCartId).toHaveBeenCalledWith("cart_fresh");
-  });
 });
 
 describe("getCart", () => {
+  it("returns null and clears the stored id when the cart is already completed", async () => {
+    mockGetCartId.mockReturnValue("cart_completed");
+    mockRequest.mockResolvedValueOnce({
+      cart: { ...mockCart, id: "cart_completed", completed_at: "2026-05-26T11:50:00.000Z" },
+    });
+
+    const result = await getCart();
+
+    expect(result).toBeNull();
+    expect(http.clearStoredCartId).toHaveBeenCalled();
+  });
   it("returns null when no cart ID stored", async () => {
     mockGetCartId.mockReturnValue(null);
     const result = await getCart();
@@ -304,6 +367,9 @@ describe("getCart", () => {
     mockRequest.mockResolvedValueOnce({ cart: mockCart });
 
     const result = await getCart();
+    expect(mockRequest).toHaveBeenCalledWith("store/carts/cart_01", {
+      searchParams: { fields: "+items.variant.title,+shipping_methods.name" },
+    });
     expect(result).toEqual(mockCart);
   });
 
@@ -313,18 +379,6 @@ describe("getCart", () => {
 
     const result = await getCart();
     expect(result).toBeNull();
-  });
-
-  it("returns null and clears the stored id when the cart is already completed", async () => {
-    mockGetCartId.mockReturnValue("cart_completed");
-    mockRequest.mockResolvedValueOnce({
-      cart: { ...mockCart, id: "cart_completed", completed_at: "2026-05-26T11:50:00.000Z" },
-    });
-
-    const result = await getCart();
-
-    expect(result).toBeNull();
-    expect(mockClearCartId).toHaveBeenCalled();
   });
 });
 
@@ -672,62 +726,56 @@ describe("wishlist helpers", () => {
 // ── Payment ──────────────────────────────────────────────────────────────
 
 describe("initializePaymentSession", () => {
-  it("creates payment collection then payment session", async () => {
+  it.each([undefined, "pp_system_default", "pp_mpesa_mpesa"])(
+    "rejects missing/unsupported provider %s before networking",
+    async (providerId) => {
+      mockGetCartId.mockReturnValue("cart_01");
+      mockRequest.mockResolvedValue({ payment_collection: { id: "pc_01", payment_sessions: [] } });
+      await expect(
+        initializePaymentSession({ providerId, data: { mpesa_phone: "0712345678" } }),
+      ).rejects.toThrow(/Family Bank/);
+      expect(mockRequest).not.toHaveBeenCalled();
+    },
+  );
+  it("sends only permitted payer data to Family Bank", async () => {
     mockGetCartId.mockReturnValue("cart_01");
     mockRequest
       .mockResolvedValueOnce({ payment_collection: { id: "pc_01" } })
-      .mockResolvedValueOnce({
-        payment_collection: {
-          id: "pc_01",
-          payment_sessions: [{ id: "ps_01", provider_id: "pp_system_default", status: "pending" }],
-        },
-      });
-
-    const result = await initializePaymentSession();
-    expect(mockRequest).toHaveBeenNthCalledWith(1, "store/payment-collections", {
-      method: "POST",
-      body: { cart_id: "cart_01" },
-    });
-    expect(mockRequest).toHaveBeenNthCalledWith(
-      2,
-      "store/payment-collections/pc_01/payment-sessions",
-      {
-        method: "POST",
-        body: { provider_id: "pp_system_default" },
-      },
-    );
-    expect(result.payment_collection.payment_sessions).toHaveLength(1);
-  });
-
-  it("throws when no cart ID", async () => {
-    mockGetCartId.mockReturnValue(null);
-    await expect(initializePaymentSession()).rejects.toThrow("No cart found");
-  });
-
-  it("forwards providerId and data when called for M-Pesa Express", async () => {
-    mockGetCartId.mockReturnValue("cart_01");
-    mockRequest
-      .mockResolvedValueOnce({ payment_collection: { id: "pc_01" } })
-      .mockResolvedValueOnce({
-        payment_collection: {
-          id: "pc_01",
-          payment_sessions: [{ id: "ps_01", provider_id: "pp_mpesa_mpesa", status: "pending" }],
-        },
-      });
-
+      .mockResolvedValueOnce({ payment_collection: { id: "pc_01", payment_sessions: [] } });
     await initializePaymentSession({
-      providerId: "pp_mpesa_mpesa",
-      data: { mpesa_phone: "+254712345678" },
+      providerId: "pp_family_bank_family_bank",
+      data: { mpesa_phone: "0712345678", status: "captured", receipt: "forged", phone: 123 },
     });
-
-    expect(mockRequest).toHaveBeenNthCalledWith(
-      2,
+    expect(mockRequest).toHaveBeenLastCalledWith(
       "store/payment-collections/pc_01/payment-sessions",
       {
         method: "POST",
-        body: { provider_id: "pp_mpesa_mpesa", data: { mpesa_phone: "+254712345678" } },
+        body: { provider_id: "pp_family_bank_family_bank", data: { mpesa_phone: "0712345678" } },
       },
     );
+  });
+  it("propagates unavailable Family Bank configuration without a fallback", async () => {
+    mockGetCartId.mockReturnValue("cart_01");
+    mockRequest
+      .mockResolvedValueOnce({ payment_collection: { id: "pc_01" } })
+      .mockRejectedValueOnce(new Error("Only configured Family Bank payments are available"));
+    await expect(
+      initializePaymentSession({
+        providerId: "pp_family_bank_family_bank",
+        data: { mpesa_phone: "0712345678" },
+      }),
+    ).rejects.toThrow("Only configured Family Bank");
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("checkout cart recovery", () => {
+  it("preserves callback-completed cart identity until its order is recovered", async () => {
+    mockGetCartId.mockReturnValue("cart_01");
+    const completed = { ...mockCart, completed_at: "2026-10-03T00:00:00Z" };
+    mockRequest.mockResolvedValueOnce({ cart: completed });
+    await expect(getCheckoutCart()).resolves.toEqual(completed);
+    expect(http.clearStoredCartId).not.toHaveBeenCalled();
   });
 });
 

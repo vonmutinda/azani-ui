@@ -6,7 +6,14 @@ import prettier from "eslint-config-prettier";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    ".claude/worktrees/**",
+    ".superpowers/**",
+  ]),
   {
     rules: {
       "@typescript-eslint/no-unused-vars": [

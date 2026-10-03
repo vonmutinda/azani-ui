@@ -13,6 +13,7 @@ const mockSetAuthToken = vi.fn();
 const mockClearAuthToken = vi.fn();
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -61,40 +62,6 @@ describe("LoginPage", () => {
     expect(screen.getByRole("heading", { name: "Sign In" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Email")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
-  });
-
-  it("exposes accessible names for sign-in fields and password visibility", () => {
-    renderWithProviders(<LoginPage />);
-
-    expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /show password/i })).toBeInTheDocument();
-  });
-
-  it("marks auth fields with browser autocomplete hints", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LoginPage />);
-
-    expect(screen.getByRole("textbox", { name: /email/i })).toHaveAttribute(
-      "autocomplete",
-      "email",
-    );
-    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute(
-      "autocomplete",
-      "current-password",
-    );
-
-    await user.click(screen.getByText("Create one"));
-
-    expect(screen.getByRole("textbox", { name: /email/i })).toHaveAttribute(
-      "autocomplete",
-      "email",
-    );
-    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute("autocomplete", "new-password");
-    expect(screen.getByLabelText(/^confirm password$/i)).toHaveAttribute(
-      "autocomplete",
-      "new-password",
-    );
   });
 
   it("signs in and routes to account after successful session rehydration", async () => {

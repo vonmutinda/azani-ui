@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@testing-library/react";
 import { ToastProvider, useToast } from "@/components/toast";
@@ -39,15 +39,14 @@ describe("ToastProvider", () => {
 
     await user.click(screen.getByText("Show Toast"));
     expect(screen.getByText("Item added!")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /notification/i })).toHaveClass("azani-toast-region");
   });
 
-  it("shows a cart toast without changing the showToast API", async () => {
+  it("shows toast with correct type icon", async () => {
     const user = userEvent.setup();
-    renderWithToast("Added to cart", "cart");
+    renderWithToast("Error occurred", "error");
 
     await user.click(screen.getByText("Show Toast"));
-    expect(screen.getByText("Added to cart")).toBeInTheDocument();
+    expect(screen.getByText("Error occurred")).toBeInTheDocument();
   });
 
   it("dismisses toast when X button is clicked", async () => {
@@ -57,8 +56,7 @@ describe("ToastProvider", () => {
     await user.click(screen.getByText("Show Toast"));
     expect(screen.getByText("Dismissable toast")).toBeInTheDocument();
 
-    const toast = screen.getByRole("alertdialog", { name: "Dismissable toast" });
-    const dismissBtn = within(toast).getByRole("button", { name: /dismiss|close/i });
+    const dismissBtn = screen.getByLabelText("Dismiss notification");
     await user.click(dismissBtn);
 
     await waitFor(

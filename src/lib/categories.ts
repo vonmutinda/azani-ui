@@ -8,138 +8,108 @@ export type Category = {
   children?: Category[];
 };
 
-/** Icon mapping for known category handles */
-const CATEGORY_ICONS: Record<string, string> = {
-  // Top-level
-  feeding: "utensils",
-  "bath-diapering": "bath",
-  nursery: "moon",
-  "baby-gear": "car",
-  clothing: "shirt",
-  "toys-books": "gamepad",
-  "mom-maternity": "heart-handshake",
+/** Canonical garment categories exposed by the clothing catalogue. */
+export const CLOTHING_CATEGORY_HANDLES = [
+  "tops",
+  "bottoms",
+  "dresses-jumpsuits",
+  "sets-outfits",
+  "knitwear-outerwear",
+  "sleepwear",
+  "underwear-socks",
+] as const;
 
-  // Feeding
-  "bottles-sippy-cups": "milk",
-  "breast-pumps-milk-storage": "heart",
-  "bottle-warmers-sterilizers": "thermometer",
-  "baby-formula": "milk",
-  "baby-food-snacks": "apple",
-  "weaning-essentials": "utensils",
-  "high-chairs-booster-seats": "armchair",
+export type ClothingCategoryHandle = (typeof CLOTHING_CATEGORY_HANDLES)[number];
 
-  // Bath & Diapering
-  "diapers-pull-ups": "baby",
-  wipes: "sparkles",
-  "diaper-bags-changing-mats": "briefcase",
-  "diaper-rash-skin-care": "heart",
-  "bath-tubs-seats": "bath",
-  "soaps-shampoos-wash": "sparkles",
-  "towels-washcloths": "bath",
-  "potty-training": "baby",
+/** Compatible former garment handles that can preserve a shopper's destination. */
+export const LEGACY_CATEGORY_ALIASES = {
+  "tops-t-shirts": "tops",
+  "dresses-outfits": "dresses-jumpsuits",
+  "sleepwear-pajamas": "sleepwear",
+  "socks-shoes": "underwear-socks",
+} as const satisfies Record<string, ClothingCategoryHandle>;
 
-  // Nursery
-  "cribs-bassinets": "bed",
-  "mattresses-bedding": "bed",
-  "swaddles-sleep-sacks": "moon",
-  "monitors-night-lights": "moon",
-  "nursery-decor-storage": "star",
-
-  // Baby Gear
-  strollers: "car",
-  "car-seats": "car",
-  "baby-carriers-wraps": "briefcase",
-  "travel-bags-accessories": "briefcase",
-  "playmats-activity-gyms": "layout",
-  "baby-walkers-bouncers": "baby",
-  safety: "shield",
-
-  // Clothing
-  "newborn-layette-sets": "gift",
-  "bodysuits-onesies": "shirt",
-  "sleepwear-pajamas": "moon",
-  "tops-t-shirts": "shirt",
-  bottoms: "shirt",
-  "dresses-outfits": "sparkles",
-  "socks-shoes": "footprints",
-  "hats-accessories": "crown",
-
-  // Toys & Books
-  "rattles-teethers": "star",
-  "stuffed-animals-soft-toys": "heart",
-  "bath-toys": "bath",
-  "ride-ons-bikes-cars": "bike",
-  "building-stacking-toys": "gamepad",
-  "books-learning": "book",
-  "pacifiers-soothers": "baby",
-
-  // Mom & Maternity
-  "nursing-tops-bras": "shirt",
-  "nursing-pillows": "cloud",
-  "breast-care": "heart",
-  "postpartum-recovery": "heart",
-  "maternity-wear": "shirt",
-  "mom-self-care": "sparkles",
-};
-
-/** Top-level category handles (the 7 main categories) */
-export const TOP_LEVEL_HANDLES = [
+/** Known former departments that no longer belong in the clothing-only store. */
+export const RETIRED_CATEGORY_HANDLES = [
   "feeding",
   "bath-diapering",
   "nursery",
   "baby-gear",
-  "clothing",
   "toys-books",
   "mom-maternity",
-];
+  "bottles-sippy-cups",
+  "breast-pumps-milk-storage",
+  "bottle-warmers-sterilizers",
+  "baby-formula",
+  "baby-food-snacks",
+  "weaning-essentials",
+  "high-chairs-booster-seats",
+  "diapers-pull-ups",
+  "wipes",
+  "diaper-bags-changing-mats",
+  "diaper-rash-skin-care",
+  "bath-tubs-seats",
+  "soaps-shampoos-wash",
+  "towels-washcloths",
+  "potty-training",
+  "cribs-bassinets",
+  "mattresses-bedding",
+  "swaddles-sleep-sacks",
+  "monitors-night-lights",
+  "nursery-decor-storage",
+  "strollers",
+  "car-seats",
+  "baby-carriers-wraps",
+  "travel-bags-accessories",
+  "playmats-activity-gyms",
+  "baby-walkers-bouncers",
+  "safety",
+  "newborn-layette-sets",
+  "bodysuits-onesies",
+  "hats-accessories",
+  "rattles-teethers",
+  "stuffed-animals-soft-toys",
+  "bath-toys",
+  "ride-ons-bikes-cars",
+  "building-stacking-toys",
+  "books-learning",
+  "pacifiers-soothers",
+  "nursing-tops-bras",
+  "nursing-pillows",
+  "breast-care",
+  "postpartum-recovery",
+  "maternity-wear",
+  "mom-self-care",
+] as const;
 
-export const TOP_LEVEL_CATEGORY_NAV: Category[] = [
-  {
-    slug: "feeding",
-    name: "Feeding",
-    icon: "utensils",
-    description: "Bottles, weaning, high chairs, and feeding essentials.",
-  },
-  {
-    slug: "bath-diapering",
-    name: "Bath & Diapering",
-    icon: "bath",
-    description: "Diapers, wipes, bath time, and gentle care.",
-  },
-  {
-    slug: "nursery",
-    name: "Nursery",
-    icon: "moon",
-    description: "Sleep, bedding, monitors, and nursery organization.",
-  },
-  {
-    slug: "baby-gear",
-    name: "Baby Gear",
-    icon: "car",
-    description: "Strollers, car seats, carriers, and travel gear.",
-  },
-  {
-    slug: "clothing",
-    name: "Clothing",
-    icon: "shirt",
-    description: "Everyday outfits, sleepwear, shoes, and accessories.",
-  },
-  {
-    slug: "toys-books",
-    name: "Toys & Books",
-    icon: "gamepad",
-    description: "Play, learning, books, teethers, and soft toys.",
-  },
-  {
-    slug: "mom-maternity",
-    name: "Mom & Maternity",
-    icon: "heart-handshake",
-    description: "Nursing, maternity wear, recovery, and self-care.",
-  },
-];
+const CLOTHING_CATEGORY_HANDLE_SET = new Set<string>(CLOTHING_CATEGORY_HANDLES);
+const RETIRED_CATEGORY_HANDLE_SET = new Set<string>(RETIRED_CATEGORY_HANDLES);
+
+export function resolveClothingCategoryHandle(handle: string): ClothingCategoryHandle | undefined {
+  if (CLOTHING_CATEGORY_HANDLE_SET.has(handle)) return handle as ClothingCategoryHandle;
+  return LEGACY_CATEGORY_ALIASES[handle as keyof typeof LEGACY_CATEGORY_ALIASES];
+}
+
+export function isRetiredCategoryHandle(handle: string): boolean {
+  return RETIRED_CATEGORY_HANDLE_SET.has(handle);
+}
+
+/** Icon mapping for the canonical garment handles. */
+const CATEGORY_ICONS: Record<string, string> = {
+  tops: "shirt",
+  bottoms: "trousers",
+  "dresses-jumpsuits": "dress",
+  "sets-outfits": "outfit",
+  "knitwear-outerwear": "jacket",
+  sleepwear: "moon",
+  "underwear-socks": "socks",
+};
+
+/** Compatibility name used by existing category-tree consumers. */
+export const TOP_LEVEL_HANDLES: readonly string[] = CLOTHING_CATEGORY_HANDLES;
 
 export function getCategoryIcon(handle: string): string {
-  return CATEGORY_ICONS[handle] ?? "baby";
+  return CATEGORY_ICONS[handle] ?? "shirt";
 }
 
 /** Convert Medusa categories to our local Category shape for navigation */
@@ -190,4 +160,65 @@ export function resolveToMainAndSub(
     }
   }
   return undefined;
+}
+
+// ── Multi-select category filtering ─────────────────────────────────
+// The `category` query param holds a comma-joined list of handles, so the
+// listing can filter by several (sub)categories at once.
+
+/** Parse the `category` param into a list of handles. */
+export function parseCategoryParam(value?: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((handle) => handle.trim())
+    .filter(Boolean);
+}
+
+/** Serialise selected handles back to a param value (undefined clears it). */
+export function serializeCategoryParam(handles: string[]): string | undefined {
+  const cleaned = handles.filter(Boolean);
+  return cleaned.length > 0 ? cleaned.join(",") : undefined;
+}
+
+/** Find a Medusa category anywhere in the tree by its handle. */
+export function findMedusaCategory(
+  categories: MedusaProductCategory[],
+  handle: string,
+): MedusaProductCategory | undefined {
+  for (const cat of categories) {
+    if (cat.handle === handle) return cat;
+    const match = cat.category_children
+      ? findMedusaCategory(cat.category_children, handle)
+      : undefined;
+    if (match) return match;
+  }
+  return undefined;
+}
+
+/** A category id plus all of its descendant ids. */
+export function collectCategoryIds(cat: MedusaProductCategory): string[] {
+  const ids = [cat.id];
+  for (const child of cat.category_children ?? []) {
+    ids.push(...collectCategoryIds(child));
+  }
+  return ids;
+}
+
+/**
+ * Resolve selected handles to the deduped union of their subtree ids — what we
+ * pass to `getProducts({ category_id })` for a server-side OR across categories.
+ * Selecting a parent therefore includes its children. Unknown handles are skipped.
+ */
+export function resolveCategoryIds(
+  categories: MedusaProductCategory[],
+  handles: string[],
+): string[] {
+  const ids = new Set<string>();
+  for (const handle of handles) {
+    const node = findMedusaCategory(categories, handle);
+    if (!node) continue;
+    for (const id of collectCategoryIds(node)) ids.add(id);
+  }
+  return [...ids];
 }

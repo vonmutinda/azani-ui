@@ -1,169 +1,127 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Facebook, Heart, Instagram, Mail, MapPin, Phone } from "lucide-react";
-import { AZANI_DEFAULT_LOGO } from "@/lib/brand-assets";
+import { BrandLogo } from "@/components/brand-logo";
+import { ChevronDown, MessageCircleQuestion } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
-import { contactPage, policyPages } from "@/lib/store-info-pages";
 
-const TOP_CATEGORIES = [
-  { name: "Feeding", slug: "feeding" },
-  { name: "Bath & Diapering", slug: "bath-diapering" },
-  { name: "Nursery", slug: "nursery" },
-  { name: "Baby Gear", slug: "baby-gear" },
-  { name: "Clothing", slug: "clothing" },
-  { name: "Toys & Books", slug: "toys-books" },
-  { name: "Mom & Maternity", slug: "mom-maternity" },
+const groups = [
+  {
+    title: "Shop",
+    links: [
+      ["All clothing", "/products"],
+      ["Girls", "/products?audience=girls"],
+      ["Boys", "/products?audience=boys"],
+      ["New arrivals", "/products?sort=newest"],
+    ],
+  },
+  {
+    title: "Shop by age",
+    links: [
+      ["2–4 years", "/products?age=2-4"],
+      ["5–8 years", "/products?age=5-8"],
+      ["9–12 years", "/products?age=9-12"],
+    ],
+  },
+  {
+    title: "Here to help",
+    links: [
+      ["Delivery information", "/policies/shipping"],
+      ["Returns & exchanges", "/policies/returns"],
+      ["Contact & size help", "/contact"],
+      ["My account", "/account/login"],
+    ],
+  },
 ];
 
-const CUSTOMER_SERVICE_LINKS = [
-  { name: "Checkout", href: "/checkout" },
-  { name: "Shipping Policy", href: policyPages.shipping.href },
-  { name: "Returns & Exchanges", href: policyPages.returns.href },
-  { name: "Privacy Policy", href: policyPages.privacy.href },
-  { name: "Terms of Service", href: policyPages.terms.href },
-  { name: "Contact", href: contactPage.href },
-];
+function FooterLinks({ links }: { links: string[][] }) {
+  return (
+    <ul className="text-muted space-y-1">
+      {links.map(([label, href]) => (
+        <li key={href}>
+          <Link
+            href={href}
+            className="hover:text-foreground inline-flex min-h-11 items-center text-sm transition"
+          >
+            {label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function SiteFooter() {
   return (
-    <footer className="border-border/50 bg-card mt-10 border-t">
-      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-        <div className="space-y-4">
-          <Link href="/" className="az-focus block w-fit rounded-md">
-            <Image
-              src={AZANI_DEFAULT_LOGO.logo.inline2x}
-              alt="Azani"
-              width={AZANI_DEFAULT_LOGO.logo.width}
-              height={AZANI_DEFAULT_LOGO.logo.height}
-              sizes="(min-width: 640px) 161px, 138px"
-              className="h-12 w-auto sm:h-14"
-            />
+    <footer className="border-border border-t bg-white">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr_1fr] lg:gap-10 lg:px-8 lg:py-12">
+        <div>
+          <Link href="/">
+            <BrandLogo placement="footer" />
           </Link>
-          <p className="text-muted max-w-sm text-sm leading-relaxed">
-            Quality baby products, clothing, toys and essentials. Curated with love for your little
-            ones.
+          <p className="text-muted mt-4 max-w-xs text-sm leading-relaxed">
+            Kids clothing for ages 2–12.
+            <br />
+            For little moments and big adventures.
           </p>
-          <div className="text-muted space-y-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Phone className="text-primary h-3.5 w-3.5" /> {siteConfig.contact.phoneDisplay}
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="text-secondary h-3.5 w-3.5" /> {siteConfig.contact.email}
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="text-success h-3.5 w-3.5" /> {siteConfig.contact.location}
-            </div>
-          </div>
-          <div>
-            <h4 className="text-foreground mb-2 text-xs font-bold tracking-wide uppercase">
-              Follow us
-            </h4>
-            <div className="flex items-center gap-2">
-              <a
-                href={siteConfig.social.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Follow Azani on Instagram"
-                className="az-icon-button az-focus bg-primary-light text-primary hover:bg-primary inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full hover:text-white"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a
-                href={siteConfig.social.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Follow Azani on Facebook"
-                className="az-icon-button az-focus bg-trust-light text-trust hover:bg-trust inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full hover:text-white"
-              >
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a
-                href={siteConfig.social.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Follow Azani on TikTok"
-                className="az-icon-button az-focus bg-foreground/5 text-foreground hover:bg-foreground hover:text-background inline-flex h-9 min-h-9 w-9 min-w-9 rounded-full"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 fill-current"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.1z" />
-                </svg>
-              </a>
+          <Link
+            href="/contact"
+            className="text-foreground mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium"
+          >
+            <MessageCircleQuestion className="h-5 w-5" aria-hidden="true" />
+            Let’s help you find the right fit
+          </Link>
+          {!!siteConfig.contact.phone && (
+            <a href={`tel:${siteConfig.contact.phone}`} className="text-muted block py-2 text-sm">
+              {siteConfig.contact.phoneDisplay}
+            </a>
+          )}
+          {process.env.NEXT_PUBLIC_AZANI_EMAIL && (
+            <a
+              href={`mailto:${siteConfig.contact.email}`}
+              className="text-muted block py-2 text-sm"
+            >
+              {siteConfig.contact.email}
+            </a>
+          )}
+          {process.env.NEXT_PUBLIC_AZANI_WHATSAPP_NUMBER && (
+            <a
+              href={`https://wa.me/${siteConfig.whatsapp.number}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-success-ink inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+            >
+              Chat on WhatsApp
+            </a>
+          )}
+        </div>
+        {groups.map(({ title, links }) => (
+          <div key={title}>
+            <details className="border-border border-b sm:hidden">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-sm font-semibold">
+                {title}
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </summary>
+              <div className="pb-3">
+                <FooterLinks links={links} />
+              </div>
+            </details>
+            <div className="hidden sm:block">
+              <h2 className="mb-3 text-base font-bold">{title}</h2>
+              <FooterLinks links={links} />
             </div>
           </div>
-        </div>
-
-        <div>
-          <h4 className="text-foreground mb-4 text-sm font-bold">Categories</h4>
-          <ul className="text-muted space-y-2.5 text-sm">
-            {TOP_CATEGORIES.map((cat) => (
-              <li key={cat.slug}>
-                <Link
-                  href={`/products?category=${cat.slug}`}
-                  className="hover:text-foreground transition"
-                >
-                  {cat.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="text-foreground mb-4 text-sm font-bold">Quick Links</h4>
-          <ul className="text-muted space-y-2.5 text-sm">
-            <li>
-              <Link href="/products" className="hover:text-foreground transition">
-                All Products
-              </Link>
-            </li>
-            <li>
-              <Link href="/products?category=clothing" className="hover:text-foreground transition">
-                New Arrivals
-              </Link>
-            </li>
-            <li>
-              <Link href="/cart" className="hover:text-foreground transition">
-                Shopping Cart
-              </Link>
-            </li>
-            <li>
-              <Link href="/account/wishlist" className="hover:text-foreground transition">
-                Wishlist
-              </Link>
-            </li>
-            <li>
-              <Link href="/account/login" className="hover:text-foreground transition">
-                My Account
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="text-foreground mb-4 text-sm font-bold">Customer Service</h4>
-          <ul className="text-muted space-y-2.5 text-sm">
-            {CUSTOMER_SERVICE_LINKS.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="hover:text-foreground transition">
-                  {link.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        ))}
       </div>
-
-      <div className="border-border/50 border-t">
-        <div className="text-muted mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-5 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
-          <span>&copy; {new Date().getFullYear()} Azani. All rights reserved.</span>
-          <span className="flex items-center gap-1">
-            Made with <Heart className="text-primary h-3 w-3" fill="currentColor" /> for little ones
-          </span>
+      <div className="border-border border-t">
+        <div className="text-muted mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs sm:px-6 lg:px-8">
+          <span>© {new Date().getFullYear()} Azani</span>
+          <div className="flex gap-5">
+            <Link href="/policies/privacy" className="py-2">
+              Privacy
+            </Link>
+            <Link href="/policies/terms" className="py-2">
+              Terms
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
