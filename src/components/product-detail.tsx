@@ -38,6 +38,7 @@ import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { ClothingFit } from "@/components/clothing-fit";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
+import { getSuppliedProductRating } from "@/lib/product-rating";
 import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
 
@@ -362,9 +363,7 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
   const originalPrice = getVariantOriginalPrice(selectedVariant);
   const discountPercent = getVariantDiscountPercent(selectedVariant);
   const category = product.categories?.find((category) => category.handle && category.name);
-  const ratingValue = typeof product.metadata?.rating === "number" ? product.metadata.rating : null;
-  const reviewCount =
-    typeof product.metadata?.review_count === "number" ? product.metadata.review_count : null;
+  const suppliedRating = getSuppliedProductRating(product.metadata);
 
   const colourOption = product.options?.find((option) =>
     ["colour", "color"].includes(option.title.toLowerCase()),
@@ -428,11 +427,17 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
               <Title className="text-foreground text-2xl font-bold sm:text-3xl">
                 {product.title}
               </Title>
-              {ratingValue != null && reviewCount != null && reviewCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <StarRating rating={ratingValue} />
+              {suppliedRating && (
+                <div
+                  className="flex items-center gap-2"
+                  role="group"
+                  aria-label={`${suppliedRating.rating.toFixed(1)} out of 5 from ${suppliedRating.reviewCount} reviews`}
+                >
+                  <span aria-hidden="true">
+                    <StarRating rating={suppliedRating.rating} />
+                  </span>
                   <span className="text-muted text-sm">
-                    {ratingValue.toFixed(1)} ({reviewCount} reviews)
+                    {suppliedRating.rating.toFixed(1)} ({suppliedRating.reviewCount} reviews)
                   </span>
                 </div>
               )}

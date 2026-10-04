@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCheckoutRecovery } from "@/lib/use-checkout-recovery";
+import { ProductCard } from "@/components/product-card";
+import { collectCategoryIds } from "@/lib/categories";
 import { EnamelUtilityIcon } from "@/components/enamel-utility-icon";
 import Image from "next/image";
 import { useState, useCallback, useMemo } from "react";
@@ -21,6 +23,8 @@ import {
 } from "lucide-react";
 import {
   getCart,
+  getProducts,
+  getCategories,
   getProductsByIds,
   updateLineItem,
   removeLineItem,
@@ -131,11 +135,17 @@ export default function CartPage() {
   const shippingKnown = (cart?.shipping_methods?.length ?? 0) > 0;
   const cartProductIds = useMemo(
     () =>
-      Array.from(new Set(items.map((item) => item.product_id).filter((id): id is string => !!id))),
+      Array.from(
+        new Set(
+          items
+            .map((item) => item.product_id ?? item.product?.id)
+            .filter((id): id is string => !!id),
+        ),
+      ),
     [items],
   );
   const cartProductsQuery = useQuery({
-    queryKey: ["cart-products", cartProductIds],
+    queryKey: ["cart-products", cart?.id, cartProductIds],
     queryFn: () => getProductsByIds(cartProductIds),
     enabled: cartProductIds.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -144,6 +154,41 @@ export default function CartPage() {
     () => new Map((cartProductsQuery.data ?? []).map((product) => [product.id, product])),
     [cartProductsQuery.data],
   );
+  const categoriesQuery = useQuery({
+    queryKey: ["catalogue-categories"],
+    queryFn: () => getCategories(),
+    enabled: items.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const cartCategoryIds = useMemo(() => {
+    const publicIds = new Set(
+      (categoriesQuery.data?.product_categories ?? []).flatMap(collectCategoryIds),
+    );
+    const ids = new Set<string>();
+    // Only products fetched for this cart identity may influence merchandising.
+    for (const productId of cartProductIds) {
+      for (const category of cartProductsById.get(productId)?.categories ?? []) {
+        if (publicIds.has(category.id)) ids.add(category.id);
+      }
+    }
+    return [...ids].sort();
+  }, [cartProductIds, cartProductsById, categoriesQuery.data]);
+  const recommendationsQuery = useQuery({
+    queryKey: ["cart-recommendations", cart?.id, cartProductIds, cartCategoryIds],
+    queryFn: () =>
+      getProducts({
+        limit: 8,
+        ...(cartCategoryIds.length ? { category_id: cartCategoryIds } : {}),
+      }),
+    enabled:
+      items.length > 0 &&
+      (!cartProductIds.length || !cartProductsQuery.isPending) &&
+      !categoriesQuery.isPending,
+    staleTime: 5 * 60 * 1000,
+  });
+  const recommendations = (recommendationsQuery.data?.products ?? [])
+    .filter((product) => !cartProductIds.includes(product.id))
+    .slice(0, 4);
   const hasUnavailableItems =
     cartProductsQuery.isSuccess &&
     items.some((item) => !canFulfillCartItem(item, cartProductsById));
@@ -450,6 +495,16 @@ export default function CartPage() {
           )}
         </div>
       </div>
+      {recommendations.length > 0 && (
+        <section aria-label="You may also like" className="mt-10">
+          <h2 className="text-foreground mb-4 text-lg font-bold">You may also like</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {recommendations.map((product) => (
+              <ProductCard key={product.id} product={product} cartLocked={paymentLocked} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

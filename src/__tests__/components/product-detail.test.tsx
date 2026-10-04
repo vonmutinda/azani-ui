@@ -608,3 +608,21 @@ describe("ProductDetail", () => {
     expect(screen.queryByText("You may also like")).not.toBeInTheDocument();
   });
 });
+
+it.each([
+  { rating: NaN, review_count: 12 },
+  { rating: Infinity, review_count: 12 },
+  { rating: -1, review_count: 12 },
+  { rating: 5.1, review_count: 12 },
+  { rating: "4.5", review_count: 12 },
+  { rating: 4.5, review_count: "12" },
+  { rating: 4.5, review_count: 1.5 },
+  { rating: 4.5, review_count: Infinity },
+  { rating: 4.5, review_count: NaN },
+  { rating: 4.5, review_count: -1 },
+])("hides malformed supplied PDP rating metadata %#", async (metadata) => {
+  mockGetProductById.mockResolvedValueOnce({ product: { ...mockProduct, metadata } });
+  renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+  await screen.findByRole("heading", { name: mockProduct.title });
+  expect(screen.queryByText(/\(.* reviews\)/)).not.toBeInTheDocument();
+});

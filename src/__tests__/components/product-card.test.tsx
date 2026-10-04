@@ -128,3 +128,38 @@ describe("ProductCard", () => {
     expect(mockToggleWishlistProduct).toHaveBeenCalledWith("prod_01");
   });
 });
+
+describe("supplied catalog ratings", () => {
+  it.each([0, 4.5, 5])(
+    "shows supplied score %s before stars with a supplied review count",
+    (rating) => {
+      renderWithProviders(
+        <ProductCard product={{ ...mockProduct, metadata: { rating, review_count: 12 } }} />,
+      );
+      const summary = screen.getByRole("group", {
+        name: `${rating.toFixed(1)} out of 5 from 12 reviews`,
+      });
+      expect(summary).toHaveTextContent(`${rating.toFixed(1)} (12)`);
+      expect(summary.firstElementChild).toHaveTextContent(rating.toFixed(1));
+    },
+  );
+  it.each([
+    undefined,
+    {},
+    { rating: 4.5 },
+    { rating: 4.5, review_count: 0 },
+    { rating: "4.5", review_count: 12 },
+    { rating: NaN, review_count: 12 },
+    { rating: Infinity, review_count: 12 },
+    { rating: -1, review_count: 12 },
+    { rating: 5.1, review_count: 12 },
+    { rating: 4.5, review_count: "12" },
+    { rating: 4.5, review_count: 1.5 },
+    { rating: 4.5, review_count: Infinity },
+    { rating: 4.5, review_count: NaN },
+    { rating: 4.5, review_count: -1 },
+  ])("hides absent or invalid supplied metadata %#", (metadata) => {
+    renderWithProviders(<ProductCard product={{ ...mockProduct, metadata }} />);
+    expect(screen.queryByLabelText(/out of 5 from/)).not.toBeInTheDocument();
+  });
+});

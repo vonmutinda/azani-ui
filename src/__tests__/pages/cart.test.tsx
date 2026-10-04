@@ -9,6 +9,8 @@ const mockGetCart = vi.fn();
 const mockGetProducts = vi.fn().mockResolvedValue([mockProduct]);
 
 vi.mock("@/lib/medusa-api", () => ({
+  getProducts: vi.fn().mockResolvedValue({ products: [] }),
+  getCategories: vi.fn().mockResolvedValue({ product_categories: [] }),
   getCart: (...args: unknown[]) => mockGetCart(...args),
   getProductsByIds: (...args: unknown[]) => mockGetProducts(...args),
   updateLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
