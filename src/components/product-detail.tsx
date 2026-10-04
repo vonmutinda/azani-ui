@@ -174,7 +174,9 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
     mutationFn: ({ variantId, qty }: { variantId: string; qty: number }) =>
       addToCart(variantId, qty),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       showToast(`${product?.title ?? "Item"} added to cart`, "cart");
       flashAdded();
     },

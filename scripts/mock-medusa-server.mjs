@@ -295,7 +295,7 @@ function getSearchValues(url, key) {
 
 const clothingCategoryIds = new Set(categories.map((item) => item.id));
 const clothingFilterValues = {
-  audience: new Set(["girls", "boys"]),
+  audience: new Set(["girls", "boys", "unisex"]),
   age: new Set(["2-4", "5-8", "9-12"]),
   availability: new Set(["in_stock"]),
   price: new Set(["u1000", "1000-5000", "o5000"]),

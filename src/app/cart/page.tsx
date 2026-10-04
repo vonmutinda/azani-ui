@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useCheckoutRecovery } from "@/lib/use-checkout-recovery";
 import { EnamelUtilityIcon } from "@/components/enamel-utility-icon";
 import Image from "next/image";
 import { useState, useCallback, useMemo } from "react";
@@ -82,6 +83,7 @@ function canFulfillCartItem(item: MedusaLineItem, productsById: Map<string, Medu
 
 export default function CartPage() {
   const queryClient = useQueryClient();
+  const recovery = useCheckoutRecovery();
   const [promoCode, setPromoCode] = useState("");
 
   const cartQuery = useQuery({ queryKey: ["cart"], queryFn: getCart });
@@ -89,28 +91,40 @@ export default function CartPage() {
   const updateMutation = useMutation({
     mutationFn: ({ lineItemId, quantity }: { lineItemId: string; quantity: number }) =>
       updateLineItem(lineItemId, quantity),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      }),
   });
 
   const removeMutation = useMutation({
     mutationFn: (lineItemId: string) => removeLineItem(lineItemId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      }),
   });
 
   const promoMutation = useMutation({
     mutationFn: () => addPromoCode(promoCode),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       setPromoCode("");
     },
   });
 
   const removePromoMutation = useMutation({
     mutationFn: (code: string) => removePromoCode(code),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      }),
   });
 
   const cart = cartQuery.data;
+  const paymentLocked = recovery?.state === "unresolved" && recovery.cartId === cart?.id;
   const amounts = getCartDisplayAmounts(cart);
   const items = useMemo(() => cart?.items ?? [], [cart?.items]);
   const currencyCode = "kes";
@@ -181,6 +195,14 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {paymentLocked && (
+        <p role="status" className="border-border mb-5 rounded-xl border p-4">
+          Your payment is unresolved. Cart and promo changes are locked.{" "}
+          <Link href="/checkout" className="underline">
+            Check payment status
+          </Link>
+        </p>
+      )}
       <div className="mb-5 flex items-center gap-3">
         <Link
           href="/products"
@@ -228,8 +250,8 @@ export default function CartPage() {
               currencyCode={currencyCode}
               onUpdate={(lineItemId, quantity) => updateMutation.mutate({ lineItemId, quantity })}
               onRemove={(lineItemId) => removeMutation.mutate(lineItemId)}
-              isUpdating={updateMutation.isPending}
-              isRemoving={removeMutation.isPending}
+              isUpdating={paymentLocked || updateMutation.isPending}
+              isRemoving={paymentLocked || removeMutation.isPending}
               productsById={cartProductsById}
               productsLoaded={cartProductsQuery.isSuccess}
             />
@@ -354,6 +376,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         aria-label={`Remove promo code ${promo.code}`}
+                        disabled={paymentLocked || removePromoMutation.isPending}
                         onClick={() => removePromoMutation.mutate(promo.code)}
                         className="text-muted hover:text-danger focus-visible:ring-danger inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition focus-visible:ring-2 focus-visible:outline-none"
                       >
@@ -367,7 +390,8 @@ export default function CartPage() {
                   className="flex gap-2"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    if (promoCode.trim() && !promoMutation.isPending) promoMutation.mutate();
+                    if (!paymentLocked && promoCode.trim() && !promoMutation.isPending)
+                      promoMutation.mutate();
                   }}
                 >
                   <label htmlFor="cart-promo-code" className="sr-only">
@@ -376,6 +400,7 @@ export default function CartPage() {
                   <input
                     id="cart-promo-code"
                     name="promo_code"
+                    disabled={paymentLocked}
                     value={promoCode}
                     onChange={(e) => {
                       setPromoCode(e.target.value);
@@ -388,7 +413,7 @@ export default function CartPage() {
                   />
                   <button
                     type="submit"
-                    disabled={!promoCode.trim() || promoMutation.isPending}
+                    disabled={paymentLocked || !promoCode.trim() || promoMutation.isPending}
                     className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 rounded-full px-4 text-sm font-medium text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                   >
                     Apply
@@ -584,7 +609,7 @@ function CartItem({
                     e.currentTarget.blur();
                   }
                 }}
-                disabled={availability.isOutOfStock}
+                disabled={isUpdating || availability.isOutOfStock}
                 className="focus-visible:ring-primary min-h-11 w-11 rounded-lg bg-transparent text-center text-sm font-bold outline-none focus-visible:ring-2 disabled:opacity-40"
               />
               <button

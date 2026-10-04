@@ -88,7 +88,9 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const cartMutation = useMutation({
     mutationFn: (variantId: string) => addToCart(variantId, 1),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       showToast(`${product.title} added to cart`, "cart");
       flashAdded();
       onAddedToCart?.(product.id);

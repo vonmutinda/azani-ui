@@ -198,3 +198,10 @@ test("mock checkout rejects legacy/default providers and unconfirmed orders", as
   assert.equal(response.status, 400);
   assert.equal((await response.json()).type, "payment_not_confirmed");
 });
+
+test("unisex is an accepted audience and excludes girls-only and boys-only garments", async () => {
+  const { response, body } = await request("/store/clothing-products?audience=unisex&limit=100");
+  assert.equal(response.status, 200);
+  assert.ok(body.products.length > 0);
+  assert.ok(body.products.every((product) => product.metadata.clothing.audience === "unisex"));
+});

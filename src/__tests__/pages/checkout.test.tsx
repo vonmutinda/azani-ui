@@ -607,7 +607,7 @@ describe("CheckoutPage", () => {
     expect(mockInitializePaymentSession).not.toHaveBeenCalled();
   }, 30_000);
 
-  it("returns to the review step from the pending screen instead of leaving checkout", async () => {
+  it("keeps delivery and payer edits inaccessible while a payment is unresolved", async () => {
     mockInitializePaymentSession.mockResolvedValue({
       payment_collection: {
         id: "pc_1",
@@ -626,10 +626,11 @@ describe("CheckoutPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send M-Pesa Prompt" }));
 
     await screen.findByText("Payment Request Sent");
-    fireEvent.click(screen.getByRole("button", { name: /Back to Review/i }));
-
-    expect(await screen.findByText("Review & Place Order")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Back to Review/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to Payment" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Cart, delivery and payer details are locked/)).toBeInTheDocument();
   }, 30_000);
+
   async function sendPrompt() {
     renderWithProviders(<CheckoutPage />);
     await continueToPayment();

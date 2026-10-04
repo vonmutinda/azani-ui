@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
@@ -76,3 +76,5 @@ Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
 
 // Any test requiring HTTP must supply a synthetic fetch mock.
 vi.stubGlobal("fetch", () => Promise.reject(new Error("Unmocked network request in test")));
+
+beforeEach(() => localStorage.clear());

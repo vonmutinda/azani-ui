@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import CartPage from "@/app/cart/page";
 import { renderWithProviders } from "../test-utils";
 import { mockCart, mockEmptyCart, mockProduct } from "../fixtures";
@@ -237,6 +237,53 @@ it("blocks checkout and offers a retry when availability cannot be checked", asy
 
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   expect(await screen.findByRole("link", { name: "Proceed to Checkout" })).toHaveAttribute(
+    "href",
+    "/checkout",
+  );
+});
+
+it.each([{ promotions: [] }, { promotions: [{ code: "SAVE" }] }])(
+  "locks quantity, removal and promo controls after returning from unresolved checkout %#",
+  async ({ promotions }) => {
+    vi.clearAllMocks();
+    mockGetCart.mockResolvedValue({ ...mockCart, promotions });
+    localStorage.setItem(
+      "azani_checkout_recovery",
+      JSON.stringify({ cartId: mockCart.id, sessionId: "ps_pending", state: "unresolved" }),
+    );
+    renderWithProviders(<CartPage />);
+    expect(await screen.findByRole("link", { name: "Check payment status" })).toHaveAttribute(
+      "href",
+      "/checkout",
+    );
+    for (const button of screen.getAllByRole("button")) {
+      if (
+        /quantity|Remove|Apply/i.test(button.getAttribute("aria-label") ?? button.textContent ?? "")
+      )
+        expect(button).toBeDisabled();
+    }
+    if (!promotions.length) expect(screen.getByPlaceholderText("Enter code")).toBeDisabled();
+    expect(updateLineItem).not.toHaveBeenCalled();
+    expect(removeLineItem).not.toHaveBeenCalled();
+    expect(addPromoCode).not.toHaveBeenCalled();
+    expect(removePromoCode).not.toHaveBeenCalled();
+  },
+);
+
+it("locks an already open cart when another tab starts a payment", async () => {
+  mockGetCart.mockResolvedValue({ ...mockCart, promotions: [] });
+  renderWithProviders(<CartPage />);
+  const remove = await screen.findByRole("button", { name: /Remove .* from cart/ });
+  expect(remove).toBeEnabled();
+  act(() => {
+    localStorage.setItem(
+      "azani_checkout_recovery",
+      JSON.stringify({ cartId: mockCart.id, sessionId: "ps_other_tab", state: "unresolved" }),
+    );
+    window.dispatchEvent(new StorageEvent("storage", { key: "azani_checkout_recovery" }));
+  });
+  expect(remove).toBeDisabled();
+  expect(screen.getByRole("link", { name: "Check payment status" })).toHaveAttribute(
     "href",
     "/checkout",
   );

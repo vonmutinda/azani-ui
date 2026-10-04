@@ -40,7 +40,8 @@ import {
   getCartItemsSubtotal,
   getCartDisplayAmounts,
 } from "@/lib/formatters";
-import { clearStoredCartId } from "@/lib/http";
+import { getCheckoutRecovery, rememberCheckoutCart } from "@/lib/checkout-recovery";
+import { useCheckoutCartIdentity, useCheckoutRecovery } from "@/lib/use-checkout-recovery";
 import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
@@ -244,6 +245,8 @@ function ShippingStep({
 
 export default function CheckoutPage() {
   const queryClient = useQueryClient();
+  const checkoutIdentity = useCheckoutCartIdentity();
+  const recovery = useCheckoutRecovery();
   const [step, setStep] = useState<Step>("address");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderRecovery, setOrderRecovery] = useState(false);
@@ -277,7 +280,9 @@ export default function CheckoutPage() {
   });
 
   const cartQuery = useQuery({
-    queryKey: ["checkout-cart"],
+    queryKey: ["checkout-cart", checkoutIdentity],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: getCheckoutCart,
     refetchInterval: paymentPending ? 3_000 : false,
   });
@@ -334,11 +339,16 @@ export default function CheckoutPage() {
   /* eslint-disable react-hooks/set-state-in-effect -- pre-fill form from customer & auto-select saved address */
   const restoredCartId = useRef<string | null>(null);
   useEffect(() => {
-    if (!cart || restoredCartId.current === cart.id) return;
+    if (!cart) return;
+    rememberCheckoutCart(cart);
+    if (restoredCartId.current === cart.id) return;
     restoredCartId.current = cart.id;
+    const trackedSessionId = getCheckoutRecovery()?.sessionId;
+    activePaymentSessionId.current = trackedSessionId ?? null;
     const existingPayment = cart.payment_collection?.payment_sessions?.find(
       (session) =>
         session.provider_id === "pp_family_bank_family_bank" &&
+        (!trackedSessionId || session.id === trackedSessionId) &&
         ["pending", "authorized", "captured"].includes(session.status),
     );
     if (existingPayment) {
@@ -442,8 +452,9 @@ export default function CheckoutPage() {
     },
     onSuccess: async ({ cart: updatedCart }) => {
       queryClient.setQueryData(["cart"], updatedCart);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-      queryClient.invalidateQueries({ queryKey: ["checkout-cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       await queryClient.invalidateQueries({ queryKey: ["shipping-options"] });
       setSelectedShipping(null);
 
@@ -474,8 +485,9 @@ export default function CheckoutPage() {
     mutationFn: (optionId: string) => addShippingMethod(optionId),
     onSuccess: () => {
       setErrorMessage(null);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-      queryClient.invalidateQueries({ queryKey: ["checkout-cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       setStep("payment");
     },
     onError: (err: Error) => {
@@ -501,8 +513,9 @@ export default function CheckoutPage() {
     },
     onSuccess: () => {
       setErrorMessage(null);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-      queryClient.invalidateQueries({ queryKey: ["checkout-cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       setStep("review");
     },
     onError: (err: Error) => {
@@ -513,12 +526,12 @@ export default function CheckoutPage() {
   // Enter success only after completion returned a real order.
   const applyOrderPlaced = useCallback(
     (data: { order?: unknown }) => {
-      clearStoredCartId();
       setOrderRecovery(false);
       setPaymentPending(false);
       setPaymentPendingSince(null);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-      queryClient.invalidateQueries({ queryKey: ["checkout-cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       const order = data.order as
         | {
             display_id?: number;
@@ -590,8 +603,9 @@ export default function CheckoutPage() {
         setPaymentPendingSince(startedAt);
         setPendingNowTick(startedAt);
         setErrorMessage(null);
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
-        queryClient.invalidateQueries({ queryKey: ["checkout-cart"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+        });
         return;
       }
 
@@ -652,21 +666,6 @@ export default function CheckoutPage() {
     return () => clearInterval(tick);
   }, [paymentPending]);
 
-  // Keep the browser/device Back button inside checkout while a payment is
-  // pending — trap one back-press and return to the review step instead of
-  // ejecting the shopper from the flow. They can re-send or edit details.
-  useEffect(() => {
-    if (!paymentPending) return;
-    window.history.pushState(null, "");
-    const handlePopState = () => {
-      setPaymentPending(false);
-      setPaymentPendingSince(null);
-      setStep("review");
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [paymentPending]);
-
   // Re-fire the STK Push after a cancel/failure/timeout (mints a fresh session).
   const retryMpesaPrompt = () => {
     handledOutcomeSessionId.current = null;
@@ -710,6 +709,41 @@ export default function CheckoutPage() {
     : 0;
   const stkIsSlow = pendingElapsedSeconds >= STK_SLOW_THRESHOLD_SECS;
   const stkTimedOut = pendingElapsedSeconds >= STK_TIMEOUT_THRESHOLD_SECS;
+
+  const recoverySessionMissing =
+    recovery?.state === "unresolved" &&
+    !completeMutation.isPending &&
+    !orderPlaced &&
+    (cartQuery.isSuccess || cartQuery.isError) &&
+    (cartQuery.isError ||
+      !cart ||
+      !cart.payment_collection?.payment_sessions?.some(
+        (session) =>
+          session.provider_id === "pp_family_bank_family_bank" &&
+          (!recovery.sessionId || session.id === recovery.sessionId),
+      ));
+  if (recoverySessionMissing) {
+    return (
+      <section className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">Payment needs confirmation</h1>
+        <p>
+          Your earlier payment could still be payable. Cart, delivery and payer details are locked.
+          Check its status or contact support before making another payment.
+        </p>
+        {errorMessage && <p role="alert">{errorMessage}</p>}
+        <button
+          className="border-border min-h-11 rounded-full border px-6 py-3"
+          disabled={cartQuery.isFetching}
+          onClick={() => cartQuery.refetch()}
+        >
+          Check Payment Status
+        </button>
+        <Link href="/contact" className={BACK_LINK_CLASS}>
+          Contact support
+        </Link>
+      </section>
+    );
+  }
 
   if (orderRecovery) {
     return (
@@ -773,7 +807,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (paymentPending) {
+  if (paymentPending || (completeMutation.isPending && recovery?.state === "unresolved")) {
     const pendingTitle = stkTimedOut
       ? "STK Push timed out"
       : stkIsSlow
@@ -811,17 +845,12 @@ export default function CheckoutPage() {
               {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
             </button>
           </div>
-          <button
-            onClick={() => {
-              setPaymentPending(false);
-              setPaymentPendingSince(null);
-              setStep("review");
-            }}
-            className={BACK_LINK_CLASS}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to Review
-          </button>
+          <p className="text-muted text-sm">
+            Cart, delivery and payer details are locked until this payment is resolved.
+          </p>
+          <Link href="/contact" className={BACK_LINK_CLASS}>
+            Contact support
+          </Link>
         </div>
       </div>
     );
