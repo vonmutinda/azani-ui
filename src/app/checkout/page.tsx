@@ -40,7 +40,11 @@ import {
   getCartItemsSubtotal,
   getCartDisplayAmounts,
 } from "@/lib/formatters";
-import { getCheckoutRecovery, rememberCheckoutCart } from "@/lib/checkout-recovery";
+import {
+  getCheckoutRecovery,
+  rememberCheckoutCart,
+  matchesCheckoutRecovery,
+} from "@/lib/checkout-recovery";
 import { useCheckoutCartIdentity, useCheckoutRecovery } from "@/lib/use-checkout-recovery";
 import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
@@ -347,8 +351,7 @@ export default function CheckoutPage() {
     activePaymentSessionId.current = trackedSessionId ?? null;
     const existingPayment = cart.payment_collection?.payment_sessions?.find(
       (session) =>
-        session.provider_id === "pp_family_bank_family_bank" &&
-        (!trackedSessionId || session.id === trackedSessionId) &&
+        matchesCheckoutRecovery(session) &&
         ["pending", "authorized", "captured"].includes(session.status),
     );
     if (existingPayment) {
@@ -586,8 +589,8 @@ export default function CheckoutPage() {
         providerId: "pp_family_bank_family_bank",
         data: { mpesa_phone: mpesaPhone },
       });
-      const session = payment.payment_collection.payment_sessions?.find(
-        (candidate) => candidate.provider_id === "pp_family_bank_family_bank",
+      const session = payment.payment_collection.payment_sessions?.find((candidate) =>
+        matchesCheckoutRecovery(candidate),
       );
       activePaymentSessionId.current = session?.id ?? null;
       if (!hasConfirmedPayment(session ? [session] : [])) {
@@ -626,7 +629,9 @@ export default function CheckoutPage() {
       orderPlaced ||
       completionAttempted.current ||
       !hasConfirmedPayment(
-        cart?.payment_collection?.payment_sessions,
+        cart?.payment_collection?.payment_sessions?.filter((session) =>
+          matchesCheckoutRecovery(session),
+        ),
         activePaymentSessionId.current,
       )
     )
@@ -641,7 +646,7 @@ export default function CheckoutPage() {
     if (!paymentPending) return;
     const session = cart?.payment_collection?.payment_sessions?.find(
       (candidate) =>
-        candidate.provider_id === "pp_family_bank_family_bank" &&
+        matchesCheckoutRecovery(candidate) &&
         (!activePaymentSessionId.current || candidate.id === activePaymentSessionId.current),
     );
     if (!session || handledOutcomeSessionId.current === session.id) return;
@@ -717,10 +722,8 @@ export default function CheckoutPage() {
     (cartQuery.isSuccess || cartQuery.isError) &&
     (cartQuery.isError ||
       !cart ||
-      !cart.payment_collection?.payment_sessions?.some(
-        (session) =>
-          session.provider_id === "pp_family_bank_family_bank" &&
-          (!recovery.sessionId || session.id === recovery.sessionId),
+      !cart.payment_collection?.payment_sessions?.some((session) =>
+        matchesCheckoutRecovery(session, recovery),
       ));
   if (recoverySessionMissing) {
     return (

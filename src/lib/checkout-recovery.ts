@@ -9,6 +9,9 @@ export type CheckoutRecovery = {
   cartId: string;
   sessionId: string | null;
   state: "unresolved" | "terminal";
+  attemptId?: string;
+  phase?: "collection" | "session";
+  previousSessionId?: string;
 };
 
 export function checkoutRecoverySnapshot() {
@@ -65,21 +68,34 @@ export function assertCartEditable(cartId: string) {
   }
 }
 
+// A sessionless retry may discover its new session, never the preceding attempt.
+export function matchesCheckoutRecovery(
+  session: { id: string; provider_id: string },
+  recovery = getCheckoutRecovery(),
+) {
+  return (
+    recovery?.phase !== "collection" &&
+    session.provider_id === "pp_family_bank_family_bank" &&
+    (!recovery?.sessionId || session.id === recovery.sessionId) &&
+    session.id !== recovery?.previousSessionId
+  );
+}
+
 // Observe only the original tracked session. Missing/replaced sessions never release a lock.
 export function rememberCheckoutCart(cart: MedusaCart) {
   const recovery = getCheckoutRecovery();
   if (recovery && recovery.cartId !== cart.id) return;
+  // Collection creation has not started a new bank request. Old observations
+  // cannot release its edit lock while the owned initiation is in flight.
+  if (recovery?.phase === "collection") return;
   const sessions = cart.payment_collection?.payment_sessions;
-  const session = sessions?.find(
-    (candidate) =>
-      candidate.provider_id === "pp_family_bank_family_bank" &&
-      (!recovery?.sessionId || candidate.id === recovery.sessionId),
-  );
+  const session = sessions?.find((candidate) => matchesCheckoutRecovery(candidate, recovery));
   if (!session) return;
   const terminal =
     ["canceled", "error"].includes(session.status) ||
     ["canceled", "failed"].includes(session.data?.status ?? "");
   saveCheckoutRecovery({
+    ...recovery,
     cartId: cart.id,
     sessionId: session.id,
     state: terminal ? "terminal" : "unresolved",

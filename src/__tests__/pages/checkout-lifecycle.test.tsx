@@ -135,3 +135,40 @@ it("refreshes a mounted empty checkout when another tab creates the shopping car
   });
   expect(await screen.findByText("Shipping Address")).toBeInTheDocument();
 });
+
+it.each(["canceled", "pending", "authorized"])(
+  "keeps an unidentified retry in safe recovery when only its excluded %s session is returned",
+  async (status) => {
+    localStorage.setItem(
+      "azani_checkout_recovery",
+      JSON.stringify({
+        cartId: mockCart.id,
+        sessionId: null,
+        state: "unresolved",
+        attemptId: "retry_attempt",
+        phase: "session",
+        previousSessionId: "old_session",
+      }),
+    );
+    api.getCheckoutCart.mockResolvedValue({
+      ...mockCart,
+      region: mockRegion,
+      payment_collection: {
+        id: "pc",
+        payment_sessions: [
+          { id: "old_session", provider_id: "pp_family_bank_family_bank", status },
+        ],
+      },
+    });
+    setup();
+    expect(await screen.findByText("Payment needs confirmation")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+    await waitFor(() => expect(api.getCheckoutCart.mock.calls.length).toBeGreaterThan(1));
+    expect(screen.queryByText("Shipping Address")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Send M-Pesa Prompt|Try Again/ }),
+    ).not.toBeInTheDocument();
+    expect(api.initializePaymentSession).not.toHaveBeenCalled();
+    expect(api.completeCart).not.toHaveBeenCalled();
+  },
+);

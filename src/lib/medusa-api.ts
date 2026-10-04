@@ -5,6 +5,7 @@ import {
   PAYMENT_LOCK_MESSAGE,
   rememberCheckoutCart,
   saveCheckoutRecovery,
+  type CheckoutRecovery,
 } from "@/lib/checkout-recovery";
 import {
   MedusaCart,
@@ -347,28 +348,47 @@ export async function initializePaymentSession(opts?: {
   if (opts?.providerId !== "pp_family_bank_family_bank") {
     throw new Error("Only Family Bank M-Pesa Express payments are available.");
   }
-  if (getCheckoutRecovery()?.state === "unresolved") throw new Error(PAYMENT_LOCK_MESSAGE);
+  const previousRecovery = getCheckoutRecovery();
+  if (previousRecovery?.state === "unresolved") throw new Error(PAYMENT_LOCK_MESSAGE);
   const data: Record<string, string> = {};
   for (const key of ["mpesa_phone", "phone"]) {
     const value = opts.data?.[key];
     if (typeof value === "string") data[key] = value;
   }
 
-  // Lock before the first asynchronous operation; an uncertain response cannot unlock another STK attempt.
-  saveCheckoutRecovery({ cartId, sessionId: null, state: "unresolved" });
-
-  // Create payment collection for the cart
-  const pcRes = await medusaRequest<{
-    payment_collection: {
-      id: string;
-      payment_sessions?: { id: string; provider_id: string; status: string }[];
-    };
-  }>("store/payment-collections", {
-    method: "POST",
-    body: { cart_id: cartId },
-  });
-
-  const pcId = pcRes.payment_collection.id;
+  // Own the lock before any await, but distinguish preparation from a request
+  // that might already have reached the bank.
+  const attempt: CheckoutRecovery = {
+    cartId,
+    sessionId: null,
+    state: "unresolved",
+    attemptId: crypto.randomUUID(),
+    phase: "collection",
+    ...(previousRecovery?.cartId === cartId && previousRecovery.sessionId
+      ? { previousSessionId: previousRecovery.sessionId }
+      : {}),
+  };
+  saveCheckoutRecovery(attempt);
+  let pcId: string;
+  try {
+    const pcRes = await medusaRequest<{ payment_collection: { id: string } }>(
+      "store/payment-collections",
+      { method: "POST", body: { cart_id: cartId } },
+    );
+    pcId = validateId(pcRes.payment_collection.id);
+  } catch (error) {
+    // No session POST occurred, so this attempt cannot have initiated STK.
+    // A newer owner must never be cleared by this older asynchronous failure.
+    if (getCheckoutRecovery()?.attemptId === attempt.attemptId) {
+      if (previousRecovery) saveCheckoutRecovery(previousRecovery);
+      else clearCheckoutRecovery(cartId);
+    }
+    throw error;
+  }
+  if (getCheckoutRecovery()?.attemptId !== attempt.attemptId) {
+    throw new Error("Payment attempt changed. Check payment status before continuing.");
+  }
+  saveCheckoutRecovery({ ...attempt, phase: "session" });
 
   const body = { provider_id: "pp_family_bank_family_bank", data };
 
@@ -381,10 +401,18 @@ export async function initializePaymentSession(opts?: {
     method: "POST",
     body,
   });
+  const currentRecovery = getCheckoutRecovery();
+  if (!currentRecovery || currentRecovery.attemptId !== attempt.attemptId) {
+    throw new Error("Payment attempt changed. Check payment status before continuing.");
+  }
   const session = result.payment_collection.payment_sessions?.find(
-    (candidate) => candidate.provider_id === "pp_family_bank_family_bank",
+    (candidate) =>
+      candidate.provider_id === "pp_family_bank_family_bank" &&
+      candidate.id !== attempt.previousSessionId,
   );
-  if (session) saveCheckoutRecovery({ cartId, sessionId: session.id, state: "unresolved" });
+  if (session && !currentRecovery.sessionId) {
+    saveCheckoutRecovery({ ...currentRecovery, sessionId: session.id });
+  }
   return result;
 }
 
