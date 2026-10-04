@@ -501,9 +501,8 @@ export default function CheckoutPage() {
     mutationFn: async () => {
       if (paymentMethod === "mpesa_paybill" && !PAYBILL_AVAILABLE)
         throw new Error("Paybill is unavailable. Please choose M-Pesa Express.");
-      // Persist the customer's chosen payment method on the cart so the
-      // backend / ops team can route the order to the right reconciliation
-      // flow (STK callback vs manual Paybill verification).
+      // Persist the selected method for Family Bank STK reconciliation.
+      // The server callback determines payment status.
       const metadata: Record<string, unknown> = {
         ...(cart?.metadata ?? {}),
         payment_method: paymentMethod,

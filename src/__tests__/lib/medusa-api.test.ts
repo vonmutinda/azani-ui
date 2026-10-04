@@ -383,7 +383,7 @@ describe("getCart", () => {
 });
 
 describe("addToCart", () => {
-  it("creates cart then adds line item", async () => {
+  it("adds a line item to an existing cart", async () => {
     mockGetCartId.mockReturnValue("cart_01");
     mockRequest
       .mockResolvedValueOnce({ cart: mockCart })
@@ -949,5 +949,53 @@ describe("getRegions", () => {
     const result = await getRegions();
     expect(result.regions).toHaveLength(1);
     expect(result.regions[0].name).toBe("Kenya");
+  });
+});
+
+describe("fresh-cart create to add contract", () => {
+  it("creates with only region_id, stores that identity and adds the requested variant", async () => {
+    mockGetCartId.mockReturnValue(null);
+    const added = { cart: { ...mockCart, id: "cart_fresh" } };
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion] })
+      .mockResolvedValueOnce({ cart: { ...mockCart, id: "cart_fresh", items: [] } })
+      .mockResolvedValueOnce(added);
+    expect(await addToCart("variant_fresh", 2)).toBe(added);
+    expect(mockRequest.mock.calls).toEqual([
+      ["store/regions", { searchParams: { limit: 50 } }],
+      ["store/carts", { method: "POST", body: { region_id: mockRegion.id } }],
+      [
+        "store/carts/cart_fresh/line-items",
+        { method: "POST", body: { variant_id: "variant_fresh", quantity: 2 } },
+      ],
+    ]);
+    expect(mockSetCartId).toHaveBeenCalledWith("cart_fresh");
+  });
+  it("propagates region lookup failure without attempting cart creation", async () => {
+    mockGetCartId.mockReturnValue(null);
+    const failure = Object.assign(new Error("regions unavailable"), { status: 503 });
+    mockRequest.mockRejectedValueOnce(failure);
+    await expect(addToCart("variant_fresh")).rejects.toBe(failure);
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+    expect(mockSetCartId).not.toHaveBeenCalled();
+  });
+  it("propagates create failure without storing an identity or attempting add", async () => {
+    mockGetCartId.mockReturnValue(null);
+    const failure = Object.assign(new Error("region not accepted"), { status: 400 });
+    mockRequest.mockResolvedValueOnce({ regions: [mockRegion] }).mockRejectedValueOnce(failure);
+    await expect(addToCart("variant_fresh")).rejects.toBe(failure);
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+    expect(mockSetCartId).not.toHaveBeenCalled();
+  });
+  it("propagates add failure while preserving the successfully created cart identity", async () => {
+    mockGetCartId.mockReturnValue(null);
+    const failure = Object.assign(new Error("variant unavailable"), { status: 400 });
+    mockRequest
+      .mockResolvedValueOnce({ regions: [mockRegion] })
+      .mockResolvedValueOnce({ cart: { ...mockCart, id: "cart_fresh", items: [] } })
+      .mockRejectedValueOnce(failure);
+    await expect(addToCart("variant_fresh")).rejects.toBe(failure);
+    expect(mockRequest).toHaveBeenCalledTimes(3);
+    expect(mockSetCartId).toHaveBeenCalledWith("cart_fresh");
   });
 });

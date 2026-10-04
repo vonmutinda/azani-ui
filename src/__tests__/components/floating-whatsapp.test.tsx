@@ -1,7 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FloatingWhatsApp } from "@/components/floating-whatsapp";
 import { siteConfig } from "@/lib/site-config";
+
+const route = vi.hoisted(() => ({ pathname: "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
+beforeEach(() => {
+  route.pathname = "/";
+});
 
 vi.mock("@/lib/site-config", () => ({
   siteConfig: { whatsapp: { number: "254712345678", prefillMessage: "Hi Azani" } },
@@ -40,4 +46,31 @@ it("does not offer WhatsApp without a configured number", () => {
   } finally {
     (siteConfig.whatsapp as { number: string }).number = number;
   }
+});
+
+// Tailwind breakpoint classes are the visibility contract; jsdom has no responsive layout.
+it.each(["/cart", "/cart/", "/checkout", "/checkout/payment", "/checkout/status/pending"])(
+  "hides WhatsApp on mobile commerce route %s while preserving desktop support",
+  (pathname) => {
+    route.pathname = pathname;
+    render(<FloatingWhatsApp />);
+    const link = screen.getByRole("link", { name: /chat with us on whatsapp/i });
+    expect(link).toHaveClass("hidden", "sm:flex");
+  },
+);
+it.each(["/", "/products", "/checkout-guide", "/cartoon", "/account/checkout"])(
+  "keeps WhatsApp available on non-commerce route %s",
+  (pathname) => {
+    route.pathname = pathname;
+    render(<FloatingWhatsApp />);
+    expect(screen.getByRole("link", { name: /chat with us on whatsapp/i })).not.toHaveClass(
+      "hidden",
+    );
+  },
+);
+it("positions WhatsApp above the device safe area", () => {
+  render(<FloatingWhatsApp />);
+  expect(screen.getByRole("link", { name: /chat with us on whatsapp/i }).className).toContain(
+    "env(safe-area-inset-bottom)",
+  );
 });

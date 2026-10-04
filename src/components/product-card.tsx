@@ -15,17 +15,21 @@ import {
   resolveProductImage,
 } from "@/lib/formatters";
 import { addToCart, getCart, getWishlistProductIds, toggleWishlistProduct } from "@/lib/medusa-api";
+import { getSuppliedProductRating } from "@/lib/product-rating";
+import { StarRating } from "@/components/star-rating";
 import { useToast } from "@/components/toast";
 
 type Props = {
   product: MedusaProduct;
   onSelect?: (productId: string) => void;
+  cartLocked?: boolean;
   onAddedToCart?: (productId: string) => void;
 };
 
-export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
+export function ProductCard({ product, onSelect, onAddedToCart, cartLocked = false }: Props) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const suppliedRating = getSuppliedProductRating(product.metadata);
   const imageUrl = resolveProductImage(product);
   const price = getProductPrice(product);
   const originalPrice = getProductOriginalPrice(product);
@@ -107,7 +111,7 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!quickAddVariant || !availability.canPurchase) return;
+    if (cartLocked || !quickAddVariant || !availability.canPurchase) return;
     if (maxedOut) {
       showToast("Maximum quantity already in cart", "info");
       return;
@@ -194,6 +198,22 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
           {product.title}
         </Link>
 
+        {suppliedRating && (
+          <div
+            className="text-muted flex items-center gap-1.5 text-xs"
+            role="group"
+            aria-label={`${suppliedRating.rating.toFixed(1)} out of 5 from ${suppliedRating.reviewCount} reviews`}
+          >
+            <span className="text-foreground font-semibold">
+              {suppliedRating.rating.toFixed(1)}
+            </span>
+            <span aria-hidden="true">
+              <StarRating rating={suppliedRating.rating} size={12} />
+            </span>
+            <span> ({suppliedRating.reviewCount})</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-baseline gap-1.5">
           <span className="text-foreground text-sm font-bold">{price?.formatted ?? "--"}</span>
           {originalPrice && (
@@ -240,7 +260,9 @@ export function ProductCard({ product, onSelect, onAddedToCart }: Props) {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={cartMutation.isPending || !availability.canPurchase || justAdded}
+                disabled={
+                  cartLocked || cartMutation.isPending || !availability.canPurchase || justAdded
+                }
                 className={`flex h-11 w-11 items-center justify-center rounded-lg text-white transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                   justAdded
                     ? "bg-accent-green-bold scale-110"

@@ -1,6 +1,15 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site-config";
 
 export function FloatingWhatsApp() {
+  const pathname = usePathname();
+  const compactCommerceFlow =
+    pathname === "/cart" ||
+    pathname === "/cart/" ||
+    pathname === "/checkout" ||
+    pathname?.startsWith("/checkout/");
   if (!siteConfig.whatsapp.number) return null;
   const href = `https://wa.me/${siteConfig.whatsapp.number}?text=${encodeURIComponent(
     siteConfig.whatsapp.prefillMessage,
@@ -12,7 +21,7 @@ export function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="focus-visible:ring-whatsapp fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-6"
+      className={`focus-visible:ring-whatsapp fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 items-center gap-2 rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-6 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ${compactCommerceFlow ? "hidden sm:flex" : "flex"}`}
     >
       <span className="relative flex h-14 w-14 items-center justify-center">
         <span
