@@ -520,20 +520,22 @@ describe("CheckoutPage", () => {
         ],
       },
     };
-    mockGetCart.mockResolvedValueOnce({
+    mockGetCart.mockResolvedValue({
       ...mockCart,
       region: mockRegion,
       subtotal: 3000,
       total: 3000,
     });
-    mockGetCart.mockResolvedValue(capturedCart);
-    mockInitializePaymentSession.mockResolvedValue({
-      payment_collection: {
-        id: "pc_1",
-        payment_sessions: [
-          { id: "ps_1", provider_id: "pp_family_bank_family_bank", status: "pending" },
-        ],
-      },
+    mockInitializePaymentSession.mockImplementation(async () => {
+      mockGetCart.mockResolvedValue(capturedCart);
+      return {
+        payment_collection: {
+          id: "pc_1",
+          payment_sessions: [
+            { id: "ps_1", provider_id: "pp_family_bank_family_bank", status: "pending" },
+          ],
+        },
+      };
     });
     mockCompleteCart.mockResolvedValue({
       type: "order",

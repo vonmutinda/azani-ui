@@ -40,11 +40,7 @@ import {
   getCartItemsSubtotal,
   getCartDisplayAmounts,
 } from "@/lib/formatters";
-import {
-  getCheckoutRecovery,
-  rememberCheckoutCart,
-  matchesCheckoutRecovery,
-} from "@/lib/checkout-recovery";
+import { rememberCheckoutCart, matchesCheckoutRecovery } from "@/lib/checkout-recovery";
 import { useCheckoutCartIdentity, useCheckoutRecovery } from "@/lib/use-checkout-recovery";
 import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
@@ -341,26 +337,28 @@ export default function CheckoutPage() {
     !!customerQuery.data && savedAddresses.length > 0 && !useManualAddress;
 
   /* eslint-disable react-hooks/set-state-in-effect -- pre-fill form from customer & auto-select saved address */
-  const restoredCartId = useRef<string | null>(null);
+  // Payment discovery must run on later status responses too, independently of
+  // the one-time address restore. Keep the same session's elapsed clock intact.
   useEffect(() => {
-    if (!cart) return;
+    if (!cart || orderPlaced || orderRecovery || completionAttempted.current) return;
     rememberCheckoutCart(cart);
-    if (restoredCartId.current === cart.id) return;
-    restoredCartId.current = cart.id;
-    const trackedSessionId = getCheckoutRecovery()?.sessionId;
-    activePaymentSessionId.current = trackedSessionId ?? null;
     const existingPayment = cart.payment_collection?.payment_sessions?.find(
       (session) =>
         matchesCheckoutRecovery(session) &&
         ["pending", "authorized", "captured"].includes(session.status),
     );
-    if (existingPayment) {
-      activePaymentSessionId.current = existingPayment.id;
-      const startedAt = Date.now();
-      setPaymentPending(true);
-      setPaymentPendingSince(startedAt);
-      setPendingNowTick(startedAt);
-    }
+    if (!existingPayment || activePaymentSessionId.current === existingPayment.id) return;
+    activePaymentSessionId.current = existingPayment.id;
+    const startedAt = Date.now();
+    setPaymentPending(true);
+    setPaymentPendingSince(startedAt);
+    setPendingNowTick(startedAt);
+  }, [cart, orderPlaced, orderRecovery]);
+
+  const restoredCartId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cart || restoredCartId.current === cart.id) return;
+    restoredCartId.current = cart.id;
     const address = cart.shipping_address;
     if (!address) return;
     setForm((current) => ({

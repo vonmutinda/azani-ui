@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import CheckoutPage from "@/app/checkout/page";
 import { mockCart, mockProduct, mockRegion } from "@/__tests__/fixtures";
 
@@ -172,3 +172,119 @@ it.each(["canceled", "pending", "authorized"])(
     expect(api.completeCart).not.toHaveBeenCalled();
   },
 );
+
+afterEach(() => vi.useRealTimers());
+
+function uncertainCart(status?: string) {
+  return {
+    ...mockCart,
+    region: mockRegion,
+    payment_collection: {
+      id: "pc",
+      payment_sessions: status
+        ? [{ id: "actual_new", provider_id: "pp_family_bank_family_bank", status }]
+        : [],
+    },
+  };
+}
+async function mountUncertainPayment(sessionId: string | null = null) {
+  localStorage.setItem(
+    "azani_checkout_recovery",
+    JSON.stringify({
+      cartId: mockCart.id,
+      sessionId,
+      state: "unresolved",
+      attemptId: "uncertain",
+      phase: "session",
+    }),
+  );
+  api.getCheckoutCart.mockResolvedValue(uncertainCart());
+  const rendered = setup();
+  await screen.findByText("Payment needs confirmation");
+  return rendered;
+}
+
+it.each([
+  { response: { type: "order", order: { id: "order_recovered" } }, expected: "Order Placed!" },
+  {
+    response: { type: "cart", error: { message: "Still processing" } },
+    expected: "Confirming your order",
+  },
+])(
+  "resumes a newly discovered authorized session and validates its completion response %#",
+  async ({ response, expected }) => {
+    api.completeCart.mockResolvedValue(response);
+    const { client } = await mountUncertainPayment();
+    api.getCheckoutCart.mockResolvedValue(uncertainCart("authorized"));
+    fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(api.completeCart).toHaveBeenCalledTimes(1);
+    expect(api.initializePaymentSession).not.toHaveBeenCalled();
+    expect(screen.queryByText("Shipping Address")).not.toBeInTheDocument();
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["checkout-cart"] });
+    });
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText("Payment Request Sent")).not.toBeInTheDocument();
+    expect(api.completeCart).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("resumes discovered pending payment, preserves its clock through status updates, then completes authorization", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  api.completeCart.mockResolvedValue({ type: "order", order: { id: "order_recovered" } });
+  await mountUncertainPayment();
+  api.getCheckoutCart.mockResolvedValue(uncertainCart("pending"));
+  fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+  await screen.findByText("Payment Request Sent");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(61_000);
+  });
+  expect(screen.getByText("Taking longer than expected")).toBeInTheDocument();
+  api.getCheckoutCart.mockResolvedValue({
+    ...uncertainCart("pending"),
+    updated_at: "2026-10-04T12:00:00Z",
+  });
+  const callsBeforeRefresh = api.getCheckoutCart.mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+  await waitFor(() =>
+    expect(api.getCheckoutCart.mock.calls.length).toBeGreaterThan(callsBeforeRefresh),
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(30_000);
+  });
+  expect(screen.getByText("STK Push timed out")).toBeInTheDocument();
+  expect(api.completeCart).not.toHaveBeenCalled();
+  api.getCheckoutCart.mockResolvedValue(uncertainCart("authorized"));
+  fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+  expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
+  expect(api.completeCart).toHaveBeenCalledTimes(1);
+  expect(api.initializePaymentSession).not.toHaveBeenCalled();
+});
+
+it.each(["canceled", "error"])(
+  "surfaces the discovered session's %s outcome without another prompt",
+  async (status) => {
+    await mountUncertainPayment();
+    api.getCheckoutCart.mockResolvedValue(uncertainCart("pending"));
+    fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+    await screen.findByText("Payment Request Sent");
+    api.getCheckoutCart.mockResolvedValue(uncertainCart(status));
+    fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+    expect(
+      await screen.findByText(status === "canceled" ? "Payment was canceled" : "Payment failed"),
+    ).toBeInTheDocument();
+    expect(api.completeCart).not.toHaveBeenCalled();
+    expect(api.initializePaymentSession).not.toHaveBeenCalled();
+  },
+);
+
+it("resumes a known tracked session that first appears on a later status check", async () => {
+  api.completeCart.mockResolvedValue({ type: "order", order: { id: "order_recovered" } });
+  await mountUncertainPayment("actual_new");
+  api.getCheckoutCart.mockResolvedValue(uncertainCart("authorized"));
+  fireEvent.click(screen.getByRole("button", { name: "Check Payment Status" }));
+  expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
+  expect(api.completeCart).toHaveBeenCalledTimes(1);
+  expect(api.initializePaymentSession).not.toHaveBeenCalled();
+});
