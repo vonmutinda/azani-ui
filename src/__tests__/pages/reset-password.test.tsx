@@ -109,6 +109,10 @@ describe("ResetPasswordPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Password Reset!")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Sign In" })).toHaveAttribute(
+        "href",
+        "/account/login",
+      );
     });
   });
 });

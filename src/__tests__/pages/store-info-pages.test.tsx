@@ -14,17 +14,17 @@ describe("store information pages", () => {
     expect(
       screen.getByText(/Free delivery is available for orders over KSh5,000/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Nairobi and delivery across Kenya/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/available services and fees for your order/i).length,
+    ).toBeGreaterThan(0);
   });
 
-  it("renders the returns policy with hygiene-sensitive exclusions", () => {
+  it("renders the returns policy with clothing eligibility", () => {
     render(<ReturnsPolicyPage />);
 
     expect(screen.getByRole("heading", { name: "Returns & Exchanges" })).toBeInTheDocument();
     expect(screen.getByText(/within 3 days of delivery/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/opened feeding, bath, diapering, or personal-care items/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/unworn, unwashed, with its original tags/i)).toBeInTheDocument();
   });
 
   it("renders the privacy policy with customer data usage", () => {
@@ -55,9 +55,7 @@ describe("store information pages", () => {
     render(<TermsPolicyPage />);
 
     expect(screen.getByRole("heading", { name: "Terms of Service" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/M-Pesa, card, or supported mobile-money payment/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/available M-Pesa payment method/i)).toBeInTheDocument();
     expect(screen.getByText(/Orders are confirmed after payment is received/i)).toBeInTheDocument();
   });
 
@@ -65,10 +63,7 @@ describe("store information pages", () => {
     render(<ContactPage />);
 
     expect(screen.getByRole("heading", { name: "Contact Azani" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Call Azani/i })).toHaveAttribute(
-      "href",
-      "tel:+254700000000",
-    );
+    expect(screen.queryByRole("link", { name: /Call Azani/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Email Azani/i })).toHaveAttribute(
       "href",
       "mailto:hello@azani.shop",

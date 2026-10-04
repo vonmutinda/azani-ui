@@ -1,24 +1,22 @@
-"use client";
+import type { Metadata } from "next";
+import ProductDetailPage from "@/components/product-detail-page";
+import { getProductById } from "@/lib/medusa-api";
 
-import { useParams, useRouter } from "next/navigation";
-import { ProductDetail } from "@/components/product-detail";
-
-export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <ProductDetail
-        productId={id}
-        onBack={() => {
-          if (window.history.length > 1) {
-            router.back();
-            return;
-          }
-          router.push("/products");
-        }}
-      />
-    </div>
-  );
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  try {
+    const { id } = await params;
+    const { product } = await getProductById(id);
+    return {
+      title: product.title,
+      description: `Shop ${product.title} at Azani Kids. See photographs, available sizes and colours, and delivery options.`,
+    };
+  } catch {
+    return { title: "Clothing item", description: "Explore clothing for kids aged 2–12 at Azani." };
+  }
 }
+
+export default ProductDetailPage;

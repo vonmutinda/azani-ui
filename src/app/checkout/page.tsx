@@ -1,26 +1,26 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, Input } from "@heroui/react";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   ArrowLeft,
-  Baby,
+  Shirt,
   Check,
   Clock,
   CreditCard,
   MapPin,
   Package,
   Receipt,
-  ShoppingBag,
   Smartphone,
   Truck,
+  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { EnamelUtilityIcon } from "@/components/enamel-utility-icon";
 import Image from "next/image";
 import {
-  getCart,
+  getCheckoutCart,
   getProductsByIds,
   updateCart,
   getShippingOptions,
@@ -35,41 +35,47 @@ import {
   formatPrice,
   formatOrderRef,
   getVariantAvailability,
+  getProductImageRotation,
   resolveOrderItemImage,
+  getCartItemsSubtotal,
+  getCartDisplayAmounts,
 } from "@/lib/formatters";
-import { clearStoredCartId } from "@/lib/http";
+import { rememberCheckoutCart, matchesCheckoutRecovery } from "@/lib/checkout-recovery";
+import { useCheckoutCartIdentity, useCheckoutRecovery } from "@/lib/use-checkout-recovery";
+import { qualifiesForFreeShipping, freeShippingThresholdLabel } from "@/lib/shipping";
 import { MedusaAddress, MedusaProduct, MedusaShippingOption, MedusaLineItem } from "@/types/medusa";
 
-const FREE_SHIPPING_THRESHOLD = 5_000;
-
-const MPESA_PAYBILL_NUMBER = process.env.NEXT_PUBLIC_AZANI_PAYBILL_NUMBER || "—";
+// The API has no standalone Paybill initiation contract. Keep the choice disabled.
+const MPESA_PAYBILL_NUMBER = process.env.NEXT_PUBLIC_AZANI_PAYBILL_NUMBER?.trim() || "";
+const PAYBILL_AVAILABLE = false;
 const MPESA_BUSINESS_NAME = "Azani";
 
-// STK Push thresholds. Daraja typically resolves the prompt in < 30 s; past 60 s
-// the customer has almost certainly ignored or dropped the prompt. At 90 s we
-// treat the attempt as timed out (the backend's polled STK Query will catch up).
+// Waiting thresholds only affect copy. A timeout is never evidence of payment.
 const STK_SLOW_THRESHOLD_SECS = 60;
 const STK_TIMEOUT_THRESHOLD_SECS = 90;
+
+// One consistent, accessible "go back a step" control: 44px touch target
+// (WCAG 2.5.5) and a visible focus ring (2.4.7), reused across every step.
+const BACK_LINK_CLASS =
+  "text-muted hover:text-foreground hover:bg-foreground/[0.04] focus-visible:ring-foreground inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none";
 
 type PaymentMethod = "mpesa_express" | "mpesa_paybill";
 type Step = "address" | "shipping" | "payment" | "review";
 type PaymentSession = { id: string; provider_id: string; status: string };
 type CheckoutPaymentResult = { type: "payment_pending" } | { type: "payment_captured" };
-// Medusa core's payment-webhook subscriber ignores CANCELED/FAILED actions, so
-// session.status stays "pending" forever. Provider-side state lives on data.status
-// once `cart/complete` triggers authorizePayment → Daraja STK Query.
 type PaymentOutcome = { kind: "canceled" | "failed"; resultDesc?: string };
 
-const PAID_PAYMENT_STATUSES = new Set(["captured"]);
+// Medusa normalizes provider capture to an authorized session and captures Payment.
+const PAID_PAYMENT_STATUSES = new Set(["authorized", "captured"]);
 
 function toCheckoutAddress(address: Partial<MedusaAddress>) {
   return {
     first_name: address.first_name ?? "",
     last_name: address.last_name ?? "",
     address_1: address.address_1 ?? "",
-    city: address.city ?? "Nairobi",
-    province: address.province ?? "Nairobi",
-    postal_code: address.postal_code ?? "00100",
+    city: address.city ?? "",
+    province: address.province ?? "",
+    postal_code: address.postal_code ?? "",
     country_code: address.country_code ?? "ke",
     phone: address.phone ?? "+254",
   };
@@ -77,9 +83,21 @@ function toCheckoutAddress(address: Partial<MedusaAddress>) {
 
 const SHIPPING_META: Record<string, { icon: React.ElementType; delivery: string; note?: string }> =
   {
-    "Free Shipping": { icon: Truck, delivery: "Within 24 hours", note: "Orders over KSh5,000" },
-    "Standard Shipping": { icon: Clock, delivery: "Within 24 hours", note: "KSh150" },
-    "Express Shipping": { icon: Zap, delivery: "Same-day delivery", note: "KSh500" },
+    "Free Shipping": {
+      icon: Truck,
+      delivery: "Delivery estimate confirmed with your order",
+      note: `Orders over ${freeShippingThresholdLabel()}`,
+    },
+    "Standard Shipping": {
+      icon: Clock,
+      delivery: "Delivery estimate confirmed with your order",
+      note: "KSh150",
+    },
+    "Express Shipping": {
+      icon: Zap,
+      delivery: "Priority delivery where available",
+      note: "KSh500",
+    },
   };
 
 function getCheckoutItemProduct(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
@@ -93,14 +111,36 @@ function getCheckoutItemAvailability(
   item: MedusaLineItem,
   productsById: Map<string, MedusaProduct>,
 ) {
+  if (item.product_id && !productsById.has(item.product_id))
+    return {
+      ...getVariantAvailability(undefined),
+      label: "No longer available — remove this item",
+    };
   const product = getCheckoutItemProduct(item, productsById);
-  const variant =
-    product?.variants?.find((candidate) => candidate.id === item.variant_id) ?? item.variant;
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
   return getVariantAvailability(variant);
 }
 
-function hasCapturedPayment(sessions?: PaymentSession[]) {
-  return sessions?.some((session) => PAID_PAYMENT_STATUSES.has(session.status)) ?? false;
+function canFulfillCheckoutItem(item: MedusaLineItem, productsById: Map<string, MedusaProduct>) {
+  const availability = getCheckoutItemAvailability(item, productsById);
+  if (!availability.canPurchase) return false;
+
+  const product = getCheckoutItemProduct(item, productsById);
+  const variant = product?.variants?.find((candidate) => candidate.id === item.variant_id);
+  if (variant?.manage_inventory !== true || variant.allow_backorder === true) return true;
+
+  return item.quantity <= availability.inventoryQuantity;
+}
+
+function hasConfirmedPayment(sessions?: PaymentSession[], sessionId?: string | null) {
+  return (
+    sessions?.some(
+      (session) =>
+        session.provider_id === "pp_family_bank_family_bank" &&
+        (!sessionId || session.id === sessionId) &&
+        PAID_PAYMENT_STATUSES.has(session.status),
+    ) ?? false
+  );
 }
 
 function ShippingStep({
@@ -120,7 +160,7 @@ function ShippingStep({
   onSelect: (optionId: string) => void;
   onBack: () => void;
 }) {
-  const qualifiesForFree = cartSubtotal >= FREE_SHIPPING_THRESHOLD;
+  const qualifiesForFree = qualifiesForFreeShipping(cartSubtotal);
 
   const sortedOptions = useMemo(() => {
     const order = ["Free Shipping", "Standard Shipping", "Express Shipping"];
@@ -132,11 +172,11 @@ function ShippingStep({
   }, [options]);
 
   return (
-    <div className="az-surface space-y-4 p-4 sm:p-6">
+    <div className="border-border bg-card space-y-4 rounded-xl border p-4 sm:p-6">
       <h2 className="text-foreground text-lg font-semibold">Shipping Method</h2>
 
       {qualifiesForFree && (
-        <div className="border-success/25 bg-success-light text-success-ink flex items-center gap-2 rounded-[var(--radius)] border px-4 py-2.5 text-sm font-medium">
+        <div className="border-success/25 bg-accent-green-light text-success-ink flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium">
           <Check className="h-4 w-4" />
           Your order qualifies for free shipping!
         </div>
@@ -144,9 +184,9 @@ function ShippingStep({
 
       {isLoading ? (
         <div className="space-y-2">
-          <div className="az-skeleton h-16" />
-          <div className="az-skeleton h-16" />
-          <div className="az-skeleton h-16" />
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
+          <div className="bg-border/40 h-16 animate-pulse rounded-xl" />
         </div>
       ) : sortedOptions.length === 0 ? (
         <p className="text-muted text-sm">
@@ -161,99 +201,95 @@ function ShippingStep({
             const Icon = meta.icon;
 
             return (
-              <Button
+              <button
                 key={option.id}
-                onPress={() => onSelect(option.id)}
-                isDisabled={disabled}
-                variant="ghost"
-                aria-pressed={selectedShipping === option.id}
-                className={`az-focus flex w-full items-center justify-between rounded-[var(--radius)] border px-4 py-3.5 text-left text-sm transition ${
+                onClick={() => onSelect(option.id)}
+                disabled={disabled}
+                className={`focus-visible:ring-secondary flex min-h-11 w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                   disabled && !isPending
-                    ? "border-border/50 bg-surface-soft cursor-not-allowed opacity-50"
+                    ? "border-border bg-background cursor-not-allowed opacity-50"
                     : selectedShipping === option.id
-                      ? "border-trust bg-trust-light"
-                      : "border-border/50 hover:border-foreground/30"
+                      ? "border-secondary bg-secondary-light"
+                      : "border-border hover:border-foreground/30"
                 } disabled:opacity-50`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="text-trust h-5 w-5" />
+                  <Icon className="text-secondary h-5 w-5" />
                   <div>
                     <p className="text-foreground font-medium">{option.name}</p>
                     <p className="text-muted text-sm">
                       {meta.delivery}
                       {isFreeOption && !qualifiesForFree && (
                         <span className="text-danger ml-1">
-                          (orders over KSh{FREE_SHIPPING_THRESHOLD.toLocaleString()})
+                          (orders over {freeShippingThresholdLabel()})
                         </span>
                       )}
                     </p>
                   </div>
                 </div>
-                <span className="text-promo font-semibold">
+                <span className="text-primary font-semibold">
                   {option.amount === 0 ? "Free" : formatPrice(option.amount)}
                 </span>
-              </Button>
+              </button>
             );
           })}
         </div>
       )}
-      <Button
-        onPress={onBack}
-        variant="ghost"
-        className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
-      >
-        &larr; Back to Address
-      </Button>
+      <button onClick={onBack} className={BACK_LINK_CLASS}>
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to Address
+      </button>
     </div>
   );
 }
 
 export default function CheckoutPage() {
   const queryClient = useQueryClient();
+  const checkoutIdentity = useCheckoutCartIdentity();
+  const recovery = useCheckoutRecovery();
   const [step, setStep] = useState<Step>("address");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderRecovery, setOrderRecovery] = useState(false);
+  const completionAttempted = useRef(false);
+  const activePaymentSessionId = useRef<string | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
   const [placedOrderRef, setPlacedOrderRef] = useState<string | null>(null);
-  // Short, all-numeric Paybill account number — display_id (e.g. "1037")
-  // rather than the long human-readable order ref. Customer types this into
-  // the M-Pesa Lipa na M-Pesa Account No. field; ops looks it up by the same
-  // number in Medusa admin.
-  const [placedOrderPaybillRef, setPlacedOrderPaybillRef] = useState<string | null>(null);
+  const [paymentOutcome, setPaymentOutcome] = useState<PaymentOutcome | null>(null);
+  const [paymentPendingSince, setPaymentPendingSince] = useState<number | null>(null);
+  const [pendingNowTick, setPendingNowTick] = useState<number>(0);
+  const handledOutcomeSessionId = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [useManualAddress, setUseManualAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa_express");
   const [mpesaPhone, setMpesaPhone] = useState("");
-  const [paymentOutcome, setPaymentOutcome] = useState<PaymentOutcome | null>(null);
-  // Tracks the most recent session id whose canceled/failed outcome we've
-  // already surfaced — prevents the same stale session from re-triggering the
-  // outcome state on subsequent cart refetches (e.g. while a retry is in flight).
-  const handledOutcomeSessionId = useRef<string | null>(null);
-  const [paymentPendingSince, setPaymentPendingSince] = useState<number | null>(null);
-  // Re-render trigger for the elapsed-seconds display. The actual elapsed value
-  // is derived from `paymentPendingSince` against this tick.
-  const [pendingNowTick, setPendingNowTick] = useState<number>(() => Date.now());
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
     first_name: "",
     last_name: "",
     address_1: "",
-    city: "Nairobi",
-    province: "Nairobi",
-    postal_code: "00100",
+    city: "",
+    province: "",
+    postal_code: "",
     country_code: "ke",
     phone: "+254",
   });
 
   const cartQuery = useQuery({
-    queryKey: ["cart"],
-    queryFn: getCart,
+    queryKey: ["checkout-cart", checkoutIdentity],
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: getCheckoutCart,
     refetchInterval: paymentPending ? 3_000 : false,
   });
   const cart = cartQuery.data;
+  const amounts = getCartDisplayAmounts(cart);
   const currencyCode = "kes";
+  const shippingKnown = (cart?.shipping_methods?.length ?? 0) > 0;
   const checkoutProductIds = useMemo(
     () =>
       Array.from(
@@ -274,10 +310,13 @@ export default function CheckoutPage() {
     [checkoutProductsQuery.data],
   );
   const hasUnavailableItems =
-    checkoutProductsQuery.isFetched &&
-    (cart?.items ?? []).some(
-      (item) => !getCheckoutItemAvailability(item, checkoutProductsById).canPurchase,
-    );
+    checkoutProductsQuery.isSuccess &&
+    (cart?.items ?? []).some((item) => !canFulfillCheckoutItem(item, checkoutProductsById));
+  const cataloguePending =
+    checkoutProductIds.length > 0 &&
+    (checkoutProductsQuery.isPending || checkoutProductsQuery.isFetching);
+  const catalogueError = checkoutProductsQuery.isError;
+  const checkoutBlocked = cataloguePending || catalogueError || hasUnavailableItems;
 
   const customerQuery = useQuery({
     queryKey: ["customer"],
@@ -298,6 +337,56 @@ export default function CheckoutPage() {
     !!customerQuery.data && savedAddresses.length > 0 && !useManualAddress;
 
   /* eslint-disable react-hooks/set-state-in-effect -- pre-fill form from customer & auto-select saved address */
+  // Payment discovery must run on later status responses too, independently of
+  // the one-time address restore. Keep the same session's elapsed clock intact.
+  useEffect(() => {
+    if (!cart || orderPlaced || orderRecovery || completionAttempted.current) return;
+    rememberCheckoutCart(cart);
+    const existingPayment = cart.payment_collection?.payment_sessions?.find(
+      (session) =>
+        matchesCheckoutRecovery(session) &&
+        (["pending", "authorized", "captured"].includes(session.status) ||
+          (!!recovery?.attemptId && ["canceled", "error"].includes(session.status))),
+    );
+    if (!existingPayment || activePaymentSessionId.current === existingPayment.id) return;
+    activePaymentSessionId.current = existingPayment.id;
+    const startedAt = Date.now();
+    setPaymentPending(true);
+    setPaymentPendingSince(startedAt);
+    setPendingNowTick(startedAt);
+  }, [cart, orderPlaced, orderRecovery, recovery?.attemptId]);
+
+  const restoredCartId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cart || restoredCartId.current === cart.id) return;
+    restoredCartId.current = cart.id;
+    const address = cart.shipping_address;
+    if (!address) return;
+    setForm((current) => ({
+      ...current,
+      email: current.email || cart.email || "",
+      ...Object.fromEntries(
+        Object.entries(toCheckoutAddress(address)).map(([key, value]) => [
+          key,
+          current[key as keyof typeof current] && current[key as keyof typeof current] !== "+254"
+            ? current[key as keyof typeof current]
+            : value,
+        ]),
+      ),
+    }));
+    setSelectedShipping(cart.shipping_methods?.[0]?.shipping_option_id ?? null);
+    if (
+      address.first_name &&
+      address.last_name &&
+      address.address_1 &&
+      address.phone &&
+      address.city
+    ) {
+      // Reconfirm delivery before payment when returning to a saved draft.
+      setStep("shipping");
+    }
+  }, [cart]);
+
   useEffect(() => {
     const customer = customerQuery.data;
     if (!customer) return;
@@ -313,8 +402,18 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!savedAddresses.length || selectedSavedAddressId) return;
-    setSelectedSavedAddressId(savedAddresses[0].id ?? null);
-  }, [savedAddresses, selectedSavedAddressId]);
+    const draft = cart?.shipping_address;
+    const matching =
+      draft &&
+      savedAddresses.find((address) =>
+        Object.entries(toCheckoutAddress(draft)).every(
+          ([key, value]) =>
+            toCheckoutAddress(address)[key as keyof ReturnType<typeof toCheckoutAddress>] === value,
+        ),
+      );
+    setSelectedSavedAddressId((matching || savedAddresses[0]).id ?? null);
+    if (draft && !matching) setUseManualAddress(true);
+  }, [savedAddresses, selectedSavedAddressId, cart?.shipping_address]);
 
   // Pre-fill the M-Pesa phone from the cart's shipping address phone
   useEffect(() => {
@@ -325,7 +424,7 @@ export default function CheckoutPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const shippingQuery = useQuery({
-    queryKey: ["shipping-options"],
+    queryKey: ["shipping-options", cart?.id, cart?.shipping_address],
     queryFn: getShippingOptions,
     enabled: step === "shipping" || step === "payment" || step === "review",
   });
@@ -353,10 +452,15 @@ export default function CheckoutPage() {
         billing_address: address,
       });
     },
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+    onSuccess: async ({ cart: updatedCart }) => {
+      queryClient.setQueryData(["cart"], updatedCart);
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["shipping-options"] });
+      setSelectedShipping(null);
 
-      const qualifies = (cart?.subtotal ?? 0) >= FREE_SHIPPING_THRESHOLD;
+      const qualifies = qualifiesForFreeShipping(getCartItemsSubtotal(updatedCart));
       if (qualifies) {
         try {
           const res = await getShippingOptions();
@@ -383,7 +487,9 @@ export default function CheckoutPage() {
     mutationFn: (optionId: string) => addShippingMethod(optionId),
     onSuccess: () => {
       setErrorMessage(null);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       setStep("payment");
     },
     onError: (err: Error) => {
@@ -393,6 +499,8 @@ export default function CheckoutPage() {
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
+      if (paymentMethod === "mpesa_paybill" && !PAYBILL_AVAILABLE)
+        throw new Error("Paybill is unavailable. Please choose M-Pesa Express.");
       // Persist the customer's chosen payment method on the cart so the
       // backend / ops team can route the order to the right reconciliation
       // flow (STK callback vs manual Paybill verification).
@@ -407,7 +515,9 @@ export default function CheckoutPage() {
     },
     onSuccess: () => {
       setErrorMessage(null);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       setStep("review");
     },
     onError: (err: Error) => {
@@ -415,11 +525,15 @@ export default function CheckoutPage() {
     },
   });
 
+  // Enter success only after completion returned a real order.
   const applyOrderPlaced = useCallback(
-    (data: Awaited<ReturnType<typeof completeCart>>) => {
-      clearStoredCartId();
+    (data: { order?: unknown }) => {
+      setOrderRecovery(false);
       setPaymentPending(false);
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      setPaymentPendingSince(null);
+      queryClient.invalidateQueries({
+        predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+      });
       const order = data.order as
         | {
             display_id?: number;
@@ -431,7 +545,6 @@ export default function CheckoutPage() {
       if (order?.display_id) {
         const stored = order.metadata?.order_ref as string | undefined;
         setPlacedOrderRef(formatOrderRef(order.display_id, order.created_at, order.id, stored));
-        setPlacedOrderPaybillRef(String(order.display_id));
       }
       setOrderPlaced(true);
     },
@@ -439,75 +552,120 @@ export default function CheckoutPage() {
   );
 
   const finalizeOrderMutation = useMutation({
-    mutationFn: () => completeCart(),
+    mutationFn: async () => {
+      completionAttempted.current = true;
+      setPaymentPending(false);
+      const result = await completeCart();
+      const order = result.order as { id?: unknown } | undefined;
+      if (result.type !== "order" || typeof order?.id !== "string" || !order.id.trim()) {
+        throw new Error(
+          result.error?.message || "Payment received. Your order is still processing.",
+        );
+      }
+      return result;
+    },
     onSuccess: applyOrderPlaced,
     onError: (err: Error) => {
-      setErrorMessage(err.message || "Failed to place order.");
+      setOrderRecovery(true);
+      setErrorMessage(err.message || "Your order is still processing. Check its status again.");
     },
   });
 
+  // Status reads can establish the current session before initiation returns.
+  // Late responses must not replace that lifecycle or its completion outcome.
+  const hasObservedPaymentState = () =>
+    completionAttempted.current ||
+    orderPlaced ||
+    orderRecovery ||
+    !!paymentOutcome ||
+    (paymentPending &&
+      !!cart?.payment_collection?.payment_sessions?.some(
+        (session) =>
+          session.id === activePaymentSessionId.current && matchesCheckoutRecovery(session),
+      ));
+
   const completeMutation = useMutation({
     mutationFn: async (): Promise<CheckoutPaymentResult> => {
-      if (paymentMethod === "mpesa_express") {
-        // Route to the M-Pesa provider and pass the payer's phone so the
-        // backend can fire an STK Push. Backend normalizes to 254XXXXXXXXX.
-        const payment = await initializePaymentSession({
-          providerId: "pp_mpesa_mpesa",
-          data: { mpesa_phone: mpesaPhone },
-        });
-        if (!hasCapturedPayment(payment.payment_collection.payment_sessions)) {
-          return { type: "payment_pending" };
-        }
-      } else {
-        // Paybill: no STK; manual reconciliation. System default lets us
-        // create the order in awaiting-payment state.
-        await initializePaymentSession();
+      if (paymentMethod !== "mpesa_express") {
+        throw new Error("Paybill checkout is not available. Please use M-Pesa Express.");
+      }
+      // Revisit an existing prompt without sending another charge request.
+      const current = cart?.payment_collection?.payment_sessions?.find(
+        (session) => session.id === activePaymentSessionId.current,
+      );
+      if (current && hasConfirmedPayment([current])) return { type: "payment_captured" };
+      if (activePaymentSessionId.current && (!current || current.status === "pending")) {
+        return { type: "payment_pending" };
+      }
+      const payment = await initializePaymentSession({
+        providerId: "pp_family_bank_family_bank",
+        data: { mpesa_phone: mpesaPhone },
+      });
+      const session = payment.payment_collection.payment_sessions?.find((candidate) =>
+        matchesCheckoutRecovery(candidate),
+      );
+      activePaymentSessionId.current = session?.id ?? null;
+      if (!hasConfirmedPayment(session ? [session] : [])) {
+        return { type: "payment_pending" };
       }
 
       return { type: "payment_captured" };
     },
     onSuccess: (data) => {
+      if (hasObservedPaymentState()) return;
       if (data.type === "payment_pending") {
+        const startedAt = Date.now();
         setPaymentPending(true);
+        setPaymentPendingSince(startedAt);
+        setPendingNowTick(startedAt);
         setErrorMessage(null);
-        queryClient.invalidateQueries({ queryKey: ["cart"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => ["cart", "checkout-cart"].includes(String(query.queryKey[0])),
+        });
         return;
       }
 
+      completionAttempted.current = true;
       finalizeOrderMutation.mutate();
     },
     onError: (err: Error) => {
+      if (hasObservedPaymentState()) return;
+      setPaymentPending(false);
+      setPaymentPendingSince(null);
+      setPaymentOutcome(null);
       setErrorMessage(err.message || "Failed to place order.");
     },
   });
 
   useEffect(() => {
     if (
-      !paymentPending ||
+      (!paymentPending && !cart?.completed_at) ||
       orderPlaced ||
-      finalizeOrderMutation.isPending ||
-      !hasCapturedPayment(cart?.payment_collection?.payment_sessions)
-    ) {
+      completionAttempted.current ||
+      !hasConfirmedPayment(
+        cart?.payment_collection?.payment_sessions?.filter((session) =>
+          matchesCheckoutRecovery(session),
+        ),
+        activePaymentSessionId.current,
+      )
+    )
       return;
-    }
-
+    completionAttempted.current = true;
     finalizeOrderMutation.mutate();
-  }, [
-    cart?.payment_collection?.payment_sessions,
-    finalizeOrderMutation,
-    orderPlaced,
-    paymentPending,
-  ]);
+  }, [cart, finalizeOrderMutation, orderPlaced, paymentPending]);
 
-  // Surface a canceled / failed provider outcome (M-Pesa branches Medusa core
-  // ignores). Keyed by session id so the same stale session can't re-trigger.
-  /* eslint-disable react-hooks/set-state-in-effect -- derived from server state, not local input */
+  // Surface terminal outcomes persisted by the Family Bank callback.
+  /* eslint-disable react-hooks/set-state-in-effect -- react to the provider outcome on the polled cart */
   useEffect(() => {
     if (!paymentPending) return;
-    const session = cart?.payment_collection?.payment_sessions?.[0];
-    if (!session) return;
-    if (handledOutcomeSessionId.current === session.id) return;
-    const providerStatus = session.data?.status;
+    const session = cart?.payment_collection?.payment_sessions?.find(
+      (candidate) =>
+        matchesCheckoutRecovery(candidate) &&
+        (!activePaymentSessionId.current || candidate.id === activePaymentSessionId.current),
+    );
+    if (!session || handledOutcomeSessionId.current === session.id) return;
+    const providerStatus =
+      session.data?.status ?? (session.status === "error" ? "failed" : session.status);
     if (providerStatus === "canceled" || providerStatus === "failed") {
       handledOutcomeSessionId.current = session.id;
       setPaymentOutcome({
@@ -515,75 +673,42 @@ export default function CheckoutPage() {
         resultDesc: session.data?.resultDesc ?? undefined,
       });
       setPaymentPending(false);
+      setPaymentPendingSince(null);
     }
   }, [cart?.payment_collection?.payment_sessions, paymentPending]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // While waiting for confirmation, poke `cart/complete` so the backend
-  // re-queries Daraja STK Query and flips session.data.status from
-  // pending → canceled/failed (the only way to discover non-success states,
-  // since Medusa's webhook subscriber drops those actions). The poke can
-  // ALSO succeed and place the order in one shot when the Daraja callback
-  // has already authorized the session — the cart completes too quickly for
-  // the captured-status effect to observe, so we react to the poke's own
-  // success here.
-  //
-  // Daraja STK Query is rate-limited to 5 messages per 60s (one per 12s). We
-  // poll at 15s to stay under the cap with headroom.
-  useEffect(() => {
-    if (!paymentPending) return;
-    const interval = setInterval(async () => {
-      try {
-        const result = await completeCart();
-        if (result?.type === "order") {
-          applyOrderPlaced(result);
-        }
-      } catch {
-        // 400 "not_allowed" until provider authorizes — swallow it; the next
-        // poke or cart refetch picks up the freshly-updated state.
-      }
-    }, 15_000);
-    return () => clearInterval(interval);
-  }, [paymentPending, applyOrderPlaced]);
-
-  // Track when paymentPending flips on/off so we can show elapsed seconds and
-  // the slow / timed-out branches of the pending UI.
-  /* eslint-disable react-hooks/set-state-in-effect -- derived from paymentPending lifecycle */
-  useEffect(() => {
-    if (paymentPending && paymentPendingSince === null) {
-      const startedAt = Date.now();
-      setPaymentPendingSince(startedAt);
-      setPendingNowTick(startedAt);
-    } else if (!paymentPending && paymentPendingSince !== null) {
-      setPaymentPendingSince(null);
-    }
-  }, [paymentPending, paymentPendingSince]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Tick once per second while pending so the elapsed copy / threshold UI
-  // re-renders. Cleared as soon as pending clears.
+  // 1s re-render tick so the elapsed counter and slow/timeout thresholds advance.
   useEffect(() => {
     if (!paymentPending) return;
     const tick = setInterval(() => setPendingNowTick(Date.now()), 1_000);
     return () => clearInterval(tick);
   }, [paymentPending]);
 
-  const pendingElapsedSeconds = paymentPendingSince
-    ? Math.max(0, Math.floor((pendingNowTick - paymentPendingSince) / 1000))
-    : 0;
-  const stkIsSlow = pendingElapsedSeconds >= STK_SLOW_THRESHOLD_SECS;
-  const stkTimedOut = pendingElapsedSeconds >= STK_TIMEOUT_THRESHOLD_SECS;
-
+  // Re-fire the STK Push after a cancel/failure/timeout (mints a fresh session).
   const retryMpesaPrompt = () => {
+    handledOutcomeSessionId.current = null;
+    activePaymentSessionId.current = null;
+    completionAttempted.current = false;
     setPaymentOutcome(null);
     setErrorMessage(null);
-    setPaymentPending(true);
     completeMutation.mutate();
   };
 
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasUnavailableItems) {
+    const address = toCheckoutAddress(
+      isUsingSavedAddress && selectedSavedAddress ? selectedSavedAddress : form,
+    );
+    if (!address.city.trim()) {
+      setErrorMessage(
+        isUsingSavedAddress
+          ? "Complete your saved address with a city or town before continuing."
+          : "Enter your city or town so we can find delivery options.",
+      );
+      return;
+    }
+    if (checkoutBlocked) {
       setErrorMessage("Update your cart before checkout. Some items are out of stock.");
       return;
     }
@@ -598,179 +723,182 @@ export default function CheckoutPage() {
   ];
   const currentIdx = steps.findIndex((s) => s.id === step);
 
+  const pendingElapsedSeconds = paymentPendingSince
+    ? Math.max(0, Math.floor((pendingNowTick - paymentPendingSince) / 1000))
+    : 0;
+  const stkIsSlow = pendingElapsedSeconds >= STK_SLOW_THRESHOLD_SECS;
+  const stkTimedOut = pendingElapsedSeconds >= STK_TIMEOUT_THRESHOLD_SECS;
+
+  const recoverySessionMissing =
+    recovery?.state === "unresolved" &&
+    !completeMutation.isPending &&
+    !orderPlaced &&
+    (cartQuery.isSuccess || cartQuery.isError) &&
+    (cartQuery.isError ||
+      !cart ||
+      !cart.payment_collection?.payment_sessions?.some((session) =>
+        matchesCheckoutRecovery(session, recovery),
+      ));
+  if (recoverySessionMissing) {
+    return (
+      <section className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">Payment needs confirmation</h1>
+        <p>
+          Your earlier payment could still be payable. Cart, delivery and payer details are locked.
+          Check its status or contact support before making another payment.
+        </p>
+        {errorMessage && <p role="alert">{errorMessage}</p>}
+        <button
+          className="border-border min-h-11 rounded-full border px-6 py-3"
+          disabled={cartQuery.isFetching}
+          onClick={() => cartQuery.refetch()}
+        >
+          Check Payment Status
+        </button>
+        <Link href="/contact" className={BACK_LINK_CLASS}>
+          Contact support
+        </Link>
+      </section>
+    );
+  }
+
+  if (orderRecovery || finalizeOrderMutation.isPending) {
+    return (
+      <section className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">Confirming your order</h1>
+        <p role="alert">{errorMessage}</p>
+        <p>
+          Your payment request is saved. Check the order status before starting another payment.
+        </p>
+        <button
+          className="bg-primary min-h-11 rounded-full px-6 py-3 text-white"
+          disabled={finalizeOrderMutation.isPending}
+          onClick={() => finalizeOrderMutation.mutate()}
+        >
+          {finalizeOrderMutation.isPending ? "Checking..." : "Check order status"}
+        </button>
+      </section>
+    );
+  }
+
   if (paymentOutcome) {
     const isCanceled = paymentOutcome.kind === "canceled";
-    const title = isCanceled ? "Payment was canceled" : "Payment failed";
-    const description = isCanceled
-      ? "The M-Pesa prompt was canceled on your phone. You can try again or edit the number."
-      : paymentOutcome.resultDesc ||
-        "M-Pesa could not complete the payment. You can try again with the same number.";
-
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
-          <div className="bg-danger/15 flex h-20 w-20 items-center justify-center rounded-full">
-            <Smartphone className="text-danger h-9 w-9" />
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-10 text-center">
+          <div className="bg-danger/10 flex h-20 w-20 items-center justify-center rounded-full">
+            <X className="text-danger h-9 w-9" />
           </div>
-          <span className="az-pill bg-danger/15 text-danger">
-            {isCanceled ? "Canceled" : "Failed"}
-          </span>
-          <h1 className="text-foreground text-2xl font-bold">{title}</h1>
-          <div className="max-w-md space-y-2">
-            <p className="text-muted text-sm leading-relaxed">{description}</p>
-            <p className="text-muted text-xs">
-              M-Pesa number: <span className="text-foreground font-medium">{mpesaPhone}</span>
-            </p>
-          </div>
+          <h1 className="text-foreground text-2xl font-bold">
+            {isCanceled ? "Payment was canceled" : "Payment failed"}
+          </h1>
+          <p className="text-muted max-w-md text-sm leading-relaxed">
+            {isCanceled
+              ? "The M-Pesa prompt was canceled on your phone. You can try again or edit the number."
+              : (paymentOutcome.resultDesc ??
+                "M-Pesa could not complete the payment. You can try again with the same number.")}
+          </p>
+          <p className="text-muted text-sm">
+            Phone: <span className="text-foreground font-medium">{mpesaPhone}</span>
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              onPress={retryMpesaPrompt}
-              isDisabled={completeMutation.isPending}
-              className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
+            <button
+              onClick={retryMpesaPrompt}
+              disabled={completeMutation.isPending}
+              className="bg-primary hover:bg-primary-hover focus-visible:ring-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
             >
-              {completeMutation.isPending ? "Sending..." : "Try Again"}
-            </Button>
-            {isCanceled && (
-              <Button
-                onPress={() => {
-                  setPaymentOutcome(null);
-                  setStep("payment");
-                }}
-                variant="ghost"
-                className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
-              >
-                Edit Phone Number
-              </Button>
-            )}
+              Try Again
+            </button>
+            <button
+              onClick={() => {
+                setPaymentOutcome(null);
+                setStep("payment");
+              }}
+              className="border-border text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-6 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              {isCanceled ? "Edit Phone Number" : "Edit Payment Details"}
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  if (paymentPending) {
-    const title = stkTimedOut
+  if (paymentPending || (completeMutation.isPending && recovery?.state === "unresolved")) {
+    const pendingTitle = stkTimedOut
       ? "STK Push timed out"
       : stkIsSlow
         ? "Taking longer than expected"
-        : "Waiting for M-Pesa confirmation";
-    const lead = stkTimedOut
-      ? "We did not get a confirmation from M-Pesa within a reasonable time."
+        : "Payment Request Sent";
+    const pendingLead = stkTimedOut
+      ? "We didn't get a confirmation from M-Pesa within a reasonable time."
       : stkIsSlow
-        ? "Check your phone for the M-Pesa prompt — it may have been dismissed or the network is slow."
+        ? "Check your phone for the M-Pesa prompt — it may have been dismissed, or the network is slow."
         : "Check your phone for the M-Pesa prompt";
-
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
-          <div className="bg-warning/15 flex h-20 w-20 items-center justify-center rounded-full">
-            <Smartphone className="text-trust h-9 w-9" />
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-10 text-center">
+          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
+            <Smartphone className="text-secondary h-9 w-9" />
           </div>
-          <span className="az-pill bg-warning/15 text-warning-ink">
+          <span className="bg-accent-yellow-light text-accent-yellow-ink rounded-full px-3 py-1 text-xs font-semibold">
             Pending payment · {pendingElapsedSeconds}s
           </span>
-          <h1 className="text-foreground text-2xl font-bold">{title}</h1>
+          <h1 className="text-foreground text-2xl font-bold">{pendingTitle}</h1>
           <div className="max-w-md space-y-2">
-            <p className="text-foreground text-sm font-medium">{lead}</p>
+            <p className="text-foreground text-sm font-medium">{pendingLead}</p>
             <p className="text-muted text-sm leading-relaxed">
               Enter your M-Pesa PIN on{" "}
-              <span className="text-foreground font-medium">{mpesaPhone}</span>. Your order will be
-              created after payment is captured by M-Pesa.
+              <span className="text-foreground font-medium">{mpesaPhone}</span>. We&apos;ll create
+              your order after M-Pesa confirms the payment.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {!stkTimedOut && (
-              <Button
-                onPress={() => cartQuery.refetch()}
-                isDisabled={cartQuery.isFetching}
-                variant="ghost"
-                className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
-              >
-                {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
-              </Button>
-            )}
-            {(stkIsSlow || stkTimedOut) && (
-              <Button
-                onPress={retryMpesaPrompt}
-                isDisabled={completeMutation.isPending}
-                className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
-              >
-                {completeMutation.isPending ? "Sending..." : "Try Again"}
-              </Button>
-            )}
+            <button
+              onClick={() => cartQuery.refetch()}
+              disabled={cartQuery.isFetching}
+              className="border-border min-h-11 rounded-full border px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
+            >
+              {cartQuery.isFetching ? "Checking..." : "Check Payment Status"}
+            </button>
           </div>
+          <p className="text-muted text-sm">
+            Cart, delivery and payer details are locked until this payment is resolved.
+          </p>
+          <Link href="/contact" className={BACK_LINK_CLASS}>
+            Contact support
+          </Link>
         </div>
       </div>
     );
   }
 
   if (orderPlaced) {
-    const isManualPayment = paymentMethod === "mpesa_paybill";
-
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-empty-state mx-auto flex max-w-2xl flex-col items-center gap-5 p-8 sm:p-10">
-          <div
-            className={`flex h-20 w-20 items-center justify-center rounded-full ${
-              isManualPayment ? "bg-warning/15" : "bg-success-light"
-            }`}
-          >
-            {isManualPayment ? (
-              <Receipt className="text-warning-ink h-9 w-9" />
-            ) : (
-              <Check className="text-success h-9 w-9" />
-            )}
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-10 text-center">
+          <div className="bg-accent-green-light flex h-20 w-20 items-center justify-center rounded-full">
+            <Check className="text-success h-9 w-9" />
           </div>
-          <span
-            className={`az-pill ${isManualPayment ? "bg-warning/15 text-warning-ink" : "bg-success-light text-success-ink"}`}
-          >
-            {isManualPayment ? "Awaiting manual payment" : "Paid"}
-          </span>
-          <h1 className="text-foreground text-2xl font-bold">
-            {isManualPayment ? "Order placed, payment pending" : "Order placed"}
-          </h1>
+          <h1 className="text-foreground text-2xl font-bold">Order Placed!</h1>
           {placedOrderRef && (
             <p className="text-foreground text-sm font-medium">Order {placedOrderRef}</p>
           )}
-          {paymentMethod === "mpesa_express" ? (
-            <div className="max-w-md space-y-2">
-              <p className="text-foreground text-sm font-medium">M-Pesa payment captured</p>
-              <p className="text-muted text-sm leading-relaxed">
-                Your payment was confirmed, so your order has been created. We&apos;ll dispatch once
-                the order is prepared.
-              </p>
-            </div>
-          ) : (
-            <div className="border-border/50 bg-surface-soft max-w-md space-y-2 rounded-[var(--radius)] border p-4 text-left text-sm">
-              <p className="text-foreground font-medium">Next: pay via M-Pesa Paybill</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-muted">Paybill</p>
-                  <p className="text-foreground font-semibold">{MPESA_PAYBILL_NUMBER}</p>
-                </div>
-                <div>
-                  <p className="text-muted">Account no.</p>
-                  <p className="text-foreground font-semibold">{placedOrderPaybillRef ?? "—"}</p>
-                </div>
-              </div>
-              <p className="text-muted text-xs leading-relaxed">
-                Pay from your M-Pesa menu &rarr; Lipa na M-Pesa &rarr; Pay Bill. We&apos;ll dispatch
-                once {MPESA_BUSINESS_NAME} confirms your payment.
-              </p>
-            </div>
-          )}
+          <div className="max-w-md space-y-2">
+            <p className="text-foreground text-sm font-medium">Payment confirmed</p>
+            <p className="text-muted text-sm leading-relaxed">
+              Your M-Pesa payment was confirmed and your order is ready for processing.
+            </p>
+          </div>
           <p className="text-muted max-w-md text-sm leading-relaxed">
-            {isManualPayment
-              ? "Keep this order number as your Paybill reference. We only dispatch after payment is confirmed."
-              : customerQuery.data
-                ? "Thank you for shopping with Azani. Your confirmation is ready in your account."
-                : "Keep this order number for support. We will dispatch once the order is prepared."}
+            Thank you for shopping at {MPESA_BUSINESS_NAME}! You&apos;ll receive a confirmation
+            email shortly.
           </p>
           <Link
             href="/products"
-            className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 shadow-md"
+            className="bg-primary hover:bg-primary-hover inline-flex min-h-11 items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white shadow-md transition"
           >
-            <Baby className="h-4 w-4" /> Continue Shopping
+            <Shirt className="h-4 w-4" /> Continue Shopping
           </Link>
         </div>
       </div>
@@ -780,9 +908,9 @@ export default function CheckoutPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="az-empty-state flex flex-col items-center gap-5 p-10">
+        <div className="border-border bg-card flex flex-col items-center gap-5 rounded-xl border p-10 text-center">
           <div className="bg-primary-light flex h-20 w-20 items-center justify-center rounded-full">
-            <ShoppingBag className="text-primary h-8 w-8" />
+            <EnamelUtilityIcon name="cart" size={48} />
           </div>
           <div>
             <h1 className="text-foreground text-2xl font-bold">No items to checkout</h1>
@@ -790,16 +918,17 @@ export default function CheckoutPage() {
           </div>
           <Link
             href="/products"
-            className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5"
+            className="bg-primary hover:bg-primary-hover focus-visible:ring-primary inline-flex min-h-11 items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            <Baby className="h-4 w-4" /> Continue Shopping
+            <Shirt className="h-4 w-4" /> Continue Shopping
           </Link>
         </div>
       </div>
     );
   }
 
-  const inputClass = "az-form-field h-10 px-3";
+  const inputClass =
+    "min-h-11 w-full rounded-lg border border-muted-light bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary aria-invalid:border-danger";
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -807,7 +936,7 @@ export default function CheckoutPage() {
         <Link
           href="/cart"
           aria-label="Back to cart"
-          className="az-icon-button az-focus -ml-1 flex h-9 min-h-9 w-9 min-w-9 shrink-0 rounded-full"
+          className="text-muted hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-foreground -ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -825,7 +954,7 @@ export default function CheckoutPage() {
                     ? "border-success bg-success text-white"
                     : i === currentIdx
                       ? "border-secondary bg-secondary text-white"
-                      : "border-border/50 text-muted bg-surface"
+                      : "border-border text-muted bg-white"
                 }`}
               >
                 {i < currentIdx ? (
@@ -851,19 +980,39 @@ export default function CheckoutPage() {
 
       {/* Error banner */}
       {errorMessage && (
-        <div className="border-danger/30 bg-danger-light text-danger mb-6 rounded-[var(--radius)] border px-4 py-3 text-sm">
+        <div
+          id="checkout-error"
+          role="alert"
+          className="border-danger/30 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm"
+        >
           {errorMessage}
         </div>
       )}
 
+      {catalogueError && (
+        <div
+          role="alert"
+          className="border-danger/20 bg-danger/5 text-danger mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium"
+        >
+          <span>We couldn’t check item availability. Please try again.</span>
+          <button
+            type="button"
+            onClick={() => checkoutProductsQuery.refetch()}
+            className="focus-visible:ring-danger min-h-11 rounded-full border border-current px-3 py-1.5 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {hasUnavailableItems && (
-        <div className="border-danger/20 bg-danger-light text-danger mb-6 rounded-[var(--radius)] border px-4 py-3 text-sm font-medium">
+        <div className="border-danger/20 bg-danger/5 text-danger mb-6 rounded-xl border px-4 py-3 text-sm font-medium">
           Some items in your cart are no longer available in the requested quantity. Return to your
           cart to adjust them before checking out.
         </div>
       )}
 
-      <div className="flex max-w-full gap-8">
+      <div className="flex gap-8">
         {/* Desktop: vertical stepper sidebar */}
         <div className="hidden w-48 shrink-0 lg:block">
           <div className="sticky top-24">
@@ -877,7 +1026,7 @@ export default function CheckoutPage() {
                           ? "border-success bg-success text-white"
                           : i === currentIdx
                             ? "border-secondary bg-secondary text-white"
-                            : "border-border/50 text-muted bg-surface"
+                            : "border-border text-muted bg-white"
                       }`}
                     >
                       {i < currentIdx ? (
@@ -909,21 +1058,31 @@ export default function CheckoutPage() {
 
         {/* Main content: form + order summary */}
         <div className="min-w-0 flex-1">
-          <div
-            data-testid="checkout-flow-grid"
-            className="grid max-w-full grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
-          >
-            <div data-testid="checkout-primary-column" className="max-w-full min-w-0 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            <div className="space-y-6">
               {/* Step: Address */}
               {step === "address" && (
                 <form
-                  data-testid="checkout-address-form"
                   onSubmit={handleAddressSubmit}
-                  className="az-surface max-w-full min-w-0 space-y-5 p-4 sm:p-6"
+                  aria-describedby={errorMessage ? "checkout-error" : undefined}
+                  onInvalid={(event) => {
+                    const input = event.target;
+                    if (!(input instanceof HTMLInputElement)) return;
+                    setFieldErrors((current) => ({
+                      ...current,
+                      [input.id]: input.validationMessage,
+                    }));
+                  }}
+                  onChange={(event) => {
+                    const input = event.target;
+                    if (!(input instanceof HTMLInputElement)) return;
+                    setFieldErrors((current) => ({ ...current, [input.id]: "" }));
+                  }}
+                  className="border-border bg-card space-y-5 rounded-xl border p-4 sm:p-6"
                 >
                   <h2 className="text-foreground text-lg font-semibold">Shipping Address</h2>
                   {customerQuery.data && (
-                    <div className="border-trust/15 bg-trust-light rounded-[var(--radius)] border p-4">
+                    <div className="border-secondary/15 bg-secondary-light/40 rounded-xl border p-4">
                       <p className="text-foreground text-sm font-medium">
                         Checking out as {customerQuery.data.email}
                       </p>
@@ -940,15 +1099,14 @@ export default function CheckoutPage() {
                         {savedAddresses.map((address) => {
                           const isSelected = address.id === selectedSavedAddress.id;
                           return (
-                            <Button
+                            <button
                               key={address.id}
-                              onPress={() => setSelectedSavedAddressId(address.id ?? null)}
-                              variant="ghost"
-                              aria-pressed={isSelected}
-                              className={`az-focus w-full rounded-[var(--radius)] border p-4 text-left transition ${
+                              type="button"
+                              onClick={() => setSelectedSavedAddressId(address.id ?? null)}
+                              className={`focus-visible:ring-secondary min-h-11 w-full rounded-xl border p-4 text-left transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
                                 isSelected
-                                  ? "border-trust bg-trust-light"
-                                  : "border-border/50 hover:border-border bg-white"
+                                  ? "border-secondary bg-secondary-light/40"
+                                  : "border-border hover:border-border bg-white"
                               }`}
                             >
                               <div className="flex items-start justify-between gap-4">
@@ -967,31 +1125,47 @@ export default function CheckoutPage() {
                                   )}
                                 </div>
                                 {isSelected && (
-                                  <span className="az-pill az-pill-neutral py-1">Selected</span>
+                                  <span className="bg-foreground rounded-full px-2.5 py-1 text-xs font-semibold text-white">
+                                    Selected
+                                  </span>
                                 )}
                               </div>
-                            </Button>
+                            </button>
                           );
                         })}
                       </div>
+                      {!selectedSavedAddress.city?.trim() && (
+                        <button
+                          type="button"
+                          className="text-primary min-h-11 text-sm font-semibold underline underline-offset-4"
+                          onClick={() => {
+                            setForm((current) => ({
+                              ...current,
+                              ...toCheckoutAddress(selectedSavedAddress),
+                            }));
+                            setUseManualAddress(true);
+                          }}
+                        >
+                          Complete selected address
+                        </button>
+                      )}
                       <div className="flex flex-wrap gap-3">
-                        <Button
+                        <button
                           type="submit"
-                          isDisabled={addressMutation.isPending || hasUnavailableItems}
-                          variant="ghost"
-                          className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
+                          disabled={addressMutation.isPending || checkoutBlocked}
+                          className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                         >
                           {addressMutation.isPending
                             ? "Saving..."
                             : "Continue with Selected Address"}
-                        </Button>
-                        <Button
-                          onPress={() => setUseManualAddress(true)}
-                          variant="ghost"
-                          className="az-btn az-btn-outline az-focus rounded-full px-6 py-2.5"
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUseManualAddress(true)}
+                          className="border-border text-foreground hover:border-border hover:bg-foreground/[0.04] focus-visible:ring-border min-h-11 rounded-full border bg-white px-6 py-2.5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                         >
                           Use Different Address
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1005,14 +1179,26 @@ export default function CheckoutPage() {
                         >
                           First Name <span className="text-danger">*</span>
                         </label>
-                        <Input
+                        <input
                           id="checkout-first-name"
+                          name="first_name"
+                          autoComplete="given-name"
+                          aria-invalid={!!fieldErrors["checkout-first-name"] || undefined}
+                          aria-describedby={
+                            fieldErrors["checkout-first-name"]
+                              ? "checkout-first-name-error"
+                              : undefined
+                          }
                           required
                           value={form.first_name}
                           onChange={(e) => setForm({ ...form, first_name: e.target.value })}
                           className={inputClass}
-                          variant="secondary"
                         />
+                        {fieldErrors["checkout-first-name"] && (
+                          <p id="checkout-first-name-error" className="text-danger mt-1 text-sm">
+                            {fieldErrors["checkout-first-name"]}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label
@@ -1021,14 +1207,26 @@ export default function CheckoutPage() {
                         >
                           Last Name <span className="text-danger">*</span>
                         </label>
-                        <Input
+                        <input
                           id="checkout-last-name"
+                          name="last_name"
+                          autoComplete="family-name"
+                          aria-invalid={!!fieldErrors["checkout-last-name"] || undefined}
+                          aria-describedby={
+                            fieldErrors["checkout-last-name"]
+                              ? "checkout-last-name-error"
+                              : undefined
+                          }
                           required
                           value={form.last_name}
                           onChange={(e) => setForm({ ...form, last_name: e.target.value })}
                           className={inputClass}
-                          variant="secondary"
                         />
+                        {fieldErrors["checkout-last-name"] && (
+                          <p id="checkout-last-name-error" className="text-danger mt-1 text-sm">
+                            {fieldErrors["checkout-last-name"]}
+                          </p>
+                        )}
                       </div>
                       <div className="sm:col-span-2">
                         <label
@@ -1037,19 +1235,24 @@ export default function CheckoutPage() {
                         >
                           Email <span className="text-muted/70 font-normal">(optional)</span>
                         </label>
-                        {customerQuery.data ? (
-                          <div className="border-border/50 bg-surface-soft text-muted flex h-10 items-center rounded-lg border px-3 text-sm">
-                            {customerQuery.data.email}
-                          </div>
-                        ) : (
-                          <Input
-                            id="checkout-email"
-                            type="email"
-                            value={form.email}
-                            onChange={(e) => setForm({ ...form, email: e.target.value })}
-                            className={inputClass}
-                            variant="secondary"
-                          />
+                        <input
+                          id="checkout-email"
+                          name="email"
+                          autoComplete="email"
+                          type="email"
+                          readOnly={!!customerQuery.data}
+                          value={customerQuery.data?.email ?? form.email}
+                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                          aria-invalid={!!fieldErrors["checkout-email"] || undefined}
+                          aria-describedby={
+                            fieldErrors["checkout-email"] ? "checkout-email-error" : undefined
+                          }
+                          className={inputClass}
+                        />
+                        {fieldErrors["checkout-email"] && (
+                          <p id="checkout-email-error" className="text-danger mt-1 text-sm">
+                            {fieldErrors["checkout-email"]}
+                          </p>
                         )}
                       </div>
                       <div>
@@ -1059,53 +1262,121 @@ export default function CheckoutPage() {
                         >
                           Phone <span className="text-danger">*</span>
                         </label>
-                        <Input
+                        <input
                           id="checkout-phone"
+                          name="phone"
+                          autoComplete="tel"
                           type="tel"
                           required
                           placeholder="+254 7XX XXX XXX"
                           value={form.phone}
                           onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                          aria-invalid={!!fieldErrors["checkout-phone"] || undefined}
+                          aria-describedby={
+                            fieldErrors["checkout-phone"] ? "checkout-phone-error" : undefined
+                          }
                           className={inputClass}
-                          variant="secondary"
                         />
+                        {fieldErrors["checkout-phone"] && (
+                          <p id="checkout-phone-error" className="text-danger mt-1 text-sm">
+                            {fieldErrors["checkout-phone"]}
+                          </p>
+                        )}
                       </div>
                       <div className="sm:col-span-2">
                         <label
-                          htmlFor="checkout-address"
+                          htmlFor="checkout-street-address"
                           className="text-muted mb-1.5 block text-sm font-medium"
                         >
                           Street Address <span className="text-danger">*</span>
                         </label>
-                        <Input
-                          id="checkout-address"
+                        <input
+                          id="checkout-street-address"
+                          name="address_1"
+                          autoComplete="street-address"
                           required
                           value={form.address_1}
                           onChange={(e) => setForm({ ...form, address_1: e.target.value })}
+                          aria-invalid={!!fieldErrors["checkout-street-address"] || undefined}
+                          aria-describedby={
+                            fieldErrors["checkout-street-address"]
+                              ? "checkout-street-address-error"
+                              : undefined
+                          }
                           className={inputClass}
-                          variant="secondary"
                         />
+                        {fieldErrors["checkout-street-address"] && (
+                          <p
+                            id="checkout-street-address-error"
+                            className="text-danger mt-1 text-sm"
+                          >
+                            {fieldErrors["checkout-street-address"]}
+                          </p>
+                        )}
                       </div>
+                      {(
+                        [
+                          ["city", "City or town", "address-level2", true],
+                          ["postal_code", "Postal code (optional)", "postal-code", false],
+                        ] as const
+                      ).map(([field, label, autocomplete, required]) => (
+                        <div key={field}>
+                          <label
+                            htmlFor={`checkout-${field}`}
+                            className="text-foreground mb-2 block text-sm font-medium"
+                          >
+                            {label}
+                            {required && " *"}
+                          </label>
+                          <input
+                            id={`checkout-${field}`}
+                            autoComplete={autocomplete}
+                            required={required}
+                            value={form[field]}
+                            onChange={(e) =>
+                              setForm((current) => ({
+                                ...current,
+                                [field]: e.target.value,
+                                // A changed city must not retain the previous destination's county.
+                                ...(field === "city" && current.city !== e.target.value
+                                  ? { province: "" }
+                                  : {}),
+                              }))
+                            }
+                            aria-invalid={!!fieldErrors[`checkout-${field}`] || undefined}
+                            aria-describedby={
+                              fieldErrors[`checkout-${field}`]
+                                ? `checkout-${field}-error`
+                                : undefined
+                            }
+                            className={inputClass}
+                          />
+                          {fieldErrors[`checkout-${field}`] && (
+                            <p id={`checkout-${field}-error`} className="text-danger mt-1 text-sm">
+                              {fieldErrors[`checkout-${field}`]}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                   {(!isUsingSavedAddress || !selectedSavedAddress) && (
-                    <Button
+                    <button
                       type="submit"
-                      isDisabled={addressMutation.isPending || hasUnavailableItems}
-                      variant="ghost"
-                      className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
+                      disabled={addressMutation.isPending || checkoutBlocked}
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {addressMutation.isPending ? "Saving..." : "Continue to Shipping"}
-                    </Button>
+                    </button>
                   )}
                   {useManualAddress && savedAddresses.length > 0 && (
-                    <Button
-                      onPress={() => setUseManualAddress(false)}
-                      variant="ghost"
-                      className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
+                    <button
+                      type="button"
+                      onClick={() => setUseManualAddress(false)}
+                      className="text-muted hover:text-foreground focus-visible:ring-secondary ml-4 min-h-11 rounded-full px-3 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
                       Use a saved address instead
-                    </Button>
+                    </button>
                   )}
                 </form>
               )}
@@ -1113,13 +1384,17 @@ export default function CheckoutPage() {
               {/* Step: Shipping */}
               {step === "shipping" && (
                 <ShippingStep
-                  options={shippingQuery.data?.shipping_options ?? []}
+                  options={(shippingQuery.data?.shipping_options ?? []).filter(
+                    (option) =>
+                      !/express|same.day/i.test(option.name) ||
+                      cart.shipping_address?.city?.trim().toLowerCase() === "nairobi",
+                  )}
                   isLoading={shippingQuery.isLoading}
                   selectedShipping={selectedShipping}
-                  isPending={shippingMutation.isPending}
-                  cartSubtotal={cart.subtotal ?? 0}
+                  isPending={shippingMutation.isPending || checkoutBlocked}
+                  cartSubtotal={getCartItemsSubtotal(cart)}
                   onSelect={(optionId) => {
-                    if (hasUnavailableItems) return;
+                    if (checkoutBlocked) return;
                     setSelectedShipping(optionId);
                     shippingMutation.mutate(optionId);
                   }}
@@ -1132,7 +1407,10 @@ export default function CheckoutPage() {
 
               {/* Step: Payment */}
               {step === "payment" && (
-                <div className="az-surface space-y-4 p-4 sm:p-6">
+                <div
+                  aria-describedby={errorMessage ? "checkout-error" : undefined}
+                  className="border-border bg-card space-y-4 rounded-xl border p-4 sm:p-6"
+                >
                   <div>
                     <h2 className="text-foreground text-lg font-semibold">Payment Method</h2>
                     <p className="text-muted mt-1 text-sm">
@@ -1141,79 +1419,108 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* M-Pesa Express */}
-                  <label
-                    className={`az-focus flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 transition ${
+                  <div
+                    className={`rounded-xl border p-4 transition ${
                       paymentMethod === "mpesa_express"
-                        ? "border-trust bg-trust-light"
-                        : "border-border/50 hover:border-border bg-white"
+                        ? "border-secondary bg-secondary-light/40"
+                        : "border-border hover:border-border bg-white"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value="mpesa_express"
-                      checked={paymentMethod === "mpesa_express"}
-                      onChange={() => setPaymentMethod("mpesa_express")}
-                      className="accent-foreground mt-1.5"
-                    />
-                    <Smartphone className="text-trust mt-0.5 h-5 w-5 shrink-0" />
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-foreground font-medium">M-Pesa Express</p>
-                        <span className="az-pill az-pill-trust px-2 py-0.5 text-[11px] tracking-wide uppercase">
-                          Recommended
-                        </span>
-                      </div>
-                      <p className="text-muted mt-0.5 text-sm">
-                        Get a payment prompt on your phone &mdash; just enter your M-Pesa PIN.
-                      </p>
-                      {paymentMethod === "mpesa_express" && (
-                        <div className="mt-3 space-y-1.5">
-                          <label
-                            htmlFor="checkout-mpesa-phone"
-                            className="text-muted block text-xs font-medium"
+                    <label
+                      htmlFor="checkout-mpesa-express"
+                      className="flex min-h-11 cursor-pointer items-start gap-3"
+                    >
+                      <input
+                        id="checkout-mpesa-express"
+                        type="radio"
+                        name="payment-method"
+                        aria-labelledby="checkout-mpesa-express-label"
+                        aria-describedby="checkout-mpesa-express-description"
+                        value="mpesa_express"
+                        checked={paymentMethod === "mpesa_express"}
+                        onChange={() => setPaymentMethod("mpesa_express")}
+                        className="accent-foreground focus-visible:outline-secondary mt-1.5 focus-visible:outline-2 focus-visible:outline-offset-2"
+                      />
+                      <Smartphone className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p
+                            id="checkout-mpesa-express-label"
+                            className="text-foreground font-medium"
                           >
-                            M-Pesa Phone Number <span className="text-danger">*</span>
-                          </label>
-                          <Input
-                            id="checkout-mpesa-phone"
-                            type="tel"
-                            required
-                            placeholder="+254 7XX XXX XXX"
-                            value={mpesaPhone}
-                            onChange={(e) => setMpesaPhone(e.target.value)}
-                            className={inputClass}
-                            variant="secondary"
-                          />
+                            M-Pesa Express
+                          </p>
+                          <span className="bg-accent-green-light text-success rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
+                            Recommended
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  </label>
+                        <p
+                          id="checkout-mpesa-express-description"
+                          className="text-muted mt-0.5 text-sm"
+                        >
+                          Get a payment prompt on your phone &mdash; just enter your M-Pesa PIN.
+                        </p>
+                      </div>
+                    </label>
+                    {paymentMethod === "mpesa_express" && (
+                      <div className="mt-3 space-y-1.5 sm:ml-8">
+                        <label
+                          htmlFor="checkout-mpesa-phone"
+                          className="text-muted block text-sm font-medium"
+                        >
+                          M-Pesa Phone Number <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          id="checkout-mpesa-phone"
+                          name="mpesa_phone"
+                          autoComplete="tel"
+                          type="tel"
+                          required
+                          placeholder="+254 7XX XXX XXX"
+                          value={mpesaPhone}
+                          onChange={(e) => setMpesaPhone(e.target.value)}
+                          className={inputClass}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Manual Paybill */}
                   <label
-                    className={`az-focus flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-4 transition ${
+                    htmlFor="checkout-mpesa-paybill"
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${
                       paymentMethod === "mpesa_paybill"
-                        ? "border-trust bg-trust-light"
-                        : "border-border/50 hover:border-border bg-white"
+                        ? "border-secondary bg-secondary-light/40"
+                        : "border-border hover:border-border bg-white"
                     }`}
                   >
                     <input
+                      id="checkout-mpesa-paybill"
                       type="radio"
                       name="payment-method"
+                      aria-labelledby="checkout-mpesa-paybill-label"
+                      aria-describedby="checkout-mpesa-paybill-description"
                       value="mpesa_paybill"
+                      disabled={!PAYBILL_AVAILABLE}
                       checked={paymentMethod === "mpesa_paybill"}
                       onChange={() => setPaymentMethod("mpesa_paybill")}
-                      className="accent-foreground mt-1.5"
+                      className="accent-foreground focus-visible:outline-secondary mt-1.5 focus-visible:outline-2 focus-visible:outline-offset-2"
                     />
-                    <Receipt className="text-trust mt-0.5 h-5 w-5 shrink-0" />
+                    <Receipt className="text-secondary mt-0.5 h-5 w-5 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-foreground font-medium">Pay via M-Pesa Paybill</p>
-                      <p className="text-muted mt-0.5 text-sm">
-                        Pay manually from your M-Pesa menu using our Paybill number.
+                      <p id="checkout-mpesa-paybill-label" className="text-foreground font-medium">
+                        Pay via M-Pesa Paybill
+                      </p>
+                      <p
+                        id="checkout-mpesa-paybill-description"
+                        className="text-muted mt-0.5 text-sm"
+                      >
+                        {PAYBILL_AVAILABLE
+                          ? "Pay manually from your M-Pesa menu using our Paybill number."
+                          : "Paybill checkout is not available. Please use M-Pesa Express."}
                       </p>
                       {paymentMethod === "mpesa_paybill" && (
-                        <div className="border-border/50 bg-surface-soft mt-3 space-y-3 rounded-[var(--radius)] border p-3 text-sm">
+                        <div className="border-border bg-background/80 mt-3 space-y-3 rounded-xl border p-3 text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <p className="text-muted text-xs">Paybill (Business No.)</p>
@@ -1256,40 +1563,40 @@ export default function CheckoutPage() {
                   </label>
 
                   <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <Button
-                      onPress={() => paymentMutation.mutate()}
-                      isDisabled={
+                    <button
+                      onClick={() => paymentMutation.mutate()}
+                      disabled={
                         paymentMutation.isPending ||
-                        hasUnavailableItems ||
+                        checkoutBlocked ||
+                        (paymentMethod === "mpesa_paybill" && !PAYBILL_AVAILABLE) ||
                         (paymentMethod === "mpesa_express" && !mpesaPhone.trim())
                       }
-                      variant="ghost"
-                      className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary min-h-11 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
                     >
                       {paymentMutation.isPending ? "Saving..." : "Continue to Review"}
-                    </Button>
-                    <Button
-                      onPress={() => {
+                    </button>
+                    <button
+                      onClick={() => {
                         setStep("shipping");
                         setErrorMessage(null);
                       }}
-                      variant="ghost"
-                      className="az-focus text-muted hover:text-foreground rounded-full text-sm font-medium transition"
+                      className={BACK_LINK_CLASS}
                     >
-                      &larr; Back to Shipping
-                    </Button>
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      Back to Shipping
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* Step: Review */}
               {step === "review" && (
-                <div className="az-surface space-y-4 p-4 sm:p-6">
+                <div className="border-border bg-card space-y-4 rounded-xl border p-4 sm:p-6">
                   <h2 className="text-foreground text-lg font-semibold">Review & Place Order</h2>
 
                   {/* Address summary */}
                   {cart.shipping_address && (
-                    <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
+                    <div className="border-border bg-background/80 rounded-xl border p-4 text-sm">
                       <p className="text-muted mb-1 text-sm font-semibold">Shipping to</p>
                       <p className="text-foreground">
                         {cart.shipping_address.first_name} {cart.shipping_address.last_name}
@@ -1298,7 +1605,9 @@ export default function CheckoutPage() {
                         {cart.shipping_address.address_1}, {cart.shipping_address.city}
                       </p>
                       <p className="text-muted">
-                        {cart.shipping_address.province}, {cart.shipping_address.postal_code}
+                        {[cart.shipping_address.province, cart.shipping_address.postal_code]
+                          .filter(Boolean)
+                          .join(", ")}
                       </p>
                       {cart.shipping_address.phone && (
                         <p className="text-muted">{cart.shipping_address.phone}</p>
@@ -1308,7 +1617,7 @@ export default function CheckoutPage() {
 
                   {/* Shipping method summary */}
                   {cart.shipping_methods && cart.shipping_methods.length > 0 && (
-                    <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
+                    <div className="border-border bg-background/80 rounded-xl border p-4 text-sm">
                       <p className="text-muted mb-1 text-sm font-semibold">Shipping method</p>
                       {cart.shipping_methods.map((m) => (
                         <p key={m.id} className="text-foreground">
@@ -1319,12 +1628,12 @@ export default function CheckoutPage() {
                   )}
 
                   {/* Payment method summary */}
-                  <div className="border-border/50 bg-surface-soft rounded-[var(--radius)] border p-4 text-sm">
+                  <div className="border-border bg-background/80 rounded-xl border p-4 text-sm">
                     <p className="text-muted mb-1 text-sm font-semibold">Payment</p>
                     {paymentMethod === "mpesa_express" ? (
                       <>
                         <p className="text-foreground flex items-center gap-2">
-                          <Smartphone className="text-trust h-4 w-4" />
+                          <Smartphone className="text-secondary h-4 w-4" />
                           M-Pesa Express to {mpesaPhone || "your phone"}
                         </p>
                         <p className="text-muted mt-1 text-xs">
@@ -1335,7 +1644,7 @@ export default function CheckoutPage() {
                     ) : (
                       <>
                         <p className="text-foreground flex items-center gap-2">
-                          <Receipt className="text-trust h-4 w-4" />
+                          <Receipt className="text-secondary h-4 w-4" />
                           M-Pesa Paybill {MPESA_PAYBILL_NUMBER}
                         </p>
                         <p className="text-muted mt-1 text-xs">
@@ -1346,44 +1655,75 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  <p className="text-muted text-sm">Review your details before continuing.</p>
-                  <Button
-                    onPress={() => completeMutation.mutate()}
-                    isDisabled={
-                      completeMutation.isPending ||
-                      finalizeOrderMutation.isPending ||
-                      hasUnavailableItems
-                    }
-                    variant="ghost"
-                    className="az-btn az-btn-primary az-focus rounded-full px-6 py-2.5 disabled:opacity-50"
+                  <label
+                    htmlFor="checkout-terms"
+                    className="flex min-h-11 items-start gap-2.5 text-sm"
                   >
-                    {completeMutation.isPending || finalizeOrderMutation.isPending
-                      ? paymentMethod === "mpesa_express"
-                        ? "Sending Prompt..."
-                        : "Placing Order..."
-                      : paymentMethod === "mpesa_express"
-                        ? "Send M-Pesa Prompt"
-                        : "Place Order"}
-                  </Button>
-                  <Button
-                    onPress={() => {
-                      setStep("payment");
-                      setErrorMessage(null);
-                    }}
-                    variant="ghost"
-                    className="az-focus text-muted hover:text-foreground ml-4 rounded-full text-sm font-medium transition"
-                  >
-                    &larr; Back to Payment
-                  </Button>
+                    <input
+                      id="checkout-terms"
+                      name="terms"
+                      type="checkbox"
+                      required
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="accent-primary focus-visible:outline-secondary mt-0.5 h-4 w-4 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2"
+                    />
+                    <span className="text-muted">
+                      I agree to Azani&apos;s{" "}
+                      <Link
+                        href="/policies/terms"
+                        target="_blank"
+                        className="text-secondary font-medium hover:underline"
+                      >
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/policies/privacy"
+                        target="_blank"
+                        className="text-secondary font-medium hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      onClick={() => completeMutation.mutate()}
+                      disabled={
+                        completeMutation.isPending ||
+                        finalizeOrderMutation.isPending ||
+                        checkoutBlocked ||
+                        !acceptedTerms
+                      }
+                      className="bg-primary hover:bg-primary-hover focus-visible:ring-primary inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+                    >
+                      {completeMutation.isPending || finalizeOrderMutation.isPending
+                        ? paymentMethod === "mpesa_express"
+                          ? "Sending Prompt..."
+                          : "Placing Order..."
+                        : paymentMethod === "mpesa_express"
+                          ? "Send M-Pesa Prompt"
+                          : "Place Order"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStep("payment");
+                        setErrorMessage(null);
+                      }}
+                      className={BACK_LINK_CLASS}
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      Back to Payment
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Order Summary sidebar */}
-            <div
-              data-testid="checkout-order-summary"
-              className="az-surface max-w-full min-w-0 p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start"
-            >
+            <div className="border-border bg-card rounded-xl border p-4 sm:p-6 lg:sticky lg:top-24 lg:self-start">
               <h3 className="text-foreground mb-4 text-base font-semibold">
                 Order Summary
                 <span className="text-muted ml-1.5 text-sm font-medium">
@@ -1407,39 +1747,71 @@ export default function CheckoutPage() {
                         label: "",
                       };
                   const resolvedImage = resolveOrderItemImage(item, product);
+                  const productName = product?.title || item.title;
+                  const variant =
+                    product?.variants?.find((candidate) => candidate.id === item.variant_id) ??
+                    item.variant;
+                  const variantDetails = (variant?.options ?? []).flatMap((value) => {
+                    const option = product?.options?.find(
+                      (candidate) => candidate.id === value.option_id,
+                    );
+                    if (!option) return [];
+                    return [
+                      {
+                        name: /^colou?r$/i.test(option.title) ? "Colour" : option.title,
+                        value: value.value,
+                      },
+                    ];
+                  });
+                  const fallbackVariant = variant?.title ?? item.description;
 
                   return (
                     <div key={item.id} className="flex gap-3">
-                      <div className="border-border/50 bg-product-media relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-[var(--radius)] border">
+                      <div className="border-border bg-background relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border">
                         {resolvedImage ? (
                           <Image
                             src={resolvedImage}
-                            alt={item.title}
+                            alt={productName}
                             fill
                             sizes="56px"
-                            className="object-cover"
+                            className="object-contain p-1"
+                            style={{
+                              transform: getProductImageRotation(product)
+                                ? "rotate(90deg) scale(.75)"
+                                : undefined,
+                            }}
                           />
                         ) : (
                           <div className="text-muted flex h-full w-full items-center justify-center">
                             <Package className="h-5 w-5" />
                           </div>
                         )}
-                        <span className="bg-promo text-2xs absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full font-bold text-white shadow">
-                          {item.quantity}
-                        </span>
                       </div>
-                      <div className="flex flex-1 flex-col justify-center overflow-hidden">
-                        <p className="text-foreground truncate text-sm font-medium">{item.title}</p>
-                        <div className="text-muted flex items-center gap-2 text-sm">
-                          <span>{formatPrice(item.unit_price, currencyCode)}</span>
-                          {item.quantity > 1 && <span className="text-xs">× {item.quantity}</span>}
-                        </div>
+                      <div className="flex min-w-0 flex-1 flex-col justify-center">
+                        <p className="text-foreground text-sm font-medium break-words">
+                          {productName}
+                        </p>
+                        {variantDetails.length > 0 ? (
+                          <div className="text-muted mt-1 flex flex-wrap gap-x-3 text-sm">
+                            {variantDetails.map((detail) => (
+                              <span key={detail.name}>
+                                {detail.name}: {detail.value}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          fallbackVariant &&
+                          !["Default variant", "-", "--"].includes(fallbackVariant) && (
+                            <p className="text-muted mt-1 text-sm">Variant: {fallbackVariant}</p>
+                          )
+                        )}
+                        <p className="text-muted text-sm">Quantity: {item.quantity}</p>
                         <p
                           className={`mt-1 text-sm font-medium ${
                             availability.isOutOfStock
-                              ? "az-status-danger"
+                              ? "text-danger"
                               : availability.isLowStock
-                                ? "az-status-warning"
+                                ? "text-accent-yellow-ink"
                                 : "text-muted"
                           }`}
                         >
@@ -1462,41 +1834,43 @@ export default function CheckoutPage() {
               </div>
 
               {/* Totals */}
-              <div className="border-border/50 space-y-2.5 border-t pt-4 text-sm">
+              <div className="border-border space-y-2.5 border-t pt-4 text-sm">
                 <div className="text-muted flex justify-between">
                   <span>Subtotal</span>
                   <span className="text-foreground">
-                    {formatPrice(cart.subtotal, currencyCode)}
+                    {formatPrice(amounts.items, currencyCode)}
                   </span>
                 </div>
-                {cart.shipping_total > 0 && (
-                  <div className="text-muted flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-foreground">
-                      {formatPrice(cart.shipping_total, currencyCode)}
-                    </span>
-                  </div>
-                )}
-                {cart.tax_total > 0 && (
+                <div className="text-muted flex justify-between">
+                  <span>Shipping</span>
+                  <span className="text-foreground">
+                    {shippingKnown
+                      ? amounts.shipping === 0
+                        ? "Free"
+                        : formatPrice(amounts.shipping, currencyCode)
+                      : "Calculated after your address"}
+                  </span>
+                </div>
+                {amounts.tax > 0 && (
                   <div className="text-muted flex justify-between">
                     <span>Tax</span>
                     <span className="text-foreground">
-                      {formatPrice(cart.tax_total, currencyCode)}
+                      {formatPrice(amounts.tax, currencyCode)}
                     </span>
                   </div>
                 )}
-                {cart.discount_total > 0 && (
+                {amounts.discount > 0 && (
                   <div className="text-success-ink flex justify-between">
                     <span>Discount</span>
                     <span className="font-medium">
-                      -{formatPrice(cart.discount_total, currencyCode)}
+                      -{formatPrice(amounts.discount, currencyCode)}
                     </span>
                   </div>
                 )}
-                <div className="border-border/50 border-t pt-3">
-                  <div className="text-foreground flex justify-between text-base font-bold">
-                    <span>Total</span>
-                    <span>{formatPrice(cart.total, currencyCode)}</span>
+                <div className="border-border border-t pt-3">
+                  <div className="text-foreground flex items-baseline justify-between gap-4 text-base font-bold">
+                    <span>{shippingKnown ? "Total" : "Total before shipping"}</span>
+                    <span className="shrink-0">{formatPrice(cart.total, currencyCode)}</span>
                   </div>
                 </div>
               </div>

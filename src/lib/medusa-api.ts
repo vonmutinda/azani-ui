@@ -1,4 +1,13 @@
 import {
+  assertCartEditable,
+  clearCheckoutRecovery,
+  getCheckoutRecovery,
+  PAYMENT_LOCK_MESSAGE,
+  rememberCheckoutCart,
+  saveCheckoutRecovery,
+  type CheckoutRecovery,
+} from "@/lib/checkout-recovery";
+import {
   MedusaCart,
   MedusaProduct,
   MedusaProductCategory,
@@ -79,7 +88,8 @@ export async function getProducts(
     count: number;
     offset: number;
     limit: number;
-  }>("store/products", {
+    facets?: { sizes: string[]; colours: string[] };
+  }>("store/clothing-products", {
     searchParams: {
       limit: 20,
       offset: 0,
@@ -92,7 +102,7 @@ export async function getProducts(
 export async function getProductByHandle(handle: string) {
   const pricingParams = await getProductPricingParams();
 
-  const res = await medusaRequest<{ products: MedusaProduct[] }>("store/products", {
+  const res = await medusaRequest<{ products: MedusaProduct[] }>("store/clothing-products", {
     searchParams: { handle, limit: 1, ...pricingParams },
   });
   return res.products[0] ?? null;
@@ -101,7 +111,7 @@ export async function getProductByHandle(handle: string) {
 export async function getProductById(id: string) {
   const pricingParams = await getProductPricingParams();
 
-  return medusaRequest<{ product: MedusaProduct }>(`store/products/${validateId(id)}`, {
+  return medusaRequest<{ product: MedusaProduct }>(`store/clothing-products/${validateId(id)}`, {
     searchParams: pricingParams,
   });
 }
@@ -109,13 +119,8 @@ export async function getProductById(id: string) {
 export async function getProductsByIds(productIds: string[]) {
   if (productIds.length === 0) return [];
 
-  let listedProducts: MedusaProduct[] = [];
-  try {
-    const listed = await getProducts({ id: productIds, limit: productIds.length });
-    listedProducts = listed.products ?? [];
-  } catch {
-    // Fallback to per-product fetches below.
-  }
+  const listed = await getProducts({ id: productIds, limit: productIds.length });
+  const listedProducts = listed.products ?? [];
 
   const listedProductMap = new Map(listedProducts.map((product) => [product.id, product]));
   const missingIds = productIds.filter((productId) => !listedProductMap.has(productId));
@@ -125,8 +130,9 @@ export async function getProductsByIds(productIds: string[]) {
       try {
         const res = await getProductById(productId);
         return res.product;
-      } catch {
-        return null;
+      } catch (error) {
+        if ((error as Error & { status?: number }).status === 404) return null;
+        throw error;
       }
     }),
   );
@@ -152,7 +158,7 @@ export async function getCategories(
     count: number;
     offset: number;
     limit: number;
-  }>("store/product-categories", {
+  }>("store/clothing-categories", {
     searchParams: {
       limit: 100,
       include_descendants_tree: true,
@@ -164,7 +170,7 @@ export async function getCategories(
 export async function getCategoryByHandle(handle: string) {
   const res = await medusaRequest<{
     product_categories: MedusaProductCategory[];
-  }>("store/product-categories", {
+  }>("store/clothing-categories", {
     searchParams: { handle, limit: 1, include_descendants_tree: true },
   });
   return res.product_categories[0] ?? null;
@@ -180,6 +186,7 @@ export async function getOrCreateCart(): Promise<MedusaCart> {
       const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${validateId(cartId)}`);
       // Medusa still returns 200 for a completed cart, but mutations against
       // it 400 with "already completed". Treat it as gone and mint a fresh one.
+      rememberCheckoutCart(res.cart);
       if (!res.cart.completed_at) {
         return res.cart;
       }
@@ -210,7 +217,10 @@ export async function getCart(): Promise<MedusaCart | null> {
   if (!cartId) return null;
 
   try {
-    const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`);
+    const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`, {
+      searchParams: { fields: "+items.variant.title,+shipping_methods.name" },
+    });
+    rememberCheckoutCart(res.cart);
     // An already-completed cart shouldn't drive the storefront UI (mutations
     // against it 400). Drop the stored id so the next `getOrCreateCart` mints
     // a new one, and surface "no cart" to callers like the cart page.
@@ -224,8 +234,20 @@ export async function getCart(): Promise<MedusaCart | null> {
   }
 }
 
+// Checkout must retain a callback-completed cart until its order is recovered.
+export async function getCheckoutCart(): Promise<MedusaCart | null> {
+  const cartId = getCheckoutRecovery()?.cartId ?? getStoredCartId();
+  if (!cartId) return null;
+  const res = await medusaRequest<{ cart: MedusaCart }>(`store/carts/${validateId(cartId)}`, {
+    searchParams: { fields: "+items.variant.title,+shipping_methods.name" },
+  });
+  rememberCheckoutCart(res.cart);
+  return res.cart;
+}
+
 export async function addToCart(variantId: string, quantity = 1) {
   const cart = await getOrCreateCart();
+  assertCartEditable(cart.id);
   return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cart.id}/line-items`, {
     method: "POST",
     body: { variant_id: variantId, quantity },
@@ -235,6 +257,7 @@ export async function addToCart(variantId: string, quantity = 1) {
 export async function updateLineItem(lineItemId: string, quantity: number) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(
     `store/carts/${validateId(cartId)}/line-items/${validateId(lineItemId)}`,
@@ -248,6 +271,7 @@ export async function updateLineItem(lineItemId: string, quantity: number) {
 export async function removeLineItem(lineItemId: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(
     `store/carts/${validateId(cartId)}/line-items/${validateId(lineItemId)}`,
@@ -260,6 +284,7 @@ export async function removeLineItem(lineItemId: string) {
 export async function updateCart(data: Record<string, unknown>) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}`, {
     method: "POST",
@@ -270,6 +295,7 @@ export async function updateCart(data: Record<string, unknown>) {
 export async function addPromoCode(code: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/promotions`, {
     method: "POST",
@@ -280,6 +306,7 @@ export async function addPromoCode(code: string) {
 export async function removePromoCode(code: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/promotions`, {
     method: "DELETE",
@@ -301,6 +328,7 @@ export async function getShippingOptions() {
 export async function addShippingMethod(optionId: string) {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
+  assertCartEditable(cartId);
 
   return medusaRequest<{ cart: MedusaCart }>(`store/carts/${cartId}/shipping-methods`, {
     method: "POST",
@@ -317,27 +345,54 @@ export async function initializePaymentSession(opts?: {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  // Create payment collection for the cart
-  const pcRes = await medusaRequest<{
-    payment_collection: {
-      id: string;
-      payment_sessions?: { id: string; provider_id: string; status: string }[];
-    };
-  }>("store/payment-collections", {
-    method: "POST",
-    body: { cart_id: cartId },
-  });
+  if (opts?.providerId !== "pp_family_bank_family_bank") {
+    throw new Error("Only Family Bank M-Pesa Express payments are available.");
+  }
+  const previousRecovery = getCheckoutRecovery();
+  if (previousRecovery?.state === "unresolved") throw new Error(PAYMENT_LOCK_MESSAGE);
+  const data: Record<string, string> = {};
+  for (const key of ["mpesa_phone", "phone"]) {
+    const value = opts.data?.[key];
+    if (typeof value === "string") data[key] = value;
+  }
 
-  const pcId = pcRes.payment_collection.id;
+  // Own the lock before any await, but distinguish preparation from a request
+  // that might already have reached the bank.
+  const attempt: CheckoutRecovery = {
+    cartId,
+    sessionId: null,
+    state: "unresolved",
+    attemptId: crypto.randomUUID(),
+    phase: "collection",
+    ...(previousRecovery?.cartId === cartId && previousRecovery.sessionId
+      ? { previousSessionId: previousRecovery.sessionId }
+      : {}),
+  };
+  saveCheckoutRecovery(attempt);
+  let pcId: string;
+  try {
+    const pcRes = await medusaRequest<{ payment_collection: { id: string } }>(
+      "store/payment-collections",
+      { method: "POST", body: { cart_id: cartId } },
+    );
+    pcId = validateId(pcRes.payment_collection.id);
+  } catch (error) {
+    // No session POST occurred, so this attempt cannot have initiated STK.
+    // A newer owner must never be cleared by this older asynchronous failure.
+    if (getCheckoutRecovery()?.attemptId === attempt.attemptId) {
+      if (previousRecovery) saveCheckoutRecovery(previousRecovery);
+      else clearCheckoutRecovery(cartId);
+    }
+    throw error;
+  }
+  if (getCheckoutRecovery()?.attemptId !== attempt.attemptId) {
+    throw new Error("Payment attempt changed. Check payment status before continuing.");
+  }
+  saveCheckoutRecovery({ ...attempt, phase: "session" });
 
-  // Provider-specific session payload. M-Pesa Express requires `data.mpesa_phone`
-  // so the backend can fire an STK Push to the payer; the system default
-  // provider takes no extra fields.
-  const providerId = opts?.providerId ?? "pp_system_default";
-  const body: Record<string, unknown> = { provider_id: providerId };
-  if (opts?.data) body.data = opts.data;
+  const body = { provider_id: "pp_family_bank_family_bank", data };
 
-  return medusaRequest<{
+  const result = await medusaRequest<{
     payment_collection: {
       id: string;
       payment_sessions: { id: string; provider_id: string; status: string }[];
@@ -346,18 +401,39 @@ export async function initializePaymentSession(opts?: {
     method: "POST",
     body,
   });
+  const currentRecovery = getCheckoutRecovery();
+  if (!currentRecovery || currentRecovery.attemptId !== attempt.attemptId) {
+    throw new Error("Payment attempt changed. Check payment status before continuing.");
+  }
+  const session = result.payment_collection.payment_sessions?.find(
+    (candidate) =>
+      candidate.provider_id === "pp_family_bank_family_bank" &&
+      candidate.id !== attempt.previousSessionId,
+  );
+  if (session && !currentRecovery.sessionId) {
+    saveCheckoutRecovery({ ...currentRecovery, sessionId: session.id });
+  }
+  return result;
 }
 
 // ── Checkout ────────────────────────────────────────────────────────
 
 export async function completeCart() {
-  const cartId = getStoredCartId();
+  const cartId = getCheckoutRecovery()?.cartId ?? getStoredCartId();
   if (!cartId) throw new Error("No cart found");
 
-  return medusaRequest<{ type: string; cart?: MedusaCart; order?: unknown }>(
-    `store/carts/${cartId}/complete`,
-    { method: "POST" },
-  );
+  const result = await medusaRequest<{
+    type: string;
+    cart?: MedusaCart;
+    order?: unknown;
+    error?: { message?: string };
+  }>(`store/carts/${cartId}/complete`, { method: "POST" });
+  const order = result.order as { id?: unknown } | undefined;
+  if (result.type === "order" && typeof order?.id === "string" && order.id.trim()) {
+    if (getStoredCartId() === cartId) clearStoredCartId();
+    clearCheckoutRecovery(cartId);
+  }
+  return result;
 }
 
 // ── Auth ────────────────────────────────────────────────────────────

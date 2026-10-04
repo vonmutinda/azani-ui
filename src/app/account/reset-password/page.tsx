@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { Button, Input } from "@heroui/react";
 import { resetPassword } from "@/lib/medusa-api";
 import Link from "next/link";
 import { CheckCircle, AlertTriangle } from "lucide-react";
@@ -41,25 +40,24 @@ export default function ResetPasswordPage() {
   };
 
   const inputClass =
-    "h-10 w-full rounded-[var(--radius)] border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
+    "h-10 w-full rounded-xl border border-border/50 bg-background px-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15";
 
   if (!token || !email) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-8 text-center">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
           <div className="bg-danger/10 flex h-16 w-16 items-center justify-center rounded-full">
             <AlertTriangle className="text-danger h-7 w-7" />
           </div>
           <h1 className="text-foreground text-xl font-bold">Invalid Reset Link</h1>
           <p className="text-muted text-sm">
-            This password reset link is missing required parameters. Please request a new reset
-            link.
+            This reset link is invalid or has expired. Request a new link to reset your password.
           </p>
           <Link
-            href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            href="/account/login?view=forgot"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
-            Back to Sign In
+            Request a new reset link
           </Link>
         </div>
       </div>
@@ -69,7 +67,7 @@ export default function ResetPasswordPage() {
   if (mutation.isSuccess) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-[var(--radius)] border p-8 text-center">
+        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-8 text-center">
           <div className="bg-accent-green-light flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-accent-green h-7 w-7" />
           </div>
@@ -79,7 +77,7 @@ export default function ResetPasswordPage() {
           </p>
           <Link
             href="/account/login"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            className="bg-primary hover:bg-primary-hover inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
           >
             Sign In
           </Link>
@@ -94,7 +92,7 @@ export default function ResetPasswordPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="border-border/50 bg-card space-y-4 rounded-[var(--radius)] border p-4 sm:p-6"
+        className="border-border/50 bg-card space-y-4 rounded-2xl border p-4 sm:p-6"
       >
         <p className="text-muted text-sm">
           Enter a new password for{" "}
@@ -103,25 +101,23 @@ export default function ResetPasswordPage() {
 
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">New Password</label>
-          <Input
+          <input
             type="password"
             placeholder="New password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
-            variant="secondary"
           />
         </div>
 
         <div>
           <label className="text-muted mb-1.5 block text-sm font-medium">Confirm Password</label>
-          <Input
+          <input
             type="password"
             placeholder="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className={inputClass}
-            variant="secondary"
           />
         </div>
 
@@ -130,28 +126,30 @@ export default function ResetPasswordPage() {
         {mutation.error && (
           <p className="text-danger text-sm">
             This reset link has expired or is invalid. Please{" "}
-            <Link href="/account/login" className="text-secondary font-medium underline">
+            <Link
+              href="/account/login?view=forgot"
+              className="text-secondary font-medium underline"
+            >
               request a new one
             </Link>
             .
           </p>
         )}
 
-        <Button
+        <button
           type="submit"
-          isDisabled={mutation.isPending}
-          variant="ghost"
-          className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          disabled={mutation.isPending}
+          className="bg-primary hover:bg-primary-hover focus-visible:ring-primary/30 w-full rounded-full py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
         >
           {mutation.isPending ? "Resetting..." : "Reset Password"}
-        </Button>
+        </button>
 
         <p className="text-muted text-center text-sm">
           <Link
-            href="/account/login"
+            href="/account/login?view=forgot"
             className="text-secondary focus-visible:ring-secondary/20 rounded font-medium transition hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
-            Back to Sign In
+            Request a new reset link
           </Link>
         </p>
       </form>

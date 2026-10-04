@@ -1,37 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup } from "@testing-library/react";
-import { toast as heroToast } from "@heroui/react";
-import { afterEach, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, beforeEach, vi } from "vitest";
 
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
-
-Object.defineProperty(window, "ResizeObserver", {
-  writable: true,
-  value: class ResizeObserver {
-    observe = vi.fn();
-    unobserve = vi.fn();
-    disconnect = vi.fn();
-  },
-});
-
-afterEach(async () => {
+afterEach(() => {
   cleanup();
-
-  await act(async () => {
-    heroToast.clear();
-  });
 });
 
 // Mock next/navigation
@@ -52,11 +24,11 @@ vi.mock("next/image", () => ({
   default: (
     props: React.ImgHTMLAttributes<HTMLImageElement> & {
       fill?: boolean;
-      preload?: boolean;
       priority?: boolean;
+      unoptimized?: boolean;
     },
   ) => {
-    const { fill: _fill, preload: _preload, priority: _priority, ...rest } = props;
+    const { fill: _fill, priority: _priority, unoptimized: _unoptimized, ...rest } = props;
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img {...rest} />;
   },
@@ -101,3 +73,8 @@ const localStorageMock = {
   key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
 };
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock });
+
+// Any test requiring HTTP must supply a synthetic fetch mock.
+vi.stubGlobal("fetch", () => Promise.reject(new Error("Unmocked network request in test")));
+
+beforeEach(() => localStorage.clear());

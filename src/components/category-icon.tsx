@@ -27,6 +27,20 @@ import {
   Thermometer,
   UtensilsCrossed,
 } from "lucide-react";
+import {
+  ClothingIllustration,
+  type ClothingIllustrationName,
+} from "@/components/clothing-illustration";
+
+const clothingIcons: Record<string, ClothingIllustrationName> = {
+  shirt: "shirt",
+  dress: "dress",
+  trousers: "trousers",
+  jacket: "jacket",
+  outfit: "outfit",
+  socks: "socks",
+  moon: "sleepwear",
+};
 
 const iconMap: Record<string, React.ElementType> = {
   baby: Baby,
@@ -60,33 +74,33 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const ICON_COLORS: Record<string, string> = {
-  utensils: "text-accent-warm",
-  milk: "text-accent-warm",
-  bath: "text-secondary",
-  droplets: "text-secondary",
-  bed: "text-trust",
-  moon: "text-trust",
-  armchair: "text-trust",
-  bike: "text-success",
-  car: "text-success",
-  shirt: "text-primary",
-  baby: "text-primary",
-  crown: "text-primary",
-  book: "text-warning",
-  gamepad: "text-warning",
-  "heart-handshake": "text-primary",
-  heart: "text-primary",
-  gift: "text-primary",
-  sparkles: "text-warning",
-  star: "text-warning",
-  shield: "text-success",
-  footprints: "text-secondary",
-  thermometer: "text-danger",
-  cloud: "text-secondary",
-  package: "text-muted",
-  briefcase: "text-muted",
-  layout: "text-muted",
-  circle: "text-muted",
+  utensils: "text-orange-500",
+  milk: "text-orange-500",
+  bath: "text-sky-500",
+  droplets: "text-sky-500",
+  bed: "text-violet-500",
+  moon: "text-violet-500",
+  armchair: "text-violet-500",
+  bike: "text-emerald-500",
+  car: "text-emerald-500",
+  shirt: "text-pink-500",
+  baby: "text-pink-500",
+  crown: "text-pink-500",
+  book: "text-amber-500",
+  gamepad: "text-amber-500",
+  "heart-handshake": "text-rose-400",
+  heart: "text-rose-400",
+  gift: "text-rose-400",
+  sparkles: "text-amber-400",
+  star: "text-amber-400",
+  shield: "text-emerald-500",
+  footprints: "text-sky-400",
+  thermometer: "text-red-400",
+  cloud: "text-sky-400",
+  package: "text-slate-500",
+  briefcase: "text-slate-500",
+  layout: "text-slate-500",
+  circle: "text-slate-500",
 };
 
 type Props = {
@@ -97,9 +111,17 @@ type Props = {
 };
 
 export function CategoryIcon({ icon, className, size = 20, colored }: Props) {
+  if (clothingIcons[icon]) {
+    return <ClothingIllustration name={clothingIcons[icon]} size={size} className={className} />;
+  }
   const Icon = iconMap[icon] ?? Baby;
   const colorClass = colored ? (ICON_COLORS[icon] ?? "") : "";
   return (
-    <Icon className={`${colorClass} ${className ?? ""}`} style={{ width: size, height: size }} />
+    <Icon
+      aria-hidden="true"
+      strokeWidth={1.5}
+      className={`${colorClass} ${className ?? ""}`}
+      style={{ width: size, height: size }}
+    />
   );
 }

@@ -1,36 +1,23 @@
-import { beforeEach, describe, it, expect, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import CartPage from "@/app/cart/page";
 import { renderWithProviders } from "../test-utils";
 import { mockCart, mockEmptyCart, mockProduct } from "../fixtures";
+import { addPromoCode, removeLineItem, removePromoCode, updateLineItem } from "@/lib/medusa-api";
 
 const mockGetCart = vi.fn();
-const mockGetProductsByIds = vi.fn();
-const mockUpdateLineItem = vi.fn();
-const mockRemoveLineItem = vi.fn();
-const mockAddPromoCode = vi.fn();
-const mockRemovePromoCode = vi.fn();
+const mockGetProducts = vi.fn().mockResolvedValue([mockProduct]);
 
 vi.mock("@/lib/medusa-api", () => ({
   getCart: (...args: unknown[]) => mockGetCart(...args),
-  getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
-  updateLineItem: (...args: unknown[]) => mockUpdateLineItem(...args),
-  removeLineItem: (...args: unknown[]) => mockRemoveLineItem(...args),
-  addPromoCode: (...args: unknown[]) => mockAddPromoCode(...args),
-  removePromoCode: (...args: unknown[]) => mockRemovePromoCode(...args),
+  getProductsByIds: (...args: unknown[]) => mockGetProducts(...args),
+  updateLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
+  removeLineItem: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
+  addPromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
+  removePromoCode: vi.fn().mockResolvedValue({ cart: { id: "cart_01", items: [] } }),
 }));
 
 describe("CartPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetCart.mockResolvedValue(mockCart);
-    mockGetProductsByIds.mockResolvedValue([mockProduct]);
-    mockUpdateLineItem.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
-    mockRemoveLineItem.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
-    mockAddPromoCode.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
-    mockRemovePromoCode.mockResolvedValue({ cart: { id: "cart_01", items: [] } });
-  });
-
   it("renders empty cart state when no items", async () => {
     mockGetCart.mockResolvedValueOnce(mockEmptyCart);
 
@@ -65,16 +52,8 @@ describe("CartPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Order Summary")).toBeInTheDocument();
       expect(screen.getAllByText("Subtotal").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText("Total")).toBeInTheDocument();
+      expect(screen.getByText("Total before shipping")).toBeInTheDocument();
     });
-  });
-
-  it("exposes an accessible promo code input", async () => {
-    mockGetCart.mockResolvedValueOnce(mockCart);
-
-    renderWithProviders(<CartPage />);
-
-    expect(await screen.findByRole("textbox", { name: /promo code/i })).toBeInTheDocument();
   });
 
   it("shows checkout link", async () => {
@@ -114,25 +93,198 @@ describe("CartPage", () => {
       expect(screen.getAllByText("KSh3,000.00").length).toBeGreaterThanOrEqual(1);
     });
   });
+});
 
-  it("updates cart quantity from accessible increment controls", async () => {
-    mockGetCart.mockResolvedValueOnce(mockCart);
+it("names quantity and removal actions for the product they affect", async () => {
+  mockGetCart.mockResolvedValue(mockCart);
+  renderWithProviders(<CartPage />);
+  await screen.findByRole("link", { name: "Proceed to Checkout" });
+  const title = "Pampers Baby Dry Diapers - 24 Count";
+  const quantity = screen.getByRole("textbox", { name: `Quantity for ${title}` });
+  expect(quantity).toHaveValue("2");
+  fireEvent.click(screen.getByRole("button", { name: `Increase quantity for ${title}` }));
+  await waitFor(() => expect(updateLineItem).toHaveBeenCalledWith("item_01", 3));
+  fireEvent.click(screen.getByRole("button", { name: `Decrease quantity for ${title}` }));
+  await waitFor(() => expect(updateLineItem).toHaveBeenCalledWith("item_01", 1));
+  fireEvent.click(screen.getByRole("button", { name: `Remove ${title} from cart` }));
+  await waitFor(() => expect(removeLineItem).toHaveBeenCalledWith("item_01"));
+});
 
-    renderWithProviders(<CartPage />);
+it("discloses the promo field on demand and links apply errors to it", async () => {
+  mockGetCart.mockResolvedValue(mockCart);
+  vi.mocked(addPromoCode).mockRejectedValueOnce(new Error("This code has expired"));
+  renderWithProviders(<CartPage />);
+  const disclosure = await screen.findByText("Have a promo code?");
+  expect(screen.getByLabelText("Promo code")).not.toBeVisible();
+  fireEvent.click(disclosure);
+  const input = screen.getByRole("textbox", { name: "Promo code" });
+  expect(input).toBeVisible();
+  fireEvent.change(input, { target: { value: "EXPIRED" } });
+  fireEvent.submit(input.closest("form")!);
+  expect(await screen.findByRole("alert")).toHaveTextContent("This code has expired");
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input).toHaveAccessibleDescription("This code has expired");
+  expect(addPromoCode).toHaveBeenCalledWith("EXPIRED");
+});
 
-    const increase = await screen.findByRole("button", {
-      name: /increase quantity for pampers baby dry diapers/i,
-    });
-    fireEvent.click(increase);
-
-    await waitFor(() => expect(mockUpdateLineItem).toHaveBeenCalledWith("item_01", 3));
+it("keeps a successfully applied promo visible and exposes its removal action", async () => {
+  mockGetCart.mockResolvedValueOnce(mockCart).mockResolvedValue({
+    ...mockCart,
+    promotions: [{ id: "promo_1", code: "WELCOME" }],
   });
-
-  it("shows specific free delivery progress copy", async () => {
-    mockGetCart.mockResolvedValueOnce(mockCart);
-
-    renderWithProviders(<CartPage />);
-
-    expect(await screen.findByText(/KSh7,000.00 away from free delivery/i)).toBeInTheDocument();
+  renderWithProviders(<CartPage />);
+  fireEvent.click(await screen.findByText("Have a promo code?"));
+  fireEvent.change(screen.getByRole("textbox", { name: "Promo code" }), {
+    target: { value: "WELCOME" },
   });
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  const remove = await screen.findByRole("button", { name: "Remove promo code WELCOME" });
+  expect(remove).toBeVisible();
+  expect(addPromoCode).toHaveBeenCalledWith("WELCOME");
+  fireEvent.click(remove);
+  await waitFor(() => expect(removePromoCode).toHaveBeenCalledWith("WELCOME"));
+});
+
+it("shows the selected shipping charge and a final total when shipping is known", async () => {
+  mockGetCart.mockResolvedValueOnce({
+    ...mockCart,
+    item_subtotal: 3000,
+    shipping_subtotal: 150,
+    subtotal: 3150,
+    shipping_total: 150,
+    total: 3150,
+    shipping_methods: [{ id: "sm_1", name: "Standard Shipping", amount: 150 }],
+  });
+  renderWithProviders(<CartPage />);
+  expect(await screen.findByText("Total")).toBeInTheDocument();
+  expect(screen.getByText("KSh150.00")).toBeInTheDocument();
+  expect(screen.queryByText("Calculated at checkout")).not.toBeInTheDocument();
+  expect(screen.queryByText(/within 24 hours/i)).not.toBeInTheDocument();
+});
+
+it("blocks checkout for retired products even when the cart has stale variant stock", async () => {
+  mockGetCart.mockResolvedValueOnce({
+    ...mockCart,
+    items: mockCart.items.map((item) => ({ ...item, variant: mockProduct.variants![0] })),
+  });
+  mockGetProducts.mockResolvedValueOnce([]);
+  renderWithProviders(<CartPage />);
+  await screen.findByText(/Some items are no longer available/);
+  expect(screen.queryByRole("link", { name: "Proceed to Checkout" })).not.toBeInTheDocument();
+});
+
+it("blocks a removed size even when the product and cached variant still exist", async () => {
+  mockGetCart.mockResolvedValueOnce({
+    ...mockCart,
+    items: mockCart.items.map((item) => ({ ...item, variant: mockProduct.variants![0] })),
+  });
+  mockGetProducts.mockResolvedValueOnce([{ ...mockProduct, variants: [] }]);
+  renderWithProviders(<CartPage />);
+  await screen.findByText(/Some items are no longer available/);
+  expect(screen.queryByRole("link", { name: "Proceed to Checkout" })).not.toBeInTheDocument();
+});
+
+it("blocks checkout when the requested quantity exceeds current managed stock", async () => {
+  const liveVariant = {
+    ...mockProduct.variants![0],
+    manage_inventory: true,
+    allow_backorder: false,
+    inventory_quantity: 1,
+  };
+  mockGetCart.mockResolvedValueOnce({
+    ...mockCart,
+    items: mockCart.items.map((item) => ({ ...item, quantity: 2, variant: liveVariant })),
+  });
+  mockGetProducts.mockResolvedValueOnce([{ ...mockProduct, variants: [liveVariant] }]);
+
+  renderWithProviders(<CartPage />);
+
+  await screen.findByText(/Some items are no longer available/);
+  expect(screen.queryByRole("link", { name: "Proceed to Checkout" })).not.toBeInTheDocument();
+});
+
+it("allows checkout when current stock covers a quantity above the quantity control cap", async () => {
+  const liveVariant = {
+    ...mockProduct.variants![0],
+    manage_inventory: true,
+    allow_backorder: false,
+    inventory_quantity: 20,
+  };
+  mockGetCart.mockResolvedValueOnce({
+    ...mockCart,
+    items: mockCart.items.map((item) => ({ ...item, quantity: 12, variant: liveVariant })),
+  });
+  mockGetProducts.mockResolvedValueOnce([{ ...mockProduct, variants: [liveVariant] }]);
+
+  renderWithProviders(<CartPage />);
+
+  expect(await screen.findByRole("link", { name: "Proceed to Checkout" })).toHaveAttribute(
+    "href",
+    "/checkout",
+  );
+  expect(screen.queryByText(/Some items are no longer available/)).not.toBeInTheDocument();
+});
+
+it("blocks checkout and offers a retry when availability cannot be checked", async () => {
+  mockGetCart.mockResolvedValueOnce(mockCart);
+  mockGetProducts.mockRejectedValueOnce(new Error("Catalogue unavailable"));
+
+  renderWithProviders(<CartPage />);
+
+  await screen.findByText(/couldn’t check item availability/i);
+  expect(screen.queryByText(/Some items are no longer available/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Proceed to Checkout" })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByRole("link", { name: "Proceed to Checkout" })).toHaveAttribute(
+    "href",
+    "/checkout",
+  );
+});
+
+it.each([{ promotions: [] }, { promotions: [{ code: "SAVE" }] }])(
+  "locks quantity, removal and promo controls after returning from unresolved checkout %#",
+  async ({ promotions }) => {
+    vi.clearAllMocks();
+    mockGetCart.mockResolvedValue({ ...mockCart, promotions });
+    localStorage.setItem(
+      "azani_checkout_recovery",
+      JSON.stringify({ cartId: mockCart.id, sessionId: "ps_pending", state: "unresolved" }),
+    );
+    renderWithProviders(<CartPage />);
+    expect(await screen.findByRole("link", { name: "Check payment status" })).toHaveAttribute(
+      "href",
+      "/checkout",
+    );
+    for (const button of screen.getAllByRole("button")) {
+      if (
+        /quantity|Remove|Apply/i.test(button.getAttribute("aria-label") ?? button.textContent ?? "")
+      )
+        expect(button).toBeDisabled();
+    }
+    if (!promotions.length) expect(screen.getByPlaceholderText("Enter code")).toBeDisabled();
+    expect(updateLineItem).not.toHaveBeenCalled();
+    expect(removeLineItem).not.toHaveBeenCalled();
+    expect(addPromoCode).not.toHaveBeenCalled();
+    expect(removePromoCode).not.toHaveBeenCalled();
+  },
+);
+
+it("locks an already open cart when another tab starts a payment", async () => {
+  mockGetCart.mockResolvedValue({ ...mockCart, promotions: [] });
+  renderWithProviders(<CartPage />);
+  const remove = await screen.findByRole("button", { name: /Remove .* from cart/ });
+  expect(remove).toBeEnabled();
+  act(() => {
+    localStorage.setItem(
+      "azani_checkout_recovery",
+      JSON.stringify({ cartId: mockCart.id, sessionId: "ps_other_tab", state: "unresolved" }),
+    );
+    window.dispatchEvent(new StorageEvent("storage", { key: "azani_checkout_recovery" }));
+  });
+  expect(remove).toBeDisabled();
+  expect(screen.getByRole("link", { name: "Check payment status" })).toHaveAttribute(
+    "href",
+    "/checkout",
+  );
 });

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ShoppingBag } from "lucide-react";
+import { EnamelUtilityIcon } from "@/components/enamel-utility-icon";
+import { ShoppingBag } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProductCard } from "@/components/product-card";
+import { buttonVariants } from "@/components/ui/button";
 import {
   getCustomer,
   getProductsByIds,
@@ -36,7 +38,7 @@ export default function WishlistPage() {
     mutationFn: (productId: string) => toggleWishlistProduct(productId),
     onSuccess: (wishlistIds) => {
       queryClient.setQueryData(["wishlist"], wishlistIds);
-      showToast("Moved to cart", "success");
+      showToast("Removed from wishlist", "success");
     },
   });
 
@@ -60,7 +62,7 @@ export default function WishlistPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-6 lg:px-8">
         <div className="bg-secondary-light mx-auto flex h-20 w-20 items-center justify-center rounded-full">
-          <Heart className="text-secondary h-8 w-8" />
+          <EnamelUtilityIcon name="wishlist" size={48} />
         </div>
         <h1 className="text-foreground mt-4 text-2xl font-bold">Wishlist</h1>
         <p className="text-muted mt-2 text-sm">
@@ -69,10 +71,7 @@ export default function WishlistPage() {
             : "Save products to your wishlist as a guest, or sign in to keep them synced to your account."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/products"
-            className="bg-foreground hover:bg-foreground/85 focus-visible:ring-foreground/30 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+          <Link href="/products" className={buttonVariants()}>
             Browse Products
           </Link>
           {!customer && (
@@ -99,37 +98,73 @@ export default function WishlistPage() {
               : "Your saved favorites in this browser. Sign in to keep them across devices."}
           </p>
         </div>
+        {!customer && (
+          <Link href="/account/login" className="text-secondary min-h-11 font-semibold underline">
+            Sign in to sync saved items
+          </Link>
+        )}
         <div className="border-foreground/10 bg-foreground/5 text-foreground rounded-full border px-3 py-1 text-xs font-semibold">
           {wishlistIds.length} {wishlistIds.length === 1 ? "item" : "items"}
         </div>
       </div>
 
+      {removeFromWishlist.isError && (
+        <p role="alert" className="text-danger mb-4">
+          We couldn’t remove that item. Please try again.
+        </p>
+      )}
       {wishlistProductsQuery.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="bg-border/40 aspect-[3/4] animate-pulse rounded-2xl" />
           ))}
         </div>
-      ) : products.length === 0 ? (
-        <div className="border-border/50 bg-card flex flex-col items-center gap-5 rounded-2xl border p-10 text-center">
-          <div className="bg-secondary-light flex h-20 w-20 items-center justify-center rounded-full">
-            <ShoppingBag className="text-secondary h-8 w-8" />
-          </div>
+      ) : wishlistProductsQuery.isError ? (
+        <div
+          role="alert"
+          className="border-border/50 bg-card flex flex-col items-center gap-4 rounded-2xl border p-10 text-center"
+        >
           <div>
-            <p className="text-foreground text-lg font-semibold">No saved products found</p>
-            <p className="text-muted mt-1 text-sm">
-              Some wishlist items may no longer be available.
+            <p className="text-foreground text-lg font-semibold">
+              We couldn’t load your saved products
             </p>
+            <p className="text-muted mt-1 text-sm">Please try again in a moment.</p>
           </div>
-          <Link
-            href="/products"
-            className="bg-foreground hover:bg-foreground/85 inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+          <button
+            type="button"
+            onClick={() => wishlistProductsQuery.refetch()}
+            className={buttonVariants()}
           >
-            Browse Products
-          </Link>
+            Try again
+          </button>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {wishlistProductsQuery.isSuccess &&
+            wishlistIds
+              .filter((id) => !products.some((product) => product.id === id))
+              .map((id) => (
+                <article
+                  key={id}
+                  className="border-border bg-card flex flex-col items-start gap-3 rounded-xl border p-6"
+                >
+                  <ShoppingBag className="text-muted h-8 w-8" aria-hidden="true" />
+                  <h2 className="text-lg font-semibold">Saved item unavailable</h2>
+                  <p className="text-muted text-sm">
+                    This style is no longer in the catalogue. You can remove it from your saved
+                    items.
+                  </p>
+                  <button
+                    type="button"
+                    aria-label="Remove unavailable saved item"
+                    disabled={removeFromWishlist.isPending}
+                    onClick={() => removeFromWishlist.mutate(id)}
+                    className="text-primary min-h-11 rounded-lg px-3 font-semibold underline disabled:opacity-50"
+                  >
+                    Remove saved item
+                  </button>
+                </article>
+              ))}
           {products.map((product) => (
             <ProductCard
               key={product.id}

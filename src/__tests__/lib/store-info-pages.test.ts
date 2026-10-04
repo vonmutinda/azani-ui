@@ -18,4 +18,14 @@ describe("store information content", () => {
     expect(registryText).not.toContain("zaira");
     expect(registryText).not.toContain("zairababies");
   });
+
+  it("describes clothing support without retired departments", () => {
+    const registryText = JSON.stringify(allStoreInfoPages).toLowerCase();
+
+    expect(registryText).toContain("clothing");
+    expect(registryText).toContain("size");
+    expect(registryText).not.toContain("baby products");
+    expect(registryText).not.toContain("feeding, diapering, nursery");
+    expect(registryText).not.toContain("maternity essentials");
+  });
 });

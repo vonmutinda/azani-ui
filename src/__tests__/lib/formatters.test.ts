@@ -4,14 +4,84 @@ import {
   getProductPrice,
   getVariantPrice,
   getProductOriginalPrice,
+  getProductDiscountPercent,
+  getVariantOriginalPrice,
+  getVariantDiscountPercent,
   getVariantAvailability,
   formatOrderRef,
   formatOrderLabel,
   resolveProductImage,
   resolveOrderItemImage,
   stripHtml,
+  getCartItemsSubtotal,
+  getCartDisplayAmounts,
 } from "@/lib/formatters";
 import { mockProduct, mockProductMinimal } from "../fixtures";
+import type { MedusaProduct, MedusaProductVariant } from "@/types/medusa";
+
+function productWithPrice(calculated: number, original: number): MedusaProduct {
+  return {
+    variants: [{ calculated_price: { calculated_amount: calculated, original_amount: original } }],
+  } as unknown as MedusaProduct;
+}
+
+function variantWithPrice(calculated: number, original: number): MedusaProductVariant {
+  return {
+    id: "v",
+    title: "v",
+    calculated_price: {
+      calculated_amount: calculated,
+      original_amount: original,
+      currency_code: "kes",
+    },
+  };
+}
+
+describe("getProductDiscountPercent", () => {
+  it("returns the rounded discount percent when on sale", () => {
+    expect(getProductDiscountPercent(productWithPrice(1890, 2117))).toBe(11);
+  });
+
+  it("returns null when there is no discount", () => {
+    expect(getProductDiscountPercent(productWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when the variant has no calculated price", () => {
+    expect(getProductDiscountPercent({ variants: [{}] } as unknown as MedusaProduct)).toBeNull();
+  });
+});
+
+describe("getVariantDiscountPercent", () => {
+  it("returns the rounded discount percent when on sale", () => {
+    expect(getVariantDiscountPercent(variantWithPrice(1890, 2117))).toBe(11);
+  });
+
+  it("returns null when there is no discount", () => {
+    expect(getVariantDiscountPercent(variantWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when the variant has no calculated price", () => {
+    expect(getVariantDiscountPercent({ id: "v", title: "v" })).toBeNull();
+  });
+
+  it("returns null for a missing variant", () => {
+    expect(getVariantDiscountPercent(undefined)).toBeNull();
+  });
+});
+
+describe("getVariantOriginalPrice", () => {
+  it("returns the original price when discounted", () => {
+    expect(getVariantOriginalPrice(variantWithPrice(1890, 2117))).toBe("KSh2,117.00");
+  });
+
+  it("returns null when original equals calculated", () => {
+    expect(getVariantOriginalPrice(variantWithPrice(2000, 2000))).toBeNull();
+  });
+
+  it("returns null when there is no calculated price", () => {
+    expect(getVariantOriginalPrice({ id: "v", title: "v" })).toBeNull();
+  });
+});
 
 describe("formatPrice", () => {
   it("formats ETB amounts with Br prefix", () => {
@@ -313,5 +383,94 @@ describe("stripHtml", () => {
 
   it("normalizes whitespace", () => {
     expect(stripHtml("<p>Hello</p>  <p>World</p>")).toBe("Hello World");
+  });
+});
+
+describe("purchase presentation", () => {
+  it("uses the selected colour photo instead of the generic line-item thumbnail", () => {
+    const product = {
+      ...mockProduct,
+      metadata: { colour_images: { Sand: ["https://example.com/sand.jpg"] } },
+      images: [{ id: "sand", url: "https://example.com/sand.jpg" }],
+      options: [{ id: "colour", title: "Colour", product_id: mockProduct.id, values: [] }],
+      variants: [
+        {
+          id: "sand6",
+          title: "6 / Sand",
+          options: [{ id: "sand", option_id: "colour", value: "Sand" }],
+        },
+      ],
+    };
+    expect(
+      resolveOrderItemImage(
+        { thumbnail: "https://example.com/mocha.jpg", variant_id: "sand6" },
+        product,
+      ),
+    ).toBe("https://example.com/sand.jpg");
+  });
+  it("keeps shipping out of the item subtotal", () => {
+    expect(
+      getCartItemsSubtotal({
+        subtotal: 3350,
+        shipping_total: 150,
+        items: [{ subtotal: 3200, unit_price: 3200, quantity: 1 }],
+      }),
+    ).toBe(3200);
+  });
+  it("preserves an explicit item subtotal before discounts", () => {
+    expect(getCartItemsSubtotal({ item_subtotal: 3200, items: [] })).toBe(3200);
+  });
+});
+
+describe("cart financial breakdown", () => {
+  it("reconciles taxed shipping without counting its tax twice", () => {
+    const result = getCartDisplayAmounts({
+      items: [],
+      item_subtotal: 3200,
+      shipping_subtotal: 150,
+      shipping_total: 174,
+      tax_total: 24,
+      discount_subtotal: 0,
+      discount_total: 0,
+    });
+    expect(result).toEqual({ items: 3200, shipping: 150, tax: 24, discount: 0 });
+  });
+  it("uses the pre-tax discount rather than the discounted tax amount", () => {
+    const result = getCartDisplayAmounts({
+      items: [],
+      item_subtotal: 3200,
+      shipping_subtotal: 150,
+      shipping_total: 150,
+      tax_total: 460.8,
+      discount_subtotal: 320,
+      discount_total: 371.2,
+    });
+    expect(result.items + result.shipping + result.tax - result.discount).toBeCloseTo(3490.8);
+  });
+});
+
+describe("legacy cart breakdown", () => {
+  it("derives pre-tax rows from aggregate subtotal and final total", () => {
+    const amounts = getCartDisplayAmounts({
+      items: [{ unit_price: 3200, quantity: 1 }],
+      subtotal: 3350,
+      shipping_total: 100,
+      tax_total: 0,
+      discount_total: 50,
+      total: 3300,
+    });
+    expect(amounts).toEqual({ items: 3200, shipping: 150, tax: 0, discount: 50 });
+  });
+  it("reconciles a shipping promotion", () => {
+    const amounts = getCartDisplayAmounts({
+      items: [],
+      item_subtotal: 3200,
+      shipping_subtotal: 150,
+      shipping_total: 100,
+      tax_total: 0,
+      discount_subtotal: 50,
+      discount_total: 50,
+    });
+    expect(amounts.items + amounts.shipping + amounts.tax - amounts.discount).toBe(3300);
   });
 });

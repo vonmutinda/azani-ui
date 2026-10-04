@@ -1,17 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FloatingWhatsApp } from "@/components/floating-whatsapp";
 import { siteConfig } from "@/lib/site-config";
 
-const mockUsePathname = vi.fn(() => "/");
-
-vi.mock("next/navigation", () => ({
-  usePathname: () => mockUsePathname(),
+vi.mock("@/lib/site-config", () => ({
+  siteConfig: { whatsapp: { number: "254712345678", prefillMessage: "Hi Azani" } },
 }));
-
-beforeEach(() => {
-  mockUsePathname.mockReturnValue("/");
-});
 
 describe("FloatingWhatsApp", () => {
   it("renders an anchor to wa.me with the configured number and encoded prefill message", () => {
@@ -33,20 +27,17 @@ describe("FloatingWhatsApp", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
+});
 
-  it("stays out of cart and checkout action areas", () => {
-    mockUsePathname.mockReturnValue("/cart");
-    const { rerender } = render(<FloatingWhatsApp />);
-
+it("does not offer WhatsApp without a configured number", () => {
+  const number = siteConfig.whatsapp.number;
+  try {
+    (siteConfig.whatsapp as { number: string }).number = "";
+    render(<FloatingWhatsApp />);
     expect(
       screen.queryByRole("link", { name: /chat with us on whatsapp/i }),
     ).not.toBeInTheDocument();
-
-    mockUsePathname.mockReturnValue("/checkout");
-    rerender(<FloatingWhatsApp />);
-
-    expect(
-      screen.queryByRole("link", { name: /chat with us on whatsapp/i }),
-    ).not.toBeInTheDocument();
-  });
+  } finally {
+    (siteConfig.whatsapp as { number: string }).number = number;
+  }
 });

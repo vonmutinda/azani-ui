@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Products",
+  title: "Kids Clothing",
   description:
-    "Browse our full range of baby products — diapers, feeding essentials, clothing, toys, and more.",
+    "Browse Azani kids clothing for ages 2–12 by garment type, audience, age, size and colour.",
 };
 
 export default function ProductsLayout({ children }: { children: React.ReactNode }) {

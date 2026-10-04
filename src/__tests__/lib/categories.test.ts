@@ -6,44 +6,68 @@ import {
   findCategory,
   resolveToMainAndSub,
   TOP_LEVEL_HANDLES,
+  CLOTHING_CATEGORY_HANDLES,
+  LEGACY_CATEGORY_ALIASES,
+  RETIRED_CATEGORY_HANDLES,
+  resolveClothingCategoryHandle,
+  isRetiredCategoryHandle,
+  parseCategoryParam,
+  serializeCategoryParam,
+  resolveCategoryIds,
 } from "@/lib/categories";
 import { mockCategory, mockCategories } from "../fixtures";
 
 describe("getCategoryIcon", () => {
   it("returns correct icon for known handles", () => {
-    expect(getCategoryIcon("feeding")).toBe("utensils");
-    expect(getCategoryIcon("bath-diapering")).toBe("bath");
-    expect(getCategoryIcon("nursery")).toBe("moon");
-    expect(getCategoryIcon("baby-gear")).toBe("car");
-    expect(getCategoryIcon("clothing")).toBe("shirt");
-    expect(getCategoryIcon("toys-books")).toBe("gamepad");
-    expect(getCategoryIcon("mom-maternity")).toBe("heart-handshake");
+    expect(getCategoryIcon("tops")).toBe("shirt");
+    expect(getCategoryIcon("bottoms")).toBe("trousers");
+    expect(getCategoryIcon("dresses-jumpsuits")).toBe("dress");
+    expect(getCategoryIcon("sets-outfits")).toBe("outfit");
+    expect(getCategoryIcon("knitwear-outerwear")).toBe("jacket");
+    expect(getCategoryIcon("sleepwear")).toBe("moon");
+    expect(getCategoryIcon("underwear-socks")).toBe("socks");
   });
 
-  it("returns 'baby' as fallback for unknown handles", () => {
-    expect(getCategoryIcon("unknown-category")).toBe("baby");
-  });
-
-  it("returns correct icons for subcategories", () => {
-    expect(getCategoryIcon("diapers-pull-ups")).toBe("baby");
-    expect(getCategoryIcon("bath-tubs-seats")).toBe("bath");
-    expect(getCategoryIcon("breast-pumps-milk-storage")).toBe("heart");
-    expect(getCategoryIcon("ride-ons-bikes-cars")).toBe("bike");
+  it("returns a clothing icon as fallback for unknown handles", () => {
+    expect(getCategoryIcon("unknown-category")).toBe("shirt");
   });
 });
 
 describe("TOP_LEVEL_HANDLES", () => {
-  it("contains the 7 main categories", () => {
+  it("contains only the seven garment categories", () => {
     expect(TOP_LEVEL_HANDLES).toEqual([
-      "feeding",
-      "bath-diapering",
-      "nursery",
-      "baby-gear",
-      "clothing",
-      "toys-books",
-      "mom-maternity",
+      "tops",
+      "bottoms",
+      "dresses-jumpsuits",
+      "sets-outfits",
+      "knitwear-outerwear",
+      "sleepwear",
+      "underwear-socks",
     ]);
-    expect(TOP_LEVEL_HANDLES).toHaveLength(7);
+    expect(TOP_LEVEL_HANDLES).toBe(CLOTHING_CATEGORY_HANDLES);
+  });
+});
+
+describe("legacy category routing", () => {
+  it("maps compatible garment handles to canonical clothing categories", () => {
+    expect(LEGACY_CATEGORY_ALIASES).toEqual({
+      "tops-t-shirts": "tops",
+      "dresses-outfits": "dresses-jumpsuits",
+      "sleepwear-pajamas": "sleepwear",
+      "socks-shoes": "underwear-socks",
+    });
+    expect(resolveClothingCategoryHandle("tops-t-shirts")).toBe("tops");
+    expect(resolveClothingCategoryHandle("sleepwear")).toBe("sleepwear");
+  });
+
+  it("marks known non-clothing and age-incompatible legacy handles as retired", () => {
+    expect(RETIRED_CATEGORY_HANDLES).toContain("feeding");
+    expect(RETIRED_CATEGORY_HANDLES).toContain("mom-maternity");
+    expect(RETIRED_CATEGORY_HANDLES).toContain("newborn-layette-sets");
+    expect(isRetiredCategoryHandle("feeding")).toBe(true);
+    expect(isRetiredCategoryHandle("tops")).toBe(false);
+    expect(isRetiredCategoryHandle("tops-t-shirts")).toBe(false);
+    expect(isRetiredCategoryHandle("not-a-known-handle")).toBe(false);
   });
 });
 
@@ -52,7 +76,7 @@ describe("toCategory", () => {
     const result = toCategory(mockCategory);
     expect(result.slug).toBe("bath-diapering");
     expect(result.name).toBe("Bath & Diapering");
-    expect(result.icon).toBe("bath");
+    expect(result.icon).toBe("shirt");
     expect(result.description).toBe("Everything for bath time and diaper changes");
   });
 
@@ -127,5 +151,55 @@ describe("resolveToMainAndSub", () => {
 
   it("returns undefined for unknown slug", () => {
     expect(resolveToMainAndSub("nonexistent", cats)).toBeUndefined();
+  });
+});
+
+describe("parseCategoryParam", () => {
+  it("splits a comma-joined value into handles", () => {
+    expect(parseCategoryParam("bottles,weaning")).toEqual(["bottles", "weaning"]);
+  });
+
+  it("returns an empty array for empty or missing values", () => {
+    expect(parseCategoryParam(undefined)).toEqual([]);
+    expect(parseCategoryParam(null)).toEqual([]);
+    expect(parseCategoryParam("")).toEqual([]);
+  });
+
+  it("trims whitespace and drops blank entries", () => {
+    expect(parseCategoryParam(" a , , b ")).toEqual(["a", "b"]);
+  });
+});
+
+describe("serializeCategoryParam", () => {
+  it("joins handles with commas", () => {
+    expect(serializeCategoryParam(["a", "b"])).toBe("a,b");
+  });
+
+  it("returns undefined when there are no handles (so the param clears)", () => {
+    expect(serializeCategoryParam([])).toBeUndefined();
+  });
+});
+
+describe("resolveCategoryIds", () => {
+  it("collects a category and all of its descendant ids", () => {
+    expect(resolveCategoryIds(mockCategories, ["bath-diapering"]).sort()).toEqual(
+      ["pcat_bath_diapering", "pcat_diapers", "pcat_wipes"].sort(),
+    );
+  });
+
+  it("unions multiple handles", () => {
+    const ids = resolveCategoryIds(mockCategories, ["wipes", "feeding"]);
+    expect(ids).toContain("pcat_wipes");
+    expect(ids).toContain("pcat_feeding");
+    expect(ids).toHaveLength(2);
+  });
+
+  it("dedupes when a parent and one of its children are both selected", () => {
+    // bath-diapering already includes wipes — wipes must not be counted twice
+    expect(resolveCategoryIds(mockCategories, ["bath-diapering", "wipes"])).toHaveLength(3);
+  });
+
+  it("ignores unknown handles", () => {
+    expect(resolveCategoryIds(mockCategories, ["does-not-exist"])).toEqual([]);
   });
 });

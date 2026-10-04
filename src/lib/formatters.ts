@@ -49,8 +49,7 @@ export function getVariantPrice(variant: MedusaProductVariant, _currency?: strin
   return "--";
 }
 
-export function getProductOriginalPrice(product: MedusaProduct): string | null {
-  const variant = product.variants?.[0];
+export function getVariantOriginalPrice(variant?: MedusaProductVariant | null): string | null {
   if (!variant?.calculated_price) return null;
 
   const { original_amount, calculated_amount } = variant.calculated_price;
@@ -61,8 +60,7 @@ export function getProductOriginalPrice(product: MedusaProduct): string | null {
   return null;
 }
 
-export function getProductDiscountPercent(product: MedusaProduct): number | null {
-  const variant = product.variants?.[0];
+export function getVariantDiscountPercent(variant?: MedusaProductVariant | null): number | null {
   if (!variant?.calculated_price) return null;
 
   const { original_amount, calculated_amount } = variant.calculated_price;
@@ -71,24 +69,105 @@ export function getProductDiscountPercent(product: MedusaProduct): number | null
   return Math.round(((original_amount - calculated_amount) / original_amount) * 100);
 }
 
+// Product-level helpers read the first variant — used by listing cards where
+// there is no selected variant. The PDP uses the variant-level helpers above so
+// the strike price and discount track the variant the shopper has selected.
+export function getProductOriginalPrice(product: MedusaProduct): string | null {
+  return getVariantOriginalPrice(product.variants?.[0]);
+}
+
+export function getProductDiscountPercent(product: MedusaProduct): number | null {
+  return getVariantDiscountPercent(product.variants?.[0]);
+}
+
 export function resolveProductImage(product: MedusaProduct): string | undefined {
   if (product.thumbnail) return product.thumbnail;
   return product.images?.[0]?.url;
 }
 
+/** Only use linked colour photos that belong to this product's gallery. */
+export function resolveColourImage(product: MedusaProduct, colour?: string): string | undefined {
+  const mapping = product.metadata?.colour_images;
+  if (!colour || !mapping || typeof mapping !== "object" || Array.isArray(mapping)) return;
+  const linked = (mapping as Record<string, unknown>)[colour];
+  const gallery = new Set([product.thumbnail, ...(product.images ?? []).map((image) => image.url)]);
+  return Array.isArray(linked)
+    ? linked.find((url): url is string => typeof url === "string" && gallery.has(url))
+    : undefined;
+}
+
+/** Present this supplied photograph upright without modifying its source asset. */
+export function getProductImageRotation(product?: Pick<MedusaProduct, "handle"> | null): number {
+  return product?.handle === "azani-photo-white-crew-neck-sweatshirt" ? 90 : 0;
+}
+
 export function resolveOrderItemImage(
-  item: Pick<MedusaLineItem, "thumbnail" | "product" | "variant">,
+  item: Pick<MedusaLineItem, "thumbnail" | "product" | "variant"> &
+    Partial<Pick<MedusaLineItem, "variant_id">>,
   fallbackProduct?: MedusaProduct | null,
 ): string | undefined {
+  const product = fallbackProduct ?? item.product;
+  const variant = product?.variants?.find((entry) => entry.id === item.variant_id) ?? item.variant;
+  const colourOption = product?.options?.find((option) => /^colou?r$/i.test(option.title));
+  const colour = variant?.options?.find((value) => value.option_id === colourOption?.id)?.value;
   return (
+    (product ? resolveColourImage(product, colour) : undefined) ||
+    variant?.thumbnail ||
     item.thumbnail ||
-    item.variant?.thumbnail ||
     item.product?.thumbnail ||
     item.product?.images?.[0]?.url ||
     item.variant?.product?.thumbnail ||
     item.variant?.product?.images?.[0]?.url ||
     (fallbackProduct ? resolveProductImage(fallbackProduct) : undefined)
   );
+}
+
+/** Medusa's cart subtotal includes shipping; merchandise subtotal does not. */
+export function getCartItemsSubtotal(
+  cart?: {
+    item_subtotal?: number;
+    subtotal?: number;
+    shipping_total?: number;
+    items: { subtotal?: number; unit_price: number; quantity: number }[];
+  } | null,
+): number {
+  if (!cart) return 0;
+  return (
+    cart.item_subtotal ??
+    cart.items.reduce((sum, item) => sum + (item.subtotal ?? item.unit_price * item.quantity), 0)
+  );
+}
+
+/** Use pre-tax shipping and discounts so the rows reconcile with Medusa's total. */
+export function getCartDisplayAmounts(
+  cart?:
+    | (NonNullable<Parameters<typeof getCartItemsSubtotal>[0]> & {
+        shipping_subtotal?: number;
+        shipping_tax_total?: number;
+        shipping_discount_subtotal?: number;
+        tax_total?: number;
+        discount_subtotal?: number;
+        discount_total?: number;
+        discount_tax_total?: number;
+        total?: number;
+      })
+    | null,
+) {
+  const items = getCartItemsSubtotal(cart);
+  const shipping =
+    cart?.shipping_subtotal ??
+    (cart?.subtotal !== undefined
+      ? Math.max(0, cart.subtotal - items)
+      : (cart?.shipping_total ?? 0) -
+        (cart?.shipping_tax_total ?? 0) +
+        (cart?.shipping_discount_subtotal ?? 0));
+  const tax = cart?.tax_total ?? 0;
+  const discount =
+    cart?.discount_subtotal ??
+    (cart?.total !== undefined
+      ? Math.max(0, items + shipping + tax - cart.total)
+      : (cart?.discount_total ?? 0) - (cart?.discount_tax_total ?? 0));
+  return { items, shipping, tax, discount };
 }
 
 export function getVariantAvailability(variant?: MedusaProductVariant | null) {

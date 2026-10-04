@@ -1,523 +1,266 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@heroui/react";
-import { useState, useEffect, useCallback } from "react";
-import {
-  ArrowRight,
-  Baby,
-  BadgePercent,
-  ChevronLeft,
-  ChevronRight,
-  Moon,
-  Package,
-  ShieldCheck,
-  Shirt,
-  Sparkles,
-  Star,
-  Truck,
-  UtensilsCrossed,
-  Zap,
-} from "lucide-react";
 import Image from "next/image";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { ArrowRight, MessageCircleQuestion, Truck } from "lucide-react";
 import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
-import { resolveProductImage, getProductPrice } from "@/lib/formatters";
-import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
+import { resolveProductImage, getProductImageRotation } from "@/lib/formatters";
+import { toCategory, TOP_LEVEL_HANDLES, resolveCategoryIds } from "@/lib/categories";
 
-const FREE_SHIPPING_THRESHOLD = 5_000;
-
-const CAROUSEL_INTERVAL = 5000;
-
-const CAMPAIGN_TILES = [
+const ageGroups = [
+  { age: "2-4", label: "2–4 years", description: "Little explorers", color: "bg-primary-light" },
   {
-    href: "/products?category=bath-diapering",
-    eyebrow: "Restock favorites",
-    title: "Diaper Week",
-    description: "Daily-change essentials, gentle wipes, rash care, and travel-ready bags.",
-    icon: BadgePercent,
-    surface: "bg-primary-light text-primary",
+    age: "5-8",
+    label: "5–8 years",
+    description: "Everyday adventurers",
+    color: "bg-secondary-light",
   },
   {
-    href: "/products?category=nursery",
-    eyebrow: "Sleep setup",
-    title: "Newborn Sleep Edit",
-    description: "Soft bedding, swaddles, night lights, and calm nursery basics.",
-    icon: Moon,
-    surface: "bg-trust-light text-trust-ink",
-  },
-  {
-    href: "/products?category=clothing",
-    eyebrow: "Fresh arrivals",
-    title: "Tiny Wardrobe Refresh",
-    description: "Everyday bodysuits, sleepwear, socks, hats, and occasion outfits.",
-    icon: Shirt,
-    surface: "bg-accent-warm-light text-accent-warm-ink",
+    age: "9-12",
+    label: "9–12 years",
+    description: "Growing personalities",
+    color: "bg-accent-yellow-light",
   },
 ];
-
-function HeroCarousel({
-  products,
-}: {
-  products: { id: string; title: string; image?: string; price?: string }[];
-}) {
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const count = products.length;
-
-  const go = useCallback(
-    (idx: number) => {
-      setActive(((idx % count) + count) % count);
-    },
-    [count],
-  );
-
-  useEffect(() => {
-    if (paused || count <= 1) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % count), CAROUSEL_INTERVAL);
-    return () => clearInterval(id);
-  }, [paused, count]);
-
-  if (count === 0) return null;
-
-  const prev = (active - 1 + count) % count;
-  const next = (active + 1) % count;
-
-  const cards = [
-    { idx: prev, position: "left" as const },
-    { idx: active, position: "center" as const },
-    { idx: next, position: "right" as const },
-  ];
-
-  const positionStyles = {
-    left: "left-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-    center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-full w-[62%] sm:w-[52%]",
-    right: "right-0 top-1/2 -translate-y-1/2 z-0 h-[65%] w-[38%] opacity-60 blur-[0.5px] scale-90",
-  };
-
-  return (
-    <div
-      data-testid="home-hero-carousel"
-      className="relative w-full max-w-[400px] sm:max-w-[430px] lg:max-w-[460px]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <div
-        data-testid="home-hero-carousel-stage"
-        className="relative h-[220px] w-full sm:h-[300px] lg:h-[380px]"
-      >
-        {cards.map(({ idx, position }) => {
-          const p = products[idx];
-          return (
-            <Link
-              key={`${idx}-${position}`}
-              href={`/products/${p.id}`}
-              tabIndex={position === "center" ? 0 : -1}
-              aria-hidden={position !== "center"}
-              className={`az-product-card absolute overflow-hidden transition-all duration-500 ease-out ${positionStyles[position]}`}
-              onClick={(e) => {
-                if (position === "left") {
-                  e.preventDefault();
-                  go(active - 1);
-                }
-                if (position === "right") {
-                  e.preventDefault();
-                  go(active + 1);
-                }
-              }}
-            >
-              {p.image ? (
-                <Image
-                  src={p.image}
-                  alt={p.title}
-                  fill
-                  sizes="(max-width: 640px) 80vw, 300px"
-                  className="object-contain p-2"
-                />
-              ) : (
-                <div className="bg-trust-light text-trust flex h-full items-center justify-center">
-                  <Package className="h-12 w-12" />
-                </div>
-              )}
-              {position === "center" && (
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent px-4 pt-10 pb-4">
-                  <p className="truncate text-sm font-semibold text-white drop-shadow-sm">
-                    {p.title}
-                  </p>
-                  {p.price && (
-                    <p className="truncate text-base font-bold text-white drop-shadow-sm sm:text-lg">
-                      {p.price}
-                    </p>
-                  )}
-                </div>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-
-      {count > 1 && (
-        <div className="mt-2 flex items-center justify-center gap-2.5 sm:mt-3 sm:gap-3">
-          <Button
-            isIconOnly
-            variant="ghost"
-            onPress={() => go(active - 1)}
-            className="az-icon-button az-focus flex h-9 min-h-9 w-9 min-w-9 rounded-full sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10"
-            aria-label="Previous product"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex gap-1.5">
-            {products.map((_, i) => (
-              <Button
-                key={i}
-                isIconOnly
-                variant="ghost"
-                onPress={() => go(i)}
-                aria-label={`Go to product ${i + 1}`}
-                className={`az-focus h-2 min-h-0 min-w-0 rounded-full p-0 transition-all duration-300 ${i === active ? "bg-foreground w-6" : "bg-foreground/20 hover:bg-foreground/30 w-2"}`}
-              />
-            ))}
-          </div>
-          <Button
-            isIconOnly
-            variant="ghost"
-            onPress={() => go(active + 1)}
-            className="az-icon-button az-focus flex h-9 min-h-9 w-9 min-w-9 rounded-full sm:h-10 sm:min-h-10 sm:w-10 sm:min-w-10"
-            aria-label="Next product"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
+const tileColors = ["bg-primary-light", "bg-accent-yellow-light", "bg-secondary-light"];
 
 export default function Home() {
-  const [productTab, setProductTab] = useState<"featured" | "new">("featured");
-
-  const featuredQuery = useQuery({
-    queryKey: ["products", "featured"],
-    queryFn: () => getProducts({ limit: 8 }),
-  });
-
-  const newQuery = useQuery({
+  const productsQuery = useQuery({
     queryKey: ["products", "new"],
-    queryFn: () => getProducts({ limit: 8, order: "-created_at" }),
+    queryFn: () => getProducts({ limit: 8, sort: "newest" }),
   });
-
   const categoriesQuery = useQuery({
     queryKey: ["categories-home"],
     queryFn: () => getCategories(),
     staleTime: 5 * 60 * 1000,
   });
-
-  const topCategories = (categoriesQuery.data?.product_categories ?? [])
-    .filter((c) => !c.parent_category_id && TOP_LEVEL_HANDLES.includes(c.handle))
+  const products = productsQuery.data?.products ?? [];
+  const categories = (categoriesQuery.data?.product_categories ?? [])
+    .filter(
+      (category) => !category.parent_category_id && TOP_LEVEL_HANDLES.includes(category.handle),
+    )
     .map(toCategory);
 
-  const heroProducts = (featuredQuery.data?.products ?? []).slice(0, 8).map((p) => ({
-    id: p.id,
-    title: p.title,
-    image: resolveProductImage(p),
-    price: getProductPrice(p)?.formatted,
-  }));
+  const categoryPreviews = useQueries({
+    queries: categories.map((category) => ({
+      queryKey: ["category-preview", category.slug],
+      queryFn: () =>
+        getProducts({
+          category_id: resolveCategoryIds(categoriesQuery.data?.product_categories ?? [], [
+            category.slug,
+          ]),
+          limit: 1,
+        }),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
 
   return (
     <div>
-      {/* ── Hero ── */}
-      <section className="bg-surface">
-        <div className="mx-auto flex w-full max-w-7xl flex-col-reverse items-center gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:flex-row lg:gap-10 lg:px-8 lg:py-12">
-          {/* Left — copy */}
-          <div className="hero-fade-in flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="az-pill az-pill-trust mb-5 px-4 py-1.5 text-sm">
-              <Star className="h-3.5 w-3.5" fill="currentColor" />
-              Trusted by 10,000+ parents
-            </div>
-
-            <h1 className="font-heading text-foreground max-w-xl text-4xl leading-[1.08] font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-              Everything Your{" "}
-              <span className="text-primary relative">
-                Little One
-                <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
-                  <path
-                    d="M2 6c40-4 80-4 196 0"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    opacity="0.3"
-                  />
-                </svg>
-              </span>{" "}
-              Needs
-            </h1>
-
-            <p className="text-muted mt-5 max-w-lg text-base leading-relaxed sm:text-lg">
-              From newborn essentials to toddler adventures — discover curated, quality products for
-              every stage of your baby&apos;s journey.
+      <section className="bg-secondary-light overflow-hidden">
+        <div className="mx-auto grid max-w-7xl items-center gap-3 px-4 py-5 sm:gap-6 sm:px-6 sm:py-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-12 lg:px-8">
+          <div className="hero-fade-in">
+            <p className="text-secondary mb-3 hidden text-xs font-bold tracking-[0.12em] uppercase sm:block">
+              Kids clothing · Ages 2–12
             </p>
-
-            <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
+            <h1 className="text-foreground max-w-lg text-[2.5rem] leading-[1.06] font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+              Little clothes. <br />
+              <span className="text-primary">Big adventures.</span>
+            </h1>
+            <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed sm:text-base">
+              Everyday favourites for play days, party days and everything in between.
+            </p>
+            <Link
+              href="/products"
+              className="bg-primary hover:bg-primary-hover mt-5 inline-flex min-h-11 items-center gap-3 rounded-full px-6 py-3 text-sm font-semibold text-white transition"
+            >
+              Shop Now <ArrowRight className="h-4 w-4" />
+            </Link>
+            <div className="text-foreground mt-1 flex gap-5 text-sm font-medium">
               <Link
-                href="/products"
-                className="az-btn az-btn-primary az-focus rounded-full px-7 py-3.5 shadow-sm"
+                href="/products?audience=girls"
+                className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
               >
-                Shop Now <ArrowRight className="h-4 w-4" />
+                Shop Girls
               </Link>
               <Link
-                href="/products?order=-created_at"
-                className="az-btn az-btn-secondary az-focus rounded-full px-7 py-3.5 shadow-sm"
+                href="/products?audience=boys"
+                className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
               >
-                <Sparkles className="h-4 w-4" />
-                New Arrivals
+                Shop Boys
               </Link>
             </div>
           </div>
-
-          {/* Right — product carousel */}
-          <div className="hero-fade-in-delay flex flex-1 items-center justify-center">
-            {featuredQuery.isLoading ? (
-              <div className="relative h-[220px] w-full max-w-[400px] sm:h-[300px] sm:max-w-[430px] lg:h-[380px] lg:max-w-[460px]">
-                <div className="az-skeleton absolute top-1/2 left-1/2 h-full w-[52%] -translate-x-1/2 -translate-y-1/2" />
-                <div className="az-skeleton absolute top-1/2 left-0 h-[65%] w-[38%] -translate-y-1/2 opacity-70" />
-                <div className="az-skeleton absolute top-1/2 right-0 h-[65%] w-[38%] -translate-y-1/2 opacity-70" />
-              </div>
-            ) : (
-              <HeroCarousel products={heroProducts} />
-            )}
+          <div className="hero-fade-in-delay relative w-full">
+            <div className="relative aspect-[3/2] overflow-hidden rounded-[20px] bg-[#f6f3eb]">
+              <Image
+                src="/images/azani-campaign-v1.webp"
+                alt="Two children walking together in colourful everyday clothing"
+                fill
+                priority
+                sizes="(max-width: 1023px) 100vw, 650px"
+                className="object-cover"
+              />
+            </div>
+            <span className="bg-accent-yellow-light font-heading absolute right-3 bottom-3 -rotate-3 rounded-lg px-3 py-2 text-sm font-extrabold sm:text-base">
+              Made for their world.
+            </span>
           </div>
         </div>
       </section>
 
-      <section className="border-border/50 bg-card border-y">
-        <div
-          data-testid="home-campaign-band"
-          className="hide-scrollbar mx-auto flex w-full max-w-7xl gap-3 overflow-x-auto px-4 py-3 sm:px-6 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-8 lg:py-4"
-        >
-          {CAMPAIGN_TILES.map((tile) => (
+      <section
+        aria-labelledby="age-heading"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+      >
+        <div className="mb-4 text-center sm:mb-6">
+          <h2 id="age-heading" className="text-2xl font-extrabold sm:text-3xl">
+            Find their next favourite
+          </h2>
+          <p className="text-muted mt-2 text-sm">Pick an age. Then choose their size.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          {ageGroups.map(({ age, label, description, color }) => (
             <Link
-              key={tile.title}
-              href={tile.href}
-              className="az-focus border-border/75 hover:border-border-hover hover:bg-surface-soft group flex min-w-[17rem] shrink-0 items-center gap-3 rounded-lg border bg-white p-3 transition sm:min-w-[19rem] lg:min-h-28 lg:min-w-0 lg:gap-4 lg:p-4"
+              key={age}
+              href={`/products?age=${age}`}
+              className={`${color} group flex items-center justify-between gap-2 rounded-xl px-3 py-4 transition hover:brightness-95 sm:px-6 sm:py-5`}
             >
-              <span
-                className={`${tile.surface} flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition group-hover:scale-105 lg:h-14 lg:w-14`}
-              >
-                <tile.icon className="h-5 w-5 lg:h-6 lg:w-6" />
-              </span>
-              <span className="min-w-0">
-                <span className="text-muted block text-xs font-bold tracking-wide uppercase">
-                  {tile.eyebrow}
-                </span>
-                <span className="text-foreground mt-1 block text-base leading-tight font-bold">
-                  {tile.title}
-                </span>
-                <span className="text-muted mt-1 hidden text-sm leading-5 sm:block">
-                  {tile.description}
-                </span>
-              </span>
+              <div>
+                <p className="font-heading text-base font-extrabold sm:text-2xl">{label}</p>
+                <p className="text-muted mt-1 hidden text-sm sm:block">{description}</p>
+              </div>
+              <ArrowRight className="hidden h-5 w-5 shrink-0 transition group-hover:translate-x-1 sm:block" />
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ── Shop by Category ── */}
-      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="az-section-header mb-5">
-          <div>
-            <h2 className="text-foreground text-xl font-bold sm:text-2xl">Shop by Category</h2>
-            <p className="az-section-kicker mt-1">Find exactly what you need</p>
+      {categories.length > 0 && (
+        <section
+          aria-labelledby="category-heading"
+          className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"
+        >
+          <h2 id="category-heading" className="mb-6 text-3xl font-extrabold">
+            Shop by Category
+          </h2>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {categories.map((category, index) => {
+              const product = categoryPreviews[index]?.data?.products[0];
+              const image = product && resolveProductImage(product);
+              return (
+                <Link
+                  key={category.slug}
+                  href={`/products?category=${category.slug}`}
+                  className={`${tileColors[index % tileColors.length]} group overflow-hidden rounded-xl`}
+                >
+                  <div className={`relative aspect-[4/3] ${image ? "bg-[#f6f3eb]" : ""}`}>
+                    {image ? (
+                      <Image
+                        src={image}
+                        alt=""
+                        fill
+                        sizes="(max-width: 1023px) 45vw, 300px"
+                        className="object-contain p-3 transition duration-300 group-hover:scale-[1.02]"
+                        style={{
+                          transform: getProductImageRotation(product)
+                            ? "rotate(90deg) scale(.75)"
+                            : undefined,
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <CategoryIcon icon={category.icon} size={64} colored />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 px-4 pt-2 pb-5 sm:px-6">
+                    <h3 className="font-heading flex items-center gap-2 text-base font-bold sm:text-xl">
+                      {image && <CategoryIcon icon={category.icon} size={32} />}
+                      {category.name}
+                    </h3>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-          <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
-            View all <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
+        </section>
+      )}
+
+      <section
+        aria-labelledby="arrivals-heading"
+        className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8"
+      >
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-primary mb-2 text-xs font-bold tracking-widest uppercase">
+              Fresh finds
+            </p>
+            <h2 id="arrivals-heading" className="text-3xl font-extrabold">
+              New arrivals
+            </h2>
+          </div>
+          <Link
+            href="/products?sort=newest"
+            className="text-secondary flex shrink-0 items-center gap-2 text-sm font-semibold hover:underline"
+          >
+            All new in <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-
-        <div className="hide-scrollbar flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-7 lg:overflow-visible lg:pb-0">
-          {topCategories.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/products?category=${cat.slug}`}
-              className="az-surface group hover:bg-surface-soft flex min-w-[110px] flex-shrink-0 flex-col items-center gap-3 p-5 text-center transition sm:min-w-[130px] lg:min-w-0"
+        {productsQuery.isLoading ? (
+          <div aria-label="Loading clothing" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={index}
+                className="bg-secondary-light aspect-[3/4] animate-pulse rounded-2xl"
+              />
+            ))}
+          </div>
+        ) : productsQuery.isError ? (
+          <div className="bg-secondary-light rounded-2xl p-8 text-center">
+            <p>We couldn&apos;t load products right now.</p>
+            <button
+              onClick={() => productsQuery.refetch()}
+              className="text-primary mt-3 font-semibold underline"
             >
-              <div className="bg-product-media flex h-16 w-16 items-center justify-center rounded-[var(--radius)] transition group-hover:scale-110">
-                <CategoryIcon icon={cat.icon} size={28} colored />
-              </div>
-              <p className="text-foreground text-sm font-semibold">{cat.name}</p>
-            </Link>
-          ))}
-        </div>
+              Try again
+            </button>
+          </div>
+        ) : products.length ? (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <p className="bg-secondary-light rounded-2xl p-8 text-center text-sm">
+            No clothing is available right now. Please check back soon.
+          </p>
+        )}
       </section>
 
-      {/* ── Explore Our Collection (tabbed) ── */}
-      <section className="bg-surface">
-        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <section className="bg-accent-yellow-light">
+        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-8 sm:grid-cols-2 lg:px-8">
+          <div className="flex items-start gap-4">
+            <Truck className="mt-1 h-6 w-6 shrink-0" />
             <div>
-              <h2 className="text-foreground text-xl font-bold sm:text-2xl">
-                Explore Our Collection
-              </h2>
-              <div className="mt-3 flex gap-1" role="tablist">
-                {(
-                  [
-                    ["featured", "Featured"],
-                    ["new", "New Arrivals"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <Button
-                    key={key}
-                    onPress={() => setProductTab(key)}
-                    variant="ghost"
-                    render={(buttonProps) => (
-                      <button
-                        {...buttonProps}
-                        id={`home-${key}-tab`}
-                        role="tab"
-                        aria-selected={productTab === key}
-                        aria-controls={`home-${key}-panel`}
-                      />
-                    )}
-                    className={`az-focus relative rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                      productTab === key
-                        ? "bg-foreground text-white"
-                        : "text-muted hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
+              <h2 className="text-lg font-bold">A little closer to your doorstep</h2>
+              <p className="text-muted mt-1 text-sm">See delivery options and costs at checkout.</p>
             </div>
-            <Link href="/products" className="text-secondary text-sm font-medium hover:underline">
-              View all <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
-            </Link>
           </div>
-
-          <div
-            id={`home-${productTab}-panel`}
-            role="tabpanel"
-            aria-labelledby={`home-${productTab}-tab`}
-          >
-            {(() => {
-              const query = productTab === "featured" ? featuredQuery : newQuery;
-              if (query.isLoading) {
-                return (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="space-y-3">
-                        <div className="az-skeleton aspect-square" />
-                        <div className="az-skeleton h-4 w-3/4" />
-                        <div className="az-skeleton h-4 w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              if (query.isError) {
-                return (
-                  <div className="az-empty-state p-8">
-                    <p className="text-foreground text-sm font-medium">Something went wrong</p>
-                    <p className="text-muted mt-1 text-sm">
-                      We couldn&apos;t load products right now. Please try again later.
-                    </p>
-                  </div>
-                );
-              }
-              return (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {query.data?.products?.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Promotional Banners ── */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="az-trust-surface group relative overflow-hidden p-6 sm:p-8">
-            <Shirt className="text-secondary/[0.08] absolute -right-4 -bottom-4 h-36 w-36 rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6" />
-            <div className="bg-secondary/[0.06] absolute top-8 right-8 h-24 w-24 rounded-full" />
-            <div className="relative flex flex-col gap-4">
-              <span className="text-secondary text-sm font-semibold">New Collection</span>
-              <h3 className="text-foreground text-xl font-bold sm:text-2xl">
-                Adorable Baby Clothing
-              </h3>
-              <p className="text-muted max-w-xs text-sm">
-                From receiving sets to party dresses — find cute outfits for every occasion.
+          <div className="flex items-start gap-4">
+            <MessageCircleQuestion className="mt-1 h-6 w-6 shrink-0" />
+            <div>
+              <h2 className="text-lg font-bold">Room to grow. A fit for today.</h2>
+              <p className="text-muted mt-1 text-sm">
+                Check the size guide on each product before choosing.
               </p>
-              <Link
-                href="/products?category=clothing"
-                className="az-btn az-btn-secondary az-focus w-fit rounded-full px-5 py-2.5 shadow-sm"
-              >
-                Shop Clothing <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
             </div>
           </div>
-
-          <div className="az-promo-surface group relative overflow-hidden p-6 sm:p-8">
-            <UtensilsCrossed className="text-warning/[0.14] absolute -right-4 -bottom-4 h-36 w-36 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
-            <div className="bg-accent-yellow/[0.08] absolute top-6 right-10 h-20 w-20 rounded-full" />
-            <div className="relative flex flex-col gap-4">
-              <span className="text-promo-ink text-sm font-semibold">Must-Haves</span>
-              <h3 className="text-foreground text-xl font-bold sm:text-2xl">Feeding Essentials</h3>
-              <p className="text-muted max-w-xs text-sm">
-                Bottles, pumps, weaning supplies and nutritious baby foods all in one place.
-              </p>
-              <Link
-                href="/products?category=feeding"
-                className="az-btn az-btn-warm az-focus w-fit rounded-full px-5 py-2.5 shadow-sm"
-              >
-                Shop Feeding <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Trust / Features Bar ── */}
-      <section className="border-border/50 border-t">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-          {[
-            {
-              icon: Truck,
-              title: "Free Shipping",
-              desc: `On orders over KSh${FREE_SHIPPING_THRESHOLD.toLocaleString()}`,
-              color: "text-secondary",
-            },
-            {
-              icon: Zap,
-              title: "Same-Day Express",
-              desc: "KSh500 express delivery",
-              color: "text-warning-ink",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Safe Products",
-              desc: "Certified & tested",
-              color: "text-success-ink",
-            },
-            {
-              icon: Baby,
-              title: "Expert Support",
-              desc: "Parenting advice",
-              color: "text-primary",
-            },
-          ].map((feat) => (
-            <div key={feat.title} className="flex items-center gap-3">
-              <feat.icon className={`h-6 w-6 shrink-0 ${feat.color}`} />
-              <div>
-                <p className="text-foreground text-sm font-semibold">{feat.title}</p>
-                <p className="text-muted text-sm">{feat.desc}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
     </div>

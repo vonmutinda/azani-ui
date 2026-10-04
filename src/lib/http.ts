@@ -1,3 +1,4 @@
+import { CART_ID_KEY, notifyCartIdentity } from "@/lib/checkout-recovery";
 const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 
@@ -63,7 +64,6 @@ export async function medusaRequest<T>(path: string, options: RequestOptions = {
 }
 
 // Cart ID management
-const CART_ID_KEY = "medusa_cart_id";
 
 export function getStoredCartId(): string | null {
   if (typeof window === "undefined") return null;
@@ -73,11 +73,13 @@ export function getStoredCartId(): string | null {
 export function setStoredCartId(cartId: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(CART_ID_KEY, cartId);
+  notifyCartIdentity();
 }
 
 export function clearStoredCartId(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(CART_ID_KEY);
+  notifyCartIdentity();
 }
 
 // Auth token management

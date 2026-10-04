@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import WishlistPage from "@/app/account/wishlist/page";
 import { renderWithProviders } from "../test-utils";
 
 const mockGetCustomer = vi.fn();
 const mockGetWishlistProductIds = vi.fn();
 const mockGetProductsByIds = vi.fn();
+const mockToggleWishlistProduct = vi.fn();
 
 vi.mock("@/lib/medusa-api", () => ({
+  toggleWishlistProduct: (...args: unknown[]) => mockToggleWishlistProduct(...args),
   getCustomer: (...args: unknown[]) => mockGetCustomer(...args),
   getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
   getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
@@ -53,4 +55,28 @@ describe("WishlistPage", () => {
     });
     expect(screen.getByText("Your saved favorites, synced to your account.")).toBeInTheDocument();
   });
+
+  it("offers a retry instead of reporting saved products as retired on a catalogue error", async () => {
+    mockGetWishlistProductIds.mockResolvedValue(["prod_01"]);
+    mockGetProductsByIds
+      .mockRejectedValueOnce(new Error("Catalogue unavailable"))
+      .mockResolvedValueOnce([{ id: "prod_01", title: "Kids Tee" }]);
+
+    renderWithProviders(<WishlistPage />);
+
+    await screen.findByText(/couldn’t load your saved products/i);
+    expect(screen.queryByText("No saved products found")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Kids Tee")).toBeInTheDocument();
+  });
+});
+
+it("shows a removable unavailable saved item instead of an empty wishlist", async () => {
+  mockGetWishlistProductIds.mockResolvedValue(["retired"]);
+  mockToggleWishlistProduct.mockResolvedValue([]);
+  renderWithProviders(<WishlistPage />);
+  expect(await screen.findByText("Saved item unavailable")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Remove unavailable saved item" }));
+  await waitFor(() => expect(mockToggleWishlistProduct).toHaveBeenCalledWith("retired"));
 });
