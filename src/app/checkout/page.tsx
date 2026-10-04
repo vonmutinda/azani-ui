@@ -345,7 +345,8 @@ export default function CheckoutPage() {
     const existingPayment = cart.payment_collection?.payment_sessions?.find(
       (session) =>
         matchesCheckoutRecovery(session) &&
-        ["pending", "authorized", "captured"].includes(session.status),
+        (["pending", "authorized", "captured"].includes(session.status) ||
+          (!!recovery?.attemptId && ["canceled", "error"].includes(session.status))),
     );
     if (!existingPayment || activePaymentSessionId.current === existingPayment.id) return;
     activePaymentSessionId.current = existingPayment.id;
@@ -353,7 +354,7 @@ export default function CheckoutPage() {
     setPaymentPending(true);
     setPaymentPendingSince(startedAt);
     setPendingNowTick(startedAt);
-  }, [cart, orderPlaced, orderRecovery]);
+  }, [cart, orderPlaced, orderRecovery, recovery?.attemptId]);
 
   const restoredCartId = useRef<string | null>(null);
   useEffect(() => {
@@ -570,6 +571,19 @@ export default function CheckoutPage() {
     },
   });
 
+  // Status reads can establish the current session before initiation returns.
+  // Late responses must not replace that lifecycle or its completion outcome.
+  const hasObservedPaymentState = () =>
+    completionAttempted.current ||
+    orderPlaced ||
+    orderRecovery ||
+    !!paymentOutcome ||
+    (paymentPending &&
+      !!cart?.payment_collection?.payment_sessions?.some(
+        (session) =>
+          session.id === activePaymentSessionId.current && matchesCheckoutRecovery(session),
+      ));
+
   const completeMutation = useMutation({
     mutationFn: async (): Promise<CheckoutPaymentResult> => {
       if (paymentMethod !== "mpesa_express") {
@@ -598,6 +612,7 @@ export default function CheckoutPage() {
       return { type: "payment_captured" };
     },
     onSuccess: (data) => {
+      if (hasObservedPaymentState()) return;
       if (data.type === "payment_pending") {
         const startedAt = Date.now();
         setPaymentPending(true);
@@ -614,6 +629,7 @@ export default function CheckoutPage() {
       finalizeOrderMutation.mutate();
     },
     onError: (err: Error) => {
+      if (hasObservedPaymentState()) return;
       setPaymentPending(false);
       setPaymentPendingSince(null);
       setPaymentOutcome(null);
@@ -746,7 +762,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (orderRecovery) {
+  if (orderRecovery || finalizeOrderMutation.isPending) {
     return (
       <section className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
         <h1 className="text-2xl font-bold">Confirming your order</h1>

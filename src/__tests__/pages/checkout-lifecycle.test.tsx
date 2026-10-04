@@ -1,6 +1,11 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+  clearCheckoutRecovery,
+  getCheckoutRecovery,
+  saveCheckoutRecovery,
+} from "@/lib/checkout-recovery";
 import CheckoutPage from "@/app/checkout/page";
 import { mockCart, mockProduct, mockRegion } from "@/__tests__/fixtures";
 
@@ -288,3 +293,182 @@ it("resumes a known tracked session that first appears on a later status check",
   expect(api.completeCart).toHaveBeenCalledTimes(1);
   expect(api.initializePaymentSession).not.toHaveBeenCalled();
 });
+
+async function discoverWhileRetrying(
+  outcome: "resolve" | "authorize" | "reject" = "reject",
+  discoveredStatus = "pending",
+) {
+  const oldCart = (status: string) => {
+    const value = uncertainCart(status);
+    value.payment_collection.payment_sessions[0].id = "old";
+    return value;
+  };
+  api.getCheckoutCart.mockResolvedValue(oldCart("pending"));
+  const { client } = setup();
+  await screen.findByText("Payment Request Sent");
+  api.getCheckoutCart.mockResolvedValue(oldCart("canceled"));
+  fireEvent.click(await screen.findByRole("button", { name: "Check Payment Status" }));
+  await screen.findByText("Payment was canceled");
+  let resolveInitiation!: (value: unknown) => void;
+  let rejectInitiation!: (error: Error) => void;
+  api.initializePaymentSession.mockImplementation(() => {
+    saveCheckoutRecovery({
+      cartId: mockCart.id,
+      sessionId: null,
+      state: "unresolved",
+      attemptId: "retry",
+      phase: "session",
+      previousSessionId: "old",
+    });
+    return new Promise((resolve, reject) => {
+      resolveInitiation = resolve;
+      rejectInitiation = reject;
+    });
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+  await screen.findByText("Payment Request Sent");
+  api.getCheckoutCart.mockResolvedValue(uncertainCart(discoveredStatus));
+  fireEvent.click(await screen.findByRole("button", { name: "Check Payment Status" }));
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["checkout-cart"] });
+  });
+  await vi.waitFor(() => expect(getCheckoutRecovery()?.sessionId).toBe("actual_new"));
+  return () =>
+    outcome === "reject"
+      ? rejectInitiation(new Error("Session response lost"))
+      : resolveInitiation({
+          payment_collection: uncertainCart(outcome === "authorize" ? "authorized" : "pending")
+            .payment_collection,
+        });
+}
+
+it.each(["resolve", "reject"] as const)(
+  "preserves discovered pending payment and its clock after a late initiation %s, then completes authorization",
+  async (outcome) => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    api.completeCart.mockResolvedValue({ type: "order", order: { id: "order_recovered" } });
+    const rejectInitiation = await discoverWhileRetrying(outcome);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+    expect(screen.getByText("Taking longer than expected")).toBeInTheDocument();
+    await act(async () => {
+      rejectInitiation();
+    });
+    expect(screen.getByText("Taking longer than expected")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Check Payment Status" })).toBeInTheDocument();
+    expect(screen.queryByText("Shipping Address")).not.toBeInTheDocument();
+    const callsBefore = api.getCheckoutCart.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByText("STK Push timed out")).toBeInTheDocument();
+    expect(api.getCheckoutCart.mock.calls.length).toBeGreaterThan(callsBefore);
+    api.getCheckoutCart.mockResolvedValue(uncertainCart("authorized"));
+    fireEvent.click(await screen.findByRole("button", { name: "Check Payment Status" }));
+    expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
+    expect(api.initializePaymentSession).toHaveBeenCalledTimes(1);
+    expect(api.completeCart).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each(
+  [
+    { status: "canceled", expected: "Payment was canceled", response: null },
+    { status: "error", expected: "Payment failed", response: null },
+    {
+      status: "authorized",
+      expected: "Order Placed!",
+      response: { type: "order", order: { id: "order_recovered" } },
+    },
+    {
+      status: "authorized",
+      expected: "Confirming your order",
+      response: { type: "cart", error: { message: "Still processing" } },
+    },
+    { status: "authorized", expected: "Confirming your order", response: { type: "conflict" } },
+  ].flatMap((test) =>
+    ["resolve", "authorize", "reject"].map((outcome) => ({
+      ...test,
+      outcome: outcome as "resolve" | "authorize" | "reject",
+    })),
+  ),
+)(
+  "preserves the observed $expected outcome after late initiation $outcome",
+  async ({ status, expected, response, outcome }) => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    api.completeCart.mockImplementation(async () => {
+      if (response?.type === "order") clearCheckoutRecovery(mockCart.id);
+      if (response?.type === "conflict") throw new Error("Cart completion conflict (409)");
+      return response;
+    });
+    const rejectInitiation = await discoverWhileRetrying(outcome);
+    api.getCheckoutCart.mockResolvedValue(uncertainCart(status));
+    fireEvent.click(await screen.findByRole("button", { name: "Check Payment Status" }));
+    await screen.findByText(expected);
+    await act(async () => {
+      rejectInitiation();
+    });
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText("Shipping Address")).not.toBeInTheDocument();
+    expect(api.initializePaymentSession).toHaveBeenCalledTimes(1);
+    expect(api.completeCart).toHaveBeenCalledTimes(status === "authorized" ? 1 : 0);
+    const callsBefore = api.getCheckoutCart.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000);
+    });
+    expect(api.getCheckoutCart).toHaveBeenCalledTimes(callsBefore);
+  },
+);
+
+it.each(["resolve", "authorize", "reject"] as const)(
+  "does not repeat completion while its first request is in flight after late initiation %s",
+  async (outcome) => {
+    let finishOrder!: (value: unknown) => void;
+    api.completeCart.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishOrder = resolve;
+        }),
+    );
+    const finishInitiation = await discoverWhileRetrying(outcome);
+    api.getCheckoutCart.mockResolvedValue(uncertainCart("authorized"));
+    fireEvent.click(await screen.findByRole("button", { name: "Check Payment Status" }));
+    await waitFor(() => expect(api.completeCart).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      finishInitiation();
+    });
+    expect(api.completeCart).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Confirming your order")).toBeInTheDocument();
+    expect(screen.queryByText("Shipping Address")).not.toBeInTheDocument();
+    expect(screen.queryByText("Review & Place Order")).not.toBeInTheDocument();
+    await act(async () => {
+      clearCheckoutRecovery(mockCart.id);
+      finishOrder({ type: "order", order: { id: "order_recovered" } });
+    });
+    expect(await screen.findByText("Order Placed!")).toBeInTheDocument();
+    expect(api.initializePaymentSession).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each(
+  ["canceled", "error"].flatMap((status) =>
+    ["resolve", "authorize", "reject"].map((outcome) => ({
+      status,
+      outcome: outcome as "resolve" | "authorize" | "reject",
+    })),
+  ),
+)(
+  "preserves directly discovered $status during retry after late initiation $outcome",
+  async ({ status, outcome }) => {
+    const finishInitiation = await discoverWhileRetrying(outcome, status);
+    const expected = status === "canceled" ? "Payment was canceled" : "Payment failed";
+    await screen.findByText(expected);
+    await act(async () => {
+      finishInitiation();
+    });
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(api.completeCart).not.toHaveBeenCalled();
+    expect(api.initializePaymentSession).toHaveBeenCalledTimes(1);
+  },
+);
