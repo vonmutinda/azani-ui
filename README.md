@@ -25,6 +25,9 @@ Copy `.env.example` to `.env.local` and fill in the publishable API key from Med
 cp .env.example .env.local
 ```
 
+For production domain setup, verification, and rollback, see the
+[azanikids.com domain rollout guide](docs/azanikids-domain-rollout.md).
+
 ## Run
 
 ```bash
