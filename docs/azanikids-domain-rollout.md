@@ -62,6 +62,11 @@ preset. In contrast, [Railway's domain guide](https://docs.railway.com/networkin
 lists Squarespace among providers without compatible apex flattening/dynamic
 ALIAS support. ALIAS availability alone does not prove Railway compatibility.
 
+Railway's [DNS configuration guidance](https://docs.railway.com/integrations/api/manage-domains)
+states that it publishes no static inbound IP and does not support A records
+for this route. Its [Pro static outbound IPs](https://docs.railway.com/networking/static-outbound-ips)
+cannot receive inbound traffic and cannot solve apex routing.
+
 Keep DNSSEC enabled and current nameservers in place. Do not apply a preset,
 disable DNSSEC, resolve a Railway hostname to an IP and pin it as an A record,
 or put a normal CNAME at `@`. Before live work, verify an apex route that preserves
@@ -76,7 +81,13 @@ neither is authorized by approving this PR.
 | ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `azanikids.com`     | Production `azani-ui`            | Compatible apex route pending; use that custom domain's exact generated target and verification TXT after approval |
 | `api.azanikids.com` | Production `azani-api`           | `api` CNAME plus Railway's exact generated verification TXT name/value                                             |
-| `www.azanikids.com` | HTTPS redirect to canonical apex | Decide and verify redirect implementation; preserve path and query and avoid loops                                 |
+| `www.azanikids.com` | HTTPS redirect to canonical apex | Application/edge redirect implementation pending; verify HTTPS, path/query preservation, and absence of loops      |
+
+Use a separately approved and verified application or edge redirect for `www`
+to the canonical apex. [Squarespace managed forwarding](https://support.squarespace.com/hc/en-us/articles/214767107-Forwarding-a-domain)
+can preserve paths but drops query parameters, so it does not meet this plan's
+path-and-query preservation requirement in either direction. Redirect
+implementation and routing remain pending; this PR implements no redirect.
 
 Exact generated CNAME/TXT values and domain target ports are **pending**. No
 custom domains were added during inspection. Railway's existing public URLs
@@ -155,9 +166,10 @@ HTTPS origins; do not broaden cookie domains or weaken cookie security.
    backend URL is built into the UI; switching it before API readiness can break
    the existing Railway storefront. Verify the deployed UI before applying the
    approved apex and `www` DNS/redirect changes.
-7. Confirm HTTPS apex, catalog/images, canonical metadata, `www` path/query
-   redirects, and absence of redirect loops. Test browser auth, cart, and
-   email-link behavior without making real payments.
+7. Confirm HTTPS apex, catalog/images, canonical metadata, and the approved
+   application/edge `www` redirect. Test an actual path with query parameters
+   and inspect the redirect destination for preservation and absence of loops.
+   Test browser auth, cart, and email-link behavior without making real payments.
 8. Keep staging independent. Review staging indexing separately; this PR adds
    no robots/noindex enforcement and must not be described as doing so. Confirm
    production OpenGraph URLs use the canonical site before announcing launch.
