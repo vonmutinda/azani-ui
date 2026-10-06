@@ -343,15 +343,13 @@ export default function LoginPage() {
         window.location.href = result.location;
         return;
       }
-      if ("token" in result && typeof result.token === "string") {
-        setAuthToken(result.token);
-        await finalizeAuthenticatedSession();
-        router.push("/account");
-        return;
-      }
       setPostAuthError("Google sign-in failed. Please try again.");
-    } catch {
-      setPostAuthError("Could not connect to Google. Please try again.");
+    } catch (error) {
+      setPostAuthError(
+        (error as { status?: number })?.status === 503
+          ? "Google sign-in is currently unavailable. Please use email and password."
+          : "Could not connect to Google. Please try again.",
+      );
     } finally {
       setGoogleLoading(false);
     }

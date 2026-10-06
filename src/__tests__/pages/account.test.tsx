@@ -20,6 +20,7 @@ const mockGetProductsByIds = vi.fn();
 const mockGetWishlistProductIds = vi.fn();
 const mockResendVerificationEmail = vi.fn();
 const mockClearAuthToken = vi.fn();
+const mockLogoutCustomer = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
@@ -38,6 +39,7 @@ vi.mock("@/lib/medusa-api", () => ({
   getProductsByIds: (...args: unknown[]) => mockGetProductsByIds(...args),
   getWishlistProductIds: (...args: unknown[]) => mockGetWishlistProductIds(...args),
   resendVerificationEmail: (...args: unknown[]) => mockResendVerificationEmail(...args),
+  logoutCustomer: (...args: unknown[]) => mockLogoutCustomer(...args),
 }));
 
 vi.mock("@/lib/http", () => ({
@@ -56,6 +58,7 @@ const customer = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogoutCustomer.mockResolvedValue(undefined);
   mockGetCustomerAddresses.mockResolvedValue([]);
   mockGetOrders.mockResolvedValue([]);
   mockGetProductsByIds.mockResolvedValue([]);
@@ -107,6 +110,40 @@ describe("AccountPage", () => {
 
     expect(mockClearAuthToken).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith("/");
+  });
+
+  it("clears the server session before completing logout", async () => {
+    mockGetCustomer.mockResolvedValue(customer);
+    let finish!: () => void;
+    mockLogoutCustomer.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+    await screen.findAllByText("Sign Out");
+    await user.click(screen.getAllByText("Sign Out")[0]);
+    expect(mockPush).not.toHaveBeenCalled();
+    finish();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"));
+    expect(mockClearAuthToken).toHaveBeenCalled();
+  });
+
+  it("keeps logout retryable when server session cleanup fails", async () => {
+    mockGetCustomer.mockResolvedValue(customer);
+    mockLogoutCustomer.mockRejectedValueOnce(new Error("Unavailable"));
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+    await screen.findAllByText("Sign Out");
+    await user.click(screen.getAllByText("Sign Out")[0]);
+    expect(
+      await screen.findByText("We couldn't sign you out. Please try again."),
+    ).toBeInTheDocument();
+    expect(mockClearAuthToken).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+    await user.click(screen.getAllByText("Sign Out")[0]);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"));
   });
 
   it("opens deep-linked orders and resolves fallback product images", async () => {
