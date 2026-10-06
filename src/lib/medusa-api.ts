@@ -493,6 +493,10 @@ export async function getCustomer() {
 
 // ── Google OAuth ─────────────────────────────────────────────────────
 
+export async function logoutCustomer() {
+  return medusaRequest<{ success: boolean }>("store/customers/link-google", { method: "DELETE" });
+}
+
 export async function loginWithGoogle(callbackUrl?: string) {
   const body: Record<string, string> = {};
   if (callbackUrl) body.callback_url = callbackUrl;
@@ -522,13 +526,10 @@ export async function createCustomerFromOAuth(
   });
 }
 
-export async function linkGoogleToExistingCustomer(
-  token: string,
-  data: { email: string; auth_identity_id: string },
-) {
+export async function linkGoogleToExistingCustomer(token: string, password?: string) {
   return medusaRequest<{ customer_id: string; linked: boolean }>("store/customers/link-google", {
     method: "POST",
-    body: data,
+    body: password === undefined ? {} : { password },
     headers: { Authorization: `Bearer ${token}` },
   });
 }

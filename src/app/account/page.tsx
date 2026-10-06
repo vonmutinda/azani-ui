@@ -14,8 +14,10 @@ import {
   getProductsByIds,
   getWishlistProductIds,
   resendVerificationEmail,
+  logoutCustomer,
 } from "@/lib/medusa-api";
 import { clearAuthToken } from "@/lib/http";
+import { useToast } from "@/components/toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -228,6 +230,8 @@ export default function AccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const [signingOut, setSigningOut] = useState(false);
   const addressesRef = useRef<HTMLDivElement>(null);
 
   const { data: customer, isLoading } = useQuery({
@@ -259,10 +263,19 @@ export default function AccountPage() {
     }
   }, [isLoading, customer, router]);
 
-  const handleSignOut = () => {
-    clearAuthToken();
-    queryClient.clear();
-    router.push("/");
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logoutCustomer();
+      clearAuthToken();
+      queryClient.clear();
+      router.push("/");
+    } catch {
+      showToast("We couldn't sign you out. Please try again.", "error");
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const sortedOrders = orders?.length
@@ -377,10 +390,11 @@ export default function AccountPage() {
         </div>
         <button
           onClick={handleSignOut}
+          disabled={signingOut}
           className="border-border/50 text-muted hover:border-danger/20 hover:bg-danger/5 hover:text-danger hidden items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-sm font-medium transition sm:flex"
         >
           <LogOut className="h-3.5 w-3.5" />
-          Sign Out
+          {signingOut ? "Signing out..." : "Sign Out"}
         </button>
       </div>
 
@@ -484,10 +498,11 @@ export default function AccountPage() {
           {/* Mobile sign out */}
           <button
             onClick={handleSignOut}
+            disabled={signingOut}
             className="border-border/50 bg-card text-muted hover:bg-danger/5 hover:text-danger flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition sm:hidden"
           >
             <LogOut className="h-4 w-4" />
-            Sign Out
+            {signingOut ? "Signing out..." : "Sign Out"}
           </button>
         </div>
       </div>

@@ -11,6 +11,7 @@ const mockMergeWishlistAfterAuth = vi.fn();
 const mockRequestPasswordReset = vi.fn();
 const mockSetAuthToken = vi.fn();
 const mockClearAuthToken = vi.fn();
+const mockLoginWithGoogle = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -22,6 +23,7 @@ vi.mock("@/lib/medusa-api", () => ({
   registerCustomer: (...args: unknown[]) => mockRegisterCustomer(...args),
   mergeWishlistAfterAuth: (...args: unknown[]) => mockMergeWishlistAfterAuth(...args),
   requestPasswordReset: (...args: unknown[]) => mockRequestPasswordReset(...args),
+  loginWithGoogle: (...args: unknown[]) => mockLoginWithGoogle(...args),
 }));
 
 vi.mock("@/lib/http", () => ({
@@ -57,6 +59,24 @@ async function fillRegistrationForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("LoginPage", () => {
+  it("does not accept an unexpected token response as a completed Google sign-in", async () => {
+    mockLoginWithGoogle.mockResolvedValue({ token: "unexpected-token" });
+    renderWithProviders(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(await screen.findByText("Google sign-in failed. Please try again.")).toBeInTheDocument();
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockSetAuthToken).not.toHaveBeenCalled();
+  });
+  it("offers email sign-in when Google is not configured", async () => {
+    mockLoginWithGoogle.mockRejectedValue(Object.assign(new Error("unavailable"), { status: 503 }));
+    renderWithProviders(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(
+      await screen.findByText(
+        "Google sign-in is currently unavailable. Please use email and password.",
+      ),
+    ).toBeInTheDocument();
+  });
   it("renders sign in form by default", () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByRole("heading", { name: "Sign In" })).toBeInTheDocument();
