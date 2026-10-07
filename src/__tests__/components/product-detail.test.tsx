@@ -278,6 +278,109 @@ describe("ProductDetail", () => {
     });
   });
 
+  it("renders UTF-8 paragraphs, exact section headings and semantic bullet lists", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        description:
+          "Soft café cotton for everyday wear.\r\nA comfortable fit.\r\n\r\nMade for play — and rest.\r\n\r\nProduct details:\r\n- Cotton fabric\r\n• Relaxed fit\r\n\r\nCare\r\n- Wash cold",
+      },
+    });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    await screen.findByRole("heading", { name: mockProduct.title });
+
+    const details = screen.getByRole("heading", { name: "Product details", level: 4 });
+    const description = details.parentElement!;
+    expect(within(description).getAllByRole("paragraph")).toHaveLength(2);
+    expect(within(description).getAllByRole("paragraph")[0]).toHaveTextContent(
+      "Soft café cotton for everyday wear. A comfortable fit.",
+    );
+    expect(within(description).getAllByRole("paragraph")[1]).toHaveTextContent(
+      "Made for play — and rest.",
+    );
+    const lists = within(description).getAllByRole("list");
+    expect(lists).toHaveLength(2);
+    expect(
+      within(lists[0])
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Cotton fabric", "Relaxed fit"]);
+    expect(within(description).getByRole("heading", { name: "Care", level: 4 })).toBeVisible();
+    expect(within(lists[1]).getByRole("listitem")).toHaveTextContent("Wash cold");
+    expect(screen.getByRole("button", { name: "Specifications" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Description" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("does not invent Care or interpret unsupported headings and Markdown", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        description:
+          "**Soft cotton** [Shop](https://example.com)\n\nProduct details\n- Real detail\n\nproduct details:\n# Care\nCare instructions: More text\nProduct details: inline text\n* literal bullet",
+      },
+    });
+    const { container } = renderWithProviders(
+      <ProductDetail productId="prod_01" onBack={vi.fn()} />,
+    );
+    await screen.findByRole("heading", { name: mockProduct.title });
+    expect(screen.getByRole("heading", { name: "Product details", level: 4 })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Care" })).not.toBeInTheDocument();
+    expect(screen.getByText("**Soft cotton** [Shop](https://example.com)")).toBeInTheDocument();
+    expect(screen.getByText(/product details: # Care Care instructions:/)).toHaveTextContent(
+      "Product details: inline text * literal bullet",
+    );
+    expect(container.querySelector('a[href="https://example.com"]')).toBeNull();
+    expect(container.querySelector("strong")).toBeNull();
+  });
+
+  it.each([undefined, null, "", " \r\n\t ", "<p></p>"])(
+    "shows the description fallback for empty copy %j",
+    async (description) => {
+      mockGetProductById.mockResolvedValueOnce({ product: { ...mockProduct, description } });
+      renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+      expect(
+        await screen.findByText("No description available for this product yet."),
+      ).toBeVisible();
+      expect(screen.queryByRole("heading", { name: "Care" })).not.toBeInTheDocument();
+    },
+  );
+
+  it("strips legacy HTML and never injects malicious markup", async () => {
+    mockGetProductById.mockResolvedValueOnce({
+      product: {
+        ...mockProduct,
+        description:
+          '<p>Legacy <strong>cotton</strong></p>\n\nProduct details:\n- <img src=x onerror="alert(1)">Safe detail <script>alert(2)</script>\n\nCare:\nWash gently <svg onload="alert(3)"></svg>',
+      },
+    });
+    const { container } = renderWithProviders(
+      <ProductDetail productId="prod_01" onBack={vi.fn()} />,
+    );
+    await screen.findByRole("heading", { name: mockProduct.title });
+    const description = screen.getByRole("heading", { name: "Product details" }).parentElement!;
+    expect(within(description).getByText("Legacy cotton")).toBeInTheDocument();
+    expect(within(description).getByRole("listitem")).toHaveTextContent("Safe detail alert(2)");
+    expect(within(description).getByRole("heading", { name: "Care" })).toBeVisible();
+    expect(description.querySelector("script, img, svg, strong, [onerror], [onload]")).toBeNull();
+    expect(container.querySelector("script")).toBeNull();
+  });
+
+  it("retains all long description copy and treats single-paragraph copy as one paragraph", async () => {
+    const description = "Soft cotton — café. ".repeat(700) + "END";
+    mockGetProductById.mockResolvedValueOnce({ product: { ...mockProduct, description } });
+    renderWithProviders(<ProductDetail productId="prod_01" onBack={vi.fn()} />);
+    const paragraph = await screen.findByText(description);
+    expect(paragraph.tagName).toBe("P");
+    expect(paragraph.textContent).toBe(description);
+    expect(screen.queryByRole("heading", { name: "Product details" })).not.toBeInTheDocument();
+  });
+
   it("renders product options", async () => {
     mockGetProductById.mockResolvedValueOnce({ product: mockProduct });
 

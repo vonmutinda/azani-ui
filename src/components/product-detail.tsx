@@ -31,11 +31,11 @@ import {
   getVariantDiscountPercent,
   getVariantOriginalPrice,
   getVariantPrice,
-  stripHtml,
   resolveColourImage,
 } from "@/lib/formatters";
 import { MedusaCart, MedusaProductVariant } from "@/types/medusa";
 import { ClothingFit } from "@/components/clothing-fit";
+import { ProductDescription } from "@/components/product-description";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { getSuppliedProductRating } from "@/lib/product-rating";
@@ -640,11 +640,7 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
 
       <div className="mt-8 max-w-3xl">
         <AccordionSection title="Description" defaultOpen>
-          {product.description ? (
-            <p>{stripHtml(product.description)}</p>
-          ) : (
-            <p>No description available for this product yet.</p>
-          )}
+          <ProductDescription description={product.description} />
         </AccordionSection>
         <AccordionSection title="Specifications">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
