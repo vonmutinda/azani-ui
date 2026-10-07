@@ -24,12 +24,12 @@ export function freeShippingProgress(subtotal: number): number {
   return Math.min(100, Math.max(0, pct));
 }
 
-/** The threshold formatted as whole shillings, e.g. "KSh5,000". */
+/** The threshold formatted as whole shillings, e.g. "KES 10,000". */
 export function freeShippingThresholdLabel(): string {
-  return `KSh${FREE_SHIPPING_THRESHOLD.toLocaleString("en-US")}`;
+  return `KES ${FREE_SHIPPING_THRESHOLD.toLocaleString("en-US")}`;
 }
 
-/** Announcement-bar copy, e.g. "Free delivery over KSh5,000". */
+/** Announcement-bar copy, e.g. "Free delivery over KES 10,000". */
 export function freeDeliveryBarLabel(): string {
   return `Free delivery over ${freeShippingThresholdLabel()}`;
 }

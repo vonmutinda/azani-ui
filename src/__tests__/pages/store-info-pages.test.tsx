@@ -12,8 +12,9 @@ describe("store information pages", () => {
 
     expect(screen.getByRole("heading", { name: "Shipping Policy" })).toBeInTheDocument();
     expect(
-      screen.getByText(/Free delivery is available for orders over KSh5,000/i),
+      screen.getByText(/Free delivery is available for orders over KES 10,000/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("Orders over KES 10,000")).toBeInTheDocument();
     expect(
       screen.getAllByText(/available services and fees for your order/i).length,
     ).toBeGreaterThan(0);
