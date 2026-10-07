@@ -4,6 +4,8 @@ import { buildRemoteImagePatterns } from "./src/lib/image-config";
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
+  // Keep the local review controls clear of the floating development badge.
+  devIndicators: false,
   productionBrowserSourceMaps: false,
   images: {
     // In dev, localhost images can't pass through the optimization proxy
