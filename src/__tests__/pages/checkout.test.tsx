@@ -528,6 +528,44 @@ describe("CheckoutPage", () => {
     );
   });
 
+  it.each([
+    { field: "first name", label: /^First Name/, initial: "Sara", cleared: "" },
+    { field: "last name", label: /^Last Name/, initial: "Family", cleared: "" },
+    { field: "phone", label: /^Phone/, initial: "+254712345678", cleared: "" },
+    { field: "phone prefix", label: /^Phone/, initial: "+254712345678", cleared: "+254" },
+  ])(
+    "keeps a deliberately cleared $field when the cart refetches",
+    async ({ label, initial, cleared }) => {
+      const cart = { ...mockCart, region: mockRegion, subtotal: 3000, total: 3000 };
+      mockGetCart.mockResolvedValue(cart);
+      mockGetCustomer.mockResolvedValue({
+        id: "customer_1",
+        email: "sara@example.com",
+        first_name: "Sara",
+        last_name: "Family",
+        phone: "+254712345678",
+      });
+      const { queryClient } = renderWithProviders(<CheckoutPage />);
+      const input = await screen.findByRole("textbox", { name: label });
+      await waitFor(() => expect(input).toHaveValue(initial));
+      fireEvent.change(input, { target: { value: cleared } });
+      expect(input).toHaveValue(cleared);
+
+      const callsBeforeRefetch = mockGetCart.mock.calls.length;
+      const refetchedCart = { ...cart, subtotal: 3001, total: 3001 };
+      mockGetCart.mockResolvedValue(refetchedCart);
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: ["checkout-cart"], type: "active" });
+      });
+      expect(mockGetCart.mock.calls.length).toBeGreaterThan(callsBeforeRefetch);
+      expect(
+        queryClient.getQueriesData({ queryKey: ["checkout-cart"], type: "active" })[0]?.[1],
+      ).toEqual(refetchedCart);
+      await screen.findByText("KSh3,001.00");
+      expect(input).toHaveValue(cleared);
+    },
+  );
+
   it("prefills a new checkout from the profile once the cart is available", async () => {
     mockGetCustomer.mockResolvedValue({
       id: "customer_1",

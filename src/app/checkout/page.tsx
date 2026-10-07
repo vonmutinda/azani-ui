@@ -287,6 +287,7 @@ export default function CheckoutPage() {
     refetchInterval: paymentPending ? 3_000 : false,
   });
   const cart = cartQuery.data;
+  const cartId = cart?.id;
   const amounts = getCartDisplayAmounts(cart);
   const currencyCode = "kes";
   const shippingKnown = (cart?.shipping_methods?.length ?? 0) > 0;
@@ -389,7 +390,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const customer = customerQuery.data;
-    if (!customer || !cart) return;
+    if (!customer || !cartId) return;
     setForm((current) => ({
       ...current,
       email: current.email || customer.email,
@@ -398,7 +399,7 @@ export default function CheckoutPage() {
       phone:
         current.phone && current.phone !== "+254" ? current.phone : customer.phone || current.phone,
     }));
-  }, [customerQuery.data, cart]);
+  }, [customerQuery.data, cartId]);
 
   useEffect(() => {
     if (!cart || !savedAddresses.length || selectedSavedAddressId) return;
