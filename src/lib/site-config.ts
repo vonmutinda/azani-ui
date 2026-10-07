@@ -20,6 +20,6 @@ export const siteConfig = {
   shipping: {
     // Single source of truth for the free-delivery threshold (KES). Reused by the
     // header trust bar, home, cart progress bar and checkout so they never disagree.
-    freeShippingThreshold: 5000,
+    freeShippingThreshold: 10000,
   },
 } as const;

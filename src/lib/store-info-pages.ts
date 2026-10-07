@@ -1,4 +1,5 @@
 import { siteConfig } from "@/lib/site-config";
+import { freeShippingThresholdLabel } from "@/lib/shipping";
 
 export type StoreInfoPageSection = {
   title: string;
@@ -44,7 +45,7 @@ export const policyPages = {
     updatedAt: LAST_UPDATED,
     quickFacts: [
       { label: "Coverage", value: "Check options for your address at checkout" },
-      { label: "Free delivery", value: "Orders over KSh5,000" },
+      { label: "Free delivery", value: `Orders over ${freeShippingThresholdLabel()}` },
       { label: "Fast option", value: "Priority delivery where available" },
     ],
     sections: [
@@ -62,7 +63,7 @@ export const policyPages = {
       },
       {
         title: "Fees and free delivery",
-        body: "Free delivery is available for orders over KSh5,000. Smaller orders and express deliveries may include a delivery fee, shown at checkout before you pay.",
+        body: `Free delivery is available for orders over ${freeShippingThresholdLabel()}. Smaller orders and express deliveries may include a delivery fee, shown at checkout before you pay.`,
       },
       {
         title: "Missed deliveries",
