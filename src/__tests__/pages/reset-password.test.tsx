@@ -30,6 +30,10 @@ describe("ResetPasswordPage", () => {
   it("shows invalid link message when token or email missing", () => {
     renderWithProviders(<ResetPasswordPage />);
     expect(screen.getByText("Invalid Reset Link")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Request a new reset link" })).toHaveAttribute(
+      "href",
+      "/account/login?view=forgot",
+    );
   });
 
   it("renders the password form when token and email are present", () => {

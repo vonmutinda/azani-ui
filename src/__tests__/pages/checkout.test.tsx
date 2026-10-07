@@ -505,7 +505,19 @@ describe("CheckoutPage", () => {
     const { queryClient } = renderWithProviders(<CheckoutPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Back to Address" }));
     fireEvent.click(await screen.findByRole("button", { name: /Sara Family/ }));
-    act(() => queryClient.setQueryData(["cart"], { ...cart }));
+    const callsBeforeRefetch = mockGetCart.mock.calls.length;
+    const refetchedCart = {
+      ...cart,
+      shipping_address: { ...draft, first_name: "Updated draft recipient" },
+    };
+    mockGetCart.mockResolvedValue(refetchedCart);
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["checkout-cart"], type: "active" });
+    });
+    expect(mockGetCart.mock.calls.length).toBeGreaterThan(callsBeforeRefetch);
+    expect(
+      queryClient.getQueriesData({ queryKey: ["checkout-cart"], type: "active" })[0]?.[1],
+    ).toEqual(refetchedCart);
     fireEvent.click(screen.getByRole("button", { name: "Continue with Selected Address" }));
     await waitFor(() =>
       expect(mockUpdateCart).toHaveBeenCalledWith(

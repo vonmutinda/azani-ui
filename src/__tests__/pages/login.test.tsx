@@ -12,9 +12,10 @@ const mockRequestPasswordReset = vi.fn();
 const mockSetAuthToken = vi.fn();
 const mockClearAuthToken = vi.fn();
 const mockLoginWithGoogle = vi.fn();
+const mockSearchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -33,6 +34,7 @@ vi.mock("@/lib/http", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSearchParams.delete("view");
   mockMergeWishlistAfterAuth.mockResolvedValue({
     customer: { id: "cus_1", email: "test@example.com", has_account: true },
     wishlistIds: [],
@@ -194,4 +196,16 @@ describe("LoginPage", () => {
     expect(screen.getByText("Please enter a valid email address.")).toBeInTheDocument();
     expect(mockLoginCustomer).not.toHaveBeenCalled();
   });
+});
+
+it("opens password recovery directly from a reset-link recovery URL", async () => {
+  mockSearchParams.set("view", "forgot");
+  mockRequestPasswordReset.mockResolvedValueOnce({});
+  const user = userEvent.setup();
+  renderWithProviders(<LoginPage />);
+  expect(screen.getByRole("heading", { name: "Forgot Password" })).toBeInTheDocument();
+  await user.type(screen.getByRole("textbox", { name: "Email" }), "owner@example.com");
+  await user.click(screen.getByRole("button", { name: "Send Reset Link" }));
+  await waitFor(() => expect(mockRequestPasswordReset).toHaveBeenCalledWith("owner@example.com"));
+  expect(mockLoginCustomer).not.toHaveBeenCalled();
 });

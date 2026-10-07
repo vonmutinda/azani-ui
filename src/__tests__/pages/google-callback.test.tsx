@@ -43,6 +43,55 @@ beforeEach(() => {
 });
 
 describe("Google callback", () => {
+  it.each(["code=test-code", "code=test-code&state=", "state=test-state"])(
+    "rejects missing OAuth callback parameters (%s) before contacting the server",
+    async (params) => {
+      mocks.params = new URLSearchParams(params);
+      localStorage.setItem("medusa_auth_token", "old-token");
+      renderWithProviders(<GoogleCallbackPage />);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "We couldn't complete Google sign-in. Please start again.",
+      );
+      expect(localStorage.getItem("medusa_auth_token")).toBeNull();
+      expect(mocks.validate).not.toHaveBeenCalled();
+      expect(mocks.link).not.toHaveBeenCalled();
+      expect(mocks.refresh).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["invalid-state", "stale-state"])(
+    "fails closed when the server rejects OAuth state (%s)",
+    async (state) => {
+      mocks.params = new URLSearchParams({ code: "test-code", state });
+      mocks.validate.mockRejectedValue(Object.assign(new Error("State rejected"), { status: 401 }));
+      localStorage.setItem("medusa_auth_token", "old-token");
+      renderWithProviders(<GoogleCallbackPage />);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "We couldn't complete Google sign-in. Please start again.",
+      );
+      expect(mocks.validate).toHaveBeenCalledExactlyOnceWith({ code: "test-code", state });
+      expect(mocks.link).not.toHaveBeenCalled();
+      expect(mocks.refresh).not.toHaveBeenCalled();
+      expect(mocks.customer).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+      expect(localStorage.getItem("medusa_auth_token")).toBeNull();
+    },
+  );
+
+  it("confirms a valid callback's customer and session before routing", async () => {
+    renderWithProviders(<GoogleCallbackPage />);
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledExactlyOnceWith("/account"));
+    expect(mocks.validate).toHaveBeenCalledExactlyOnceWith({
+      code: "test-code",
+      state: "test-state",
+    });
+    expect(mocks.customer).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem("medusa_auth_token")).toBe("confirmed-token");
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it("requires a confirmed customer before routing to the account", async () => {
     mocks.customer.mockResolvedValue(null);
     mocks.wishlist.mockResolvedValue({ customer: null, wishlistIds: [] });
