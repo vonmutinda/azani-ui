@@ -379,6 +379,159 @@ describe("CheckoutPage", () => {
     );
   });
 
+  it("restores the draft recipient after the customer profile resolves first", async () => {
+    let resolveCart!: (value: unknown) => void;
+    mockGetCart.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCart = resolve;
+      }),
+    );
+    mockGetCustomer.mockResolvedValue({
+      id: "customer_1",
+      email: "sara@example.com",
+      first_name: "Sara",
+      last_name: "Family",
+      phone: "+254700000000",
+    });
+    const draft = {
+      first_name: "Amina",
+      last_name: "Otieno",
+      address_1: "Test Road",
+      phone: "+254712345678",
+      city: "Nairobi",
+      province: "Nairobi",
+      country_code: "ke",
+    };
+    const { queryClient } = renderWithProviders(<CheckoutPage />);
+    await waitFor(() => expect(queryClient.getQueryState(["addresses"])?.status).toBe("success"));
+    await act(async () =>
+      resolveCart({
+        ...mockCart,
+        region: mockRegion,
+        email: "amina@example.com",
+        shipping_address: draft,
+      }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Back to Address" }));
+    expect(screen.getByRole("textbox", { name: /^First Name/ })).toHaveValue("Amina");
+    expect(screen.getByRole("textbox", { name: /^Last Name/ })).toHaveValue("Otieno");
+    expect(screen.getByRole("textbox", { name: /^Phone/ })).toHaveValue("+254712345678");
+    expect(screen.getByRole("textbox", { name: /^Email/ })).toHaveValue("sara@example.com");
+    expect(screen.getByRole("textbox", { name: /^Email/ })).toHaveAttribute("readonly");
+  });
+
+  it("submits the draft recipient after family addresses resolve before the cart", async () => {
+    let resolveCart!: (value: unknown) => void;
+    mockGetCart.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCart = resolve;
+      }),
+    );
+    const draft = {
+      first_name: "Amina",
+      last_name: "Otieno",
+      address_1: "Test Road",
+      phone: "+254712345678",
+      city: "Nairobi",
+      province: "Nairobi",
+      country_code: "ke",
+    };
+    mockGetCustomer.mockResolvedValue({ id: "customer_1", email: "amina@example.com" });
+    mockGetCustomerAddresses.mockResolvedValue([{ ...draft, id: "address_1", first_name: "Sara" }]);
+    const { queryClient } = renderWithProviders(<CheckoutPage />);
+    await waitFor(() => expect(queryClient.getQueryState(["addresses"])?.status).toBe("success"));
+    await act(async () =>
+      resolveCart({ ...mockCart, region: mockRegion, shipping_address: draft }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Back to Address" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Continue (?:with Selected Address|to Shipping)$/ }),
+    );
+    await waitFor(() =>
+      expect(mockUpdateCart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shipping_address: expect.objectContaining({ first_name: "Amina", last_name: "Otieno" }),
+        }),
+      ),
+    );
+  });
+
+  it("preserves manual recipient edits when the profile arrives after the cart", async () => {
+    let resolveCustomer!: (value: unknown) => void;
+    mockGetCustomer.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCustomer = resolve;
+      }),
+    );
+    renderWithProviders(<CheckoutPage />);
+    fireEvent.change(await screen.findByRole("textbox", { name: /^First Name/ }), {
+      target: { value: "Edited recipient" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Last Name/ }), {
+      target: { value: "Edited surname" },
+    });
+    await act(async () =>
+      resolveCustomer({
+        id: "customer_1",
+        email: "sara@example.com",
+        first_name: "Sara",
+        last_name: "Family",
+      }),
+    );
+    await screen.findByText("Checking out as sara@example.com");
+    expect(screen.getByRole("textbox", { name: /^First Name/ })).toHaveValue("Edited recipient");
+    expect(screen.getByRole("textbox", { name: /^Last Name/ })).toHaveValue("Edited surname");
+    expect(screen.getByRole("textbox", { name: /^Email/ })).toHaveValue("sara@example.com");
+    expect(screen.getByRole("textbox", { name: /^Email/ })).toHaveAttribute("readonly");
+  });
+
+  it("keeps an explicitly selected family recipient when the cart refetches", async () => {
+    const draft = {
+      first_name: "Amina",
+      last_name: "Otieno",
+      address_1: "Test Road",
+      phone: "+254712345678",
+      city: "Nairobi",
+      province: "Nairobi",
+      country_code: "ke",
+    };
+    const cart = { ...mockCart, region: mockRegion, shipping_address: draft };
+    mockGetCart.mockResolvedValue(cart);
+    mockGetCustomer.mockResolvedValue({ id: "customer_1", email: "amina@example.com" });
+    mockGetCustomerAddresses.mockResolvedValue([
+      { ...draft, id: "amina" },
+      { ...draft, id: "sara", first_name: "Sara", last_name: "Family" },
+    ]);
+    const { queryClient } = renderWithProviders(<CheckoutPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Back to Address" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Sara Family/ }));
+    act(() => queryClient.setQueryData(["cart"], { ...cart }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Selected Address" }));
+    await waitFor(() =>
+      expect(mockUpdateCart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shipping_address: expect.objectContaining({ first_name: "Sara", last_name: "Family" }),
+        }),
+      ),
+    );
+  });
+
+  it("prefills a new checkout from the profile once the cart is available", async () => {
+    mockGetCustomer.mockResolvedValue({
+      id: "customer_1",
+      email: "sara@example.com",
+      first_name: "Sara",
+      last_name: "Family",
+      phone: "+254712345678",
+    });
+    renderWithProviders(<CheckoutPage />);
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /^First Name/ })).toHaveValue("Sara"),
+    );
+    expect(screen.getByRole("textbox", { name: /^Last Name/ })).toHaveValue("Family");
+    expect(screen.getByRole("textbox", { name: /^Phone/ })).toHaveValue("+254712345678");
+  });
+
   async function continueToShipping() {
     await screen.findByText("Shipping Address");
 
