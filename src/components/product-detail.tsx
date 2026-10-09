@@ -339,7 +339,7 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
             <EnamelUtilityIcon name="cart" size={48} />
           </div>
           <div>
-            <h1 className="text-foreground text-xl font-bold">Product not found</h1>
+            <Title className="text-foreground text-xl font-bold">Product not found</Title>
             <p className="text-muted mt-1 text-sm">
               This product may have been removed or is no longer available.
             </p>
@@ -519,10 +519,7 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
 
           {requiresSize && <ClothingFit product={product} />}
           {cartMutation.isError && (
-            <p
-              role={headingLevel !== 1 || !purchaseButtonOffscreen ? "alert" : undefined}
-              className="text-danger text-sm"
-            >
+            <p role="alert" className="text-danger text-sm">
               {cartMutation.error.message ||
                 "This item could not be added. Please check its availability."}
             </p>
@@ -719,7 +716,7 @@ export function ProductDetail({ productId, onBack, headingLevel = 2 }: Props) {
                     : "Add to cart"}
             </button>
             {cartMutation.isError && (
-              <p role="alert" className="text-danger w-full text-sm">
+              <p aria-hidden="true" className="text-danger w-full text-sm">
                 {cartMutation.error.message ||
                   "This item could not be added. Please check its availability."}
               </p>

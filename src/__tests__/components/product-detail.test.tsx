@@ -116,14 +116,76 @@ describe("ProductDetail", () => {
     const purchase = screen.getByRole("region", { name: "Selected outfit" });
     expect(within(purchase).getByText(/Size: 4 · Colour: Sand/)).toBeInTheDocument();
     await user.click(within(purchase).getByRole("button", { name: "Add selected item to cart" }));
-    expect(await within(purchase).findByRole("alert")).toHaveTextContent(
-      "Stock changed. Please try again.",
-    );
+    expect(
+      await within(purchase).findByText("Stock changed. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Stock changed. Please try again.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
     await user.click(within(purchase).getByRole("button", { name: "Add selected item to cart" }));
     await waitFor(() => expect(mockAddToCart).toHaveBeenCalledTimes(2));
     expect(mockAddToCart).toHaveBeenLastCalledWith("4-Sand", 1);
     vi.unstubAllGlobals();
   });
+
+  it("announces a desktop cart failure after the purchase controls scroll out of view", async () => {
+    let visibilityChanged: (entries: { isIntersecting: boolean }[]) => void = () => {};
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: typeof visibilityChanged) {
+          visibilityChanged = callback;
+        }
+        observe() {
+          visibilityChanged([{ isIntersecting: true }]);
+        }
+        disconnect() {}
+      },
+    );
+    let rejectCart!: (error: Error) => void;
+    mockAddToCart.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectCart = reject;
+      }),
+    );
+    mockGetProductById.mockResolvedValueOnce({ product: makeColourProduct() });
+    const user = userEvent.setup();
+    renderWithProviders(<ProductDetail productId="prod_01" headingLevel={1} onBack={vi.fn()} />);
+    await user.click(
+      within(await screen.findByRole("group", { name: "Size" })).getByRole("button", { name: "4" }),
+    );
+    await user.click(
+      within(screen.getByRole("group", { name: "Colour" })).getByRole("button", { name: "Sand" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Add to Cart" }));
+    act(() => visibilityChanged([{ isIntersecting: false }]));
+    // Apply the desktop equivalent of Tailwind's md:hidden to the mobile region.
+    const purchase = screen.getByRole("region", { name: "Selected outfit" });
+    purchase.style.display = "none";
+    await act(async () => rejectCart(new Error("Stock changed. Please try again.")));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Stock changed. Please try again.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it.each([1, 2] as const)(
+    "keeps a missing product at heading level %s with catalogue recovery",
+    async (headingLevel) => {
+      mockGetProductById.mockResolvedValueOnce({ product: null });
+      const onBack = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ProductDetail productId="missing" headingLevel={headingLevel} onBack={onBack} />,
+      );
+      expect(
+        await screen.findByRole("heading", { level: headingLevel, name: "Product not found" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Shop clothing" })).toHaveAttribute(
+        "href",
+        "/products",
+      );
+      await user.click(screen.getByRole("button", { name: /Back/ }));
+      expect(onBack).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("shows the selected colour before size selection and preserves manual browsing on size changes", async () => {
     const product = makeColourProduct();

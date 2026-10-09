@@ -287,6 +287,7 @@ export default function CheckoutPage() {
     refetchInterval: paymentPending ? 3_000 : false,
   });
   const cart = cartQuery.data;
+  const cartId = cart?.id;
   const amounts = getCartDisplayAmounts(cart);
   const currencyCode = "kes";
   const shippingKnown = (cart?.shipping_methods?.length ?? 0) > 0;
@@ -389,7 +390,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const customer = customerQuery.data;
-    if (!customer) return;
+    if (!customer || !cartId) return;
     setForm((current) => ({
       ...current,
       email: current.email || customer.email,
@@ -398,10 +399,10 @@ export default function CheckoutPage() {
       phone:
         current.phone && current.phone !== "+254" ? current.phone : customer.phone || current.phone,
     }));
-  }, [customerQuery.data]);
+  }, [customerQuery.data, cartId]);
 
   useEffect(() => {
-    if (!savedAddresses.length || selectedSavedAddressId) return;
+    if (!cart || !savedAddresses.length || selectedSavedAddressId) return;
     const draft = cart?.shipping_address;
     const matching =
       draft &&
@@ -413,7 +414,7 @@ export default function CheckoutPage() {
       );
     setSelectedSavedAddressId((matching || savedAddresses[0]).id ?? null);
     if (draft && !matching) setUseManualAddress(true);
-  }, [savedAddresses, selectedSavedAddressId, cart?.shipping_address]);
+  }, [savedAddresses, selectedSavedAddressId, cart]);
 
   // Pre-fill the M-Pesa phone from the cart's shipping address phone
   useEffect(() => {
