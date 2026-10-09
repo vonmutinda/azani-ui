@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   getCategoryIcon,
   toCategory,
@@ -78,6 +78,45 @@ describe("toCategory", () => {
     expect(result.name).toBe("Bath & Diapering");
     expect(result.icon).toBe("shirt");
     expect(result.description).toBe("Everything for bath time and diaper changes");
+  });
+
+  it.each(["https://minio-production-5367.up.railway.app/category.jpg", "/images/category.webp"])(
+    "preserves configured category artwork %s",
+    (url) => {
+      expect(toCategory({ ...mockCategory, metadata: { home_image_url: url } }).homeImageUrl).toBe(
+        url,
+      );
+    },
+  );
+
+  it.each([
+    undefined,
+    null,
+    42,
+    {},
+    "",
+    "https://",
+    "https://unconfigured.example.com/category.jpg",
+    "javascript:alert(1)",
+    "//example.com/image.jpg",
+    "data:image/png;base64,abc",
+    "/\\example.com/image.jpg",
+  ])("ignores invalid artwork %j", (url) => {
+    expect(
+      toCategory({ ...mockCategory, metadata: { home_image_url: url } }).homeImageUrl,
+    ).toBeUndefined();
+  });
+
+  it("accepts a configured staging image host using the shared optimizer allowlist", () => {
+    vi.stubEnv("NEXT_PUBLIC_IMAGE_HOSTS", "https://minio-staging-0e36.up.railway.app");
+    try {
+      const url = "https://minio-staging-0e36.up.railway.app/medusa/tops.png";
+      expect(toCategory({ ...mockCategory, metadata: { home_image_url: url } }).homeImageUrl).toBe(
+        url,
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("converts children recursively", () => {

@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { buildRemoteImagePatterns } from "./src/lib/image-config";
+import { getRemoteImagePatterns } from "./src/lib/image-config";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -9,22 +9,7 @@ const nextConfig: NextConfig = {
     // In dev, localhost images can't pass through the optimization proxy
     // (Next.js blocks private IP resolution). Skip optimization locally.
     unoptimized: isDev,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "medusa-public-images.s3.eu-west-1.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "minio-production-5367.up.railway.app",
-      },
-      ...buildRemoteImagePatterns(process.env.NEXT_PUBLIC_IMAGE_HOSTS),
-      ...(isDev ? [{ protocol: "http" as const, hostname: "localhost", port: "9002" }] : []),
-    ],
+    remotePatterns: getRemoteImagePatterns(process.env.NEXT_PUBLIC_IMAGE_HOSTS, isDev),
   },
   headers: async () => [
     {

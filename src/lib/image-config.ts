@@ -33,3 +33,17 @@ export function buildRemoteImagePatterns(hosts: string | undefined): RemoteImage
       return true;
     });
 }
+
+/** Shared allowlist for Next's optimizer and independently configured category artwork. */
+export function getRemoteImagePatterns(
+  hosts: string | undefined,
+  isDev = false,
+): RemoteImagePattern[] {
+  return [
+    { protocol: "https", hostname: "medusa-public-images.s3.eu-west-1.amazonaws.com" },
+    { protocol: "https", hostname: "images.unsplash.com" },
+    { protocol: "https", hostname: "minio-production-5367.up.railway.app" },
+    ...buildRemoteImagePatterns(hosts),
+    ...(isDev ? [{ protocol: "http" as const, hostname: "localhost", port: "9002" }] : []),
+  ];
+}
