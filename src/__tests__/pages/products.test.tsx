@@ -198,6 +198,31 @@ describe("ProductsPage", () => {
     });
   });
 
+  it("resolves an empty Bottoms card link to its ID while preserving the Clothing parent", async () => {
+    searchParamsRef.current = new URLSearchParams("category=bottoms");
+    const parent = {
+      ...mockCategories[0],
+      id: "pcat_clothing",
+      handle: "clothing",
+      name: "Clothing",
+    };
+    const nested = { ...mockCategories[1], parent_category_id: parent.id, parent_category: parent };
+    const original = JSON.parse(JSON.stringify(nested));
+    mockGetCategories.mockResolvedValue({
+      product_categories: [nested],
+      count: 1,
+      offset: 0,
+      limit: 100,
+    });
+    mockGetProducts.mockResolvedValue({ products: [], count: 0, offset: 0, limit: 20 });
+    renderWithProviders(<ProductsPage />);
+    expect(await screen.findByRole("heading", { name: "No products found" })).toBeInTheDocument();
+    expect(mockGetProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: [nested.id] }),
+    );
+    expect(nested).toEqual(original);
+  });
+
   it("filters by multiple selected categories (server-side OR via category_id)", async () => {
     searchParamsRef.current = new URLSearchParams("category=bottoms,sleepwear");
     mockGetCategories.mockResolvedValue({

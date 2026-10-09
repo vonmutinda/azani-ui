@@ -41,7 +41,10 @@ export default function Home() {
   const products = productsQuery.data?.products ?? [];
   const categories = (categoriesQuery.data?.product_categories ?? [])
     .filter(
-      (category) => !category.parent_category_id && TOP_LEVEL_HANDLES.includes(category.handle),
+      (category) =>
+        TOP_LEVEL_HANDLES.includes(category.handle) &&
+        (!category.parent_category_id ||
+          (category.handle === "bottoms" && category.parent_category?.handle === "clothing")),
     )
     .map(toCategory);
 
