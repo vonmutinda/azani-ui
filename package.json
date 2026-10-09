@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:hydration",
+    "test:hydration": "vitest run --config vitest.hydration.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "husky"
@@ -30,7 +31,7 @@
     "@tanstack/react-query": "^5.90.21",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
-    "next": "16.1.6",
+    "next": "16.3.8",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^4.3.6"
@@ -45,7 +46,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.3.8",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
