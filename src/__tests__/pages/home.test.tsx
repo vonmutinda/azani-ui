@@ -188,6 +188,48 @@ describe("Home Page", () => {
     expect(vi.mocked(getProducts).mock.calls).toEqual([[{ limit: 8, sort: "newest" }]]);
   });
 
+  it("shows the configured Bottoms child card and its empty-shop link without promoting other nested categories", async () => {
+    vi.mocked(getProducts).mockResolvedValue({ products: [], count: 0, offset: 0, limit: 8 });
+    const parent = {
+      ...categoryResponse.product_categories[0],
+      id: "pcat_clothing",
+      name: "Clothing",
+      handle: "clothing",
+    };
+    const nested = {
+      ...categoryResponse.product_categories[0],
+      id: "pcat_bottoms",
+      name: "Bottoms",
+      handle: "bottoms",
+      parent_category_id: parent.id,
+      parent_category: parent,
+      metadata: { home_image_url: "https://minio-production-5367.up.railway.app/bottoms.png" },
+    };
+    const original = JSON.parse(JSON.stringify(nested));
+    vi.mocked(getCategories).mockResolvedValue({
+      ...categoryResponse,
+      product_categories: [
+        nested,
+        {
+          ...nested,
+          id: "pcat_nested_dresses",
+          name: "Nested dresses",
+          handle: "dresses-jumpsuits",
+        },
+      ],
+      count: 2,
+    });
+    renderWithProviders(<Home />);
+    const link = await screen.findByRole("link", { name: /^Bottoms/ });
+    expect(link).toHaveAttribute("href", "/products?category=bottoms");
+    expect(link.querySelector("img")).toHaveAttribute("src", nested.metadata.home_image_url);
+    expect(screen.queryByRole("link", { name: /^Nested dresses/ })).not.toBeInTheDocument();
+    expect(nested).toEqual(original);
+    expect(
+      await screen.findByText("No clothing is available right now. Please check back soon."),
+    ).toBeInTheDocument();
+  });
+
   it("uses independent category artwork even when arrivals have another photograph", async () => {
     vi.mocked(getCategories).mockResolvedValue({
       ...categoryResponse,
