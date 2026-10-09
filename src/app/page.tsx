@@ -1,14 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, MessageCircleQuestion, Truck } from "lucide-react";
 import { getProducts, getCategories } from "@/lib/medusa-api";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
-import { resolveProductImage, getProductImageRotation } from "@/lib/formatters";
-import { toCategory, TOP_LEVEL_HANDLES, resolveCategoryIds } from "@/lib/categories";
+import { toCategory, TOP_LEVEL_HANDLES } from "@/lib/categories";
 
 const ageGroups = [
   { age: "2-4", label: "2–4 years", description: "Little explorers", color: "bg-primary-light" },
@@ -28,6 +28,7 @@ const ageGroups = [
 const tileColors = ["bg-primary-light", "bg-accent-yellow-light", "bg-secondary-light"];
 
 export default function Home() {
+  const [failedArtwork, setFailedArtwork] = useState<Record<string, string>>({});
   const productsQuery = useQuery({
     queryKey: ["products", "new"],
     queryFn: () => getProducts({ limit: 8, sort: "newest" }),
@@ -43,20 +44,6 @@ export default function Home() {
       (category) => !category.parent_category_id && TOP_LEVEL_HANDLES.includes(category.handle),
     )
     .map(toCategory);
-
-  const categoryPreviews = useQueries({
-    queries: categories.map((category) => ({
-      queryKey: ["category-preview", category.slug],
-      queryFn: () =>
-        getProducts({
-          category_id: resolveCategoryIds(categoriesQuery.data?.product_categories ?? [], [
-            category.slug,
-          ]),
-          limit: 1,
-        }),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
 
   return (
     <div>
@@ -149,8 +136,10 @@ export default function Home() {
           </h2>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {categories.map((category, index) => {
-              const product = categoryPreviews[index]?.data?.products[0];
-              const image = product && resolveProductImage(product);
+              const image =
+                failedArtwork[category.slug] !== category.homeImageUrl
+                  ? category.homeImageUrl
+                  : undefined;
               return (
                 <Link
                   key={category.slug}
@@ -161,15 +150,13 @@ export default function Home() {
                     {image ? (
                       <Image
                         src={image}
+                        onError={() =>
+                          setFailedArtwork((current) => ({ ...current, [category.slug]: image }))
+                        }
                         alt=""
                         fill
                         sizes="(max-width: 1023px) 45vw, 300px"
                         className="object-contain p-3 transition duration-300 group-hover:scale-[1.02]"
-                        style={{
-                          transform: getProductImageRotation(product)
-                            ? "rotate(90deg) scale(.75)"
-                            : undefined,
-                        }}
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">

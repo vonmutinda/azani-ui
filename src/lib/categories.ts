@@ -1,3 +1,4 @@
+import { getRemoteImagePatterns } from "@/lib/image-config";
 import { MedusaProductCategory } from "@/types/medusa";
 
 export type Category = {
@@ -5,6 +6,7 @@ export type Category = {
   name: string;
   icon: string;
   description?: string;
+  homeImageUrl?: string;
   children?: Category[];
 };
 
@@ -112,6 +114,30 @@ export function getCategoryIcon(handle: string): string {
   return CATEGORY_ICONS[handle] ?? "shirt";
 }
 
+/** Category artwork is independent of saleable product records. */
+function categoryImageUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value || /[\s\\]/.test(value)) return undefined;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const url = new URL(value);
+    const allowed = getRemoteImagePatterns(
+      process.env.NEXT_PUBLIC_IMAGE_HOSTS,
+      process.env.NODE_ENV !== "production",
+    ).some(
+      (pattern) =>
+        `${pattern.protocol}:` === url.protocol &&
+        pattern.hostname === url.hostname &&
+        (pattern.port === undefined || pattern.port === url.port),
+    );
+    if (allowed && !url.username && !url.password) {
+      return value;
+    }
+  } catch {
+    // Missing or malformed artwork retains the existing category icon.
+  }
+  return undefined;
+}
+
 /** Convert Medusa categories to our local Category shape for navigation */
 export function toCategory(cat: MedusaProductCategory): Category {
   return {
@@ -119,6 +145,7 @@ export function toCategory(cat: MedusaProductCategory): Category {
     name: cat.name,
     icon: getCategoryIcon(cat.handle),
     description: cat.description,
+    homeImageUrl: categoryImageUrl(cat.metadata?.home_image_url),
     children: cat.category_children?.map(toCategory),
   };
 }

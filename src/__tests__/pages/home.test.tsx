@@ -1,7 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import Home from "@/app/page";
-import { getProducts } from "@/lib/medusa-api";
+import { getProducts, getCategories } from "@/lib/medusa-api";
 import { renderWithProviders } from "../test-utils";
 
 const clothingProduct = {
@@ -36,29 +36,32 @@ vi.mock("@/lib/medusa-api", () => ({
   addToCart: vi.fn(),
   toggleWishlistProduct: vi.fn(),
   getProducts: vi.fn(),
-  getCategories: vi.fn().mockResolvedValue({
-    product_categories: [
-      {
-        id: "pcat_tops",
-        name: "Tops",
-        handle: "tops",
-        description: "Kids tops",
-        rank: 0,
-        parent_category_id: null,
-        created_at: "",
-        updated_at: "",
-        category_children: [],
-      },
-    ],
-    count: 1,
-    offset: 0,
-    limit: 100,
-  }),
+  getCategories: vi.fn(),
 }));
+
+const categoryResponse = {
+  product_categories: [
+    {
+      id: "pcat_tops",
+      name: "Tops",
+      handle: "tops",
+      description: "Kids tops",
+      rank: 0,
+      parent_category_id: null,
+      created_at: "",
+      updated_at: "",
+      category_children: [],
+    },
+  ],
+  count: 1,
+  offset: 0,
+  limit: 100,
+};
 
 describe("Home Page", () => {
   beforeEach(() => {
-    vi.mocked(getProducts).mockResolvedValue(productResponse);
+    vi.mocked(getProducts).mockReset().mockResolvedValue(productResponse);
+    vi.mocked(getCategories).mockReset().mockResolvedValue(categoryResponse);
   });
 
   it("introduces clothing for kids ages 2–12", () => {
@@ -157,25 +160,92 @@ describe("Home Page", () => {
       await screen.findByText("No clothing is available right now. Please check back soon."),
     ).toBeInTheDocument();
   });
-});
 
-it("uses the category result photograph rather than an unfiltered arrival", async () => {
-  vi.mocked(getProducts).mockImplementation(async (params) => ({
-    ...productResponse,
-    products: [
-      {
-        ...clothingProduct,
-        thumbnail: params?.category_id
-          ? "https://example.com/category-top.jpg"
-          : "https://example.com/unfiltered.jpg",
-      },
-    ],
-  }));
-  renderWithProviders(<Home />);
-  await waitFor(() =>
-    expect(screen.getByRole("link", { name: /^Tops/ }).querySelector("img")).toHaveAttribute(
+  it("keeps configured artwork and category links when no products are available", async () => {
+    vi.mocked(getProducts).mockResolvedValue({ products: [], count: 0, offset: 0, limit: 8 });
+    vi.mocked(getCategories).mockResolvedValue({
+      ...categoryResponse,
+      product_categories: [
+        {
+          ...categoryResponse.product_categories[0],
+          metadata: {
+            home_image_url: "https://minio-production-5367.up.railway.app/category-top.jpg",
+          },
+        },
+      ],
+    });
+    renderWithProviders(<Home />);
+    const link = await screen.findByRole("link", { name: /^Tops/ });
+    expect(link).toHaveAttribute("href", "/products?category=tops");
+    expect(link.querySelector("img")).toHaveAttribute(
       "src",
-      "https://example.com/category-top.jpg",
-    ),
-  );
+      "https://minio-production-5367.up.railway.app/category-top.jpg",
+    );
+    expect(
+      await screen.findByText("No clothing is available right now. Please check back soon."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(clothingProduct.title)).not.toBeInTheDocument();
+    expect(vi.mocked(getProducts).mock.calls).toEqual([[{ limit: 8, sort: "newest" }]]);
+  });
+
+  it("uses independent category artwork even when arrivals have another photograph", async () => {
+    vi.mocked(getCategories).mockResolvedValue({
+      ...categoryResponse,
+      product_categories: [
+        {
+          ...categoryResponse.product_categories[0],
+          metadata: {
+            home_image_url: "https://minio-production-5367.up.railway.app/category-top.jpg",
+          },
+        },
+      ],
+    });
+    renderWithProviders(<Home />);
+    expect(
+      (await screen.findByRole("link", { name: /^Tops/ })).querySelector("img"),
+    ).toHaveAttribute("src", "https://minio-production-5367.up.railway.app/category-top.jpg");
+    expect(await screen.findByText(clothingProduct.title)).toBeInTheDocument();
+    expect(vi.mocked(getProducts).mock.calls).toEqual([[{ limit: 8, sort: "newest" }]]);
+  });
+
+  it("restores the category icon and link when artwork fails to load", async () => {
+    vi.mocked(getCategories).mockResolvedValue({
+      ...categoryResponse,
+      product_categories: [
+        {
+          ...categoryResponse.product_categories[0],
+          metadata: { home_image_url: "https://minio-production-5367.up.railway.app/missing.jpg" },
+        },
+      ],
+    });
+    const { queryClient } = renderWithProviders(<Home />);
+    const link = await screen.findByRole("link", { name: /^Tops/ });
+    fireEvent.error(link.querySelector("img")!);
+    expect(link.querySelector("img")).toHaveAttribute("src", "/images/icons/enamel/shirt.webp");
+    expect(link).toHaveAttribute("href", "/products?category=tops");
+    queryClient.setQueryData(["categories-home"], {
+      ...categoryResponse,
+      product_categories: [
+        {
+          ...categoryResponse.product_categories[0],
+          metadata: {
+            home_image_url: "https://minio-production-5367.up.railway.app/replacement.jpg",
+          },
+        },
+      ],
+    });
+    await waitFor(() =>
+      expect(link.querySelector("img")).toHaveAttribute(
+        "src",
+        "https://minio-production-5367.up.railway.app/replacement.jpg",
+      ),
+    );
+  });
+
+  it("retains the category icon when artwork is absent", async () => {
+    renderWithProviders(<Home />);
+    const link = await screen.findByRole("link", { name: /^Tops/ });
+    expect(link.querySelector("img")).toHaveAttribute("src", "/images/icons/enamel/shirt.webp");
+    expect(link.querySelector("svg")).not.toBeNull();
+  });
 });
